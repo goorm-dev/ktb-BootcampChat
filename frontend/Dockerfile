@@ -1,40 +1,3 @@
-<<<<<<< HEAD
-# Base image
-FROM --platform=linux/amd64 node:20-alpine as build
-WORKDIR /app
-
-# .env.local 파일 복사
-COPY .env.local .env.local
-
-# Copy .npmrc for authentication
-COPY .npmrc .npmrc
-
-# Install dependencies
-COPY package*.json ./
-RUN npm install
-
-# Install curl using apk (for Alpine)
-RUN apk add --no-cache curl
-
-
-# Copy source code and build
-COPY . .
-
-# Remove .next folder to clear cache
-RUN rm -rf .next
-
-RUN npm run build
-
-RUN echo "NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}" && \
-    echo "ENCRYPTION_KEY: ${NEXT_PUBLIC_ENCRYPTION_KEY}" && \
-    echo "PASSWORD_SALT: ${NEXT_PUBLIC_PASSWORD_SALT}"
-
-RUN cat /app/next.config.js
-
-# Start the app
-EXPOSE 3000
-CMD ["npm", "run", "start"]
-=======
 # 빌드용으로 Node.js 공식 이미지를 베이스로 사용 (경량화된 Alpine 버전)
 FROM node:20-alpine AS builder
 
@@ -74,4 +37,3 @@ EXPOSE 3000
 
 # 애플리케이션 시작 명령어 정의
 CMD ["npm", "start"]
->>>>>>> 140c8a6 (feat: dockerfile)
