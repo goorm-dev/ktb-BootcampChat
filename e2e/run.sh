@@ -336,7 +336,9 @@ show_usage() {
 # 메인 로직
 case "$1" in
   start)
-    browser="${2:-$(show_browser_menu)}"
+    # browser="${2:-$(show_browser_menu)}"
+    browser="chromium"
+
     if [[ -n "${BROWSERS[$browser]}" ]]; then
       run_tests "$browser"
     else
