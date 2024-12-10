@@ -1,5 +1,5 @@
 # 빌드 단계: Node.js 공식 이미지를 베이스로 사용 (경량화된 Alpine 버전)
-FROM node:20-alpine AS builder
+FROM node:18-alpine AS builder
 
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
