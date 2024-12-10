@@ -1,0 +1,100 @@
+---
+# Update and upgrade packages
+- name: Update and upgrade system packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+
+# Disable UFW
+- name: Disable UFW
+  command: ufw disable
+  ignore_errors: yes
+
+# Create keyrings directory
+- name: Create keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+# Download and add MongoDB GPG key
+- name: Add MongoDB GPG key
+  ansible.builtin.shell: |
+    wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor -o /etc/apt/keyrings/mongodb-archive-keyring.gpg
+  args:
+    creates: /etc/apt/keyrings/mongodb-archive-keyring.gpg
+
+- name: Set permissions on keyring
+  file:
+    path: /etc/apt/keyrings/mongodb-archive-keyring.gpg
+    mode: '0644'
+
+# Add MongoDB repository
+- name: Add MongoDB repository
+  copy:
+    content: "deb [ arch=amd64,arm64 signed-by=/etc/apt/keyrings/mongodb-archive-keyring.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse\n"
+    dest: /etc/apt/sources.list.d/mongodb-org-6.0.list
+
+# Update package lists
+- name: Update package lists
+  apt:
+    update_cache: yes
+
+# Install MongoDB
+- name: Install MongoDB packages
+  apt:
+    name:
+      - mongodb-org
+      - mongodb-mongosh
+    state: present
+
+# Start and enable MongoDB service
+- name: Start MongoDB service
+  systemd:
+    name: mongod
+    state: started
+    enabled: yes
+
+# Remove old bindIp configuration
+- name: Remove old bindIp configuration
+  replace:
+    path: /etc/mongod.conf
+    regexp: '^\s*bindIp:\s*127\.0\.0\.1'
+    replace: ''
+
+
+# Remove old port section (if needed)
+- name: Remove old net section
+  replace:
+    path: /etc/mongod.conf
+    regexp: '^\s*port:\s*27017\n'
+    replace: ''
+
+# Remove old net section (if needed)
+- name: Remove old net section
+  replace:
+    path: /etc/mongod.conf
+    regexp: '^\s*net:\n'
+    replace: ''
+
+# Add new configuration for net and replication
+- name: Update mongod.conf for replication and bindIp
+  blockinfile:
+    path: /etc/mongod.conf
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      net:
+        port: 27017
+        bindIp: 0.0.0.0
+
+      replication:
+        replSetName: "rs0"
+
+# Restart MongoDB service
+- name: Restart MongoDB service
+  systemd:
+    name: mongod
+    state: restarted
+
+
+# replicaSet 적용은 직접 해줘야함
