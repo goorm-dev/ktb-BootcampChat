@@ -1,0 +1,16 @@
+# Node modules 폴더 제외
+node_modules
+
+# 로그 파일 제외
+*.log
+
+# Git 관련 파일 제외
+.git
+.gitignore
+
+# Docker 관련 파일 제외
+Dockerfile
+.dockerignore
+
+# 기타 불필요한 파일 제외
+README.md
