@@ -1,0 +1,4 @@
+docker_login_user: "choiseu98"
+docker_login_password: "D98dev09tmd@*"
+frontend_image: "choiseu98/stress-frontend:latest"
+backend_image: "choiseu98/stress-backend:latest"
