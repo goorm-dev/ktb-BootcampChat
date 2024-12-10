@@ -1,0 +1,12 @@
+services:
+  frontend:
+    build:
+      args:
+        - TAG=${FRONTEND_IMAGE}
+    image: ${FRONTEND_IMAGE}
+
+  backend:
+    build:
+      args:
+        - TAG=${BACKEND_IMAGE}
+    image: ${BACKEND_IMAGE}
