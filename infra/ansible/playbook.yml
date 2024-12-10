@@ -1,0 +1,25 @@
+---
+#- hosts: app
+#  vars_files:
+#    - app/vars.yml
+#  tasks:
+#    - import_tasks: app/tasks.yml
+
+#- hosts: mongo
+#  vars_files:
+#    - mongo/vars.yml
+#  tasks:
+#    - import_tasks: mongo/tasks.yml
+
+- hosts: monitoring
+  vars_files:
+    - monitoring/vars.yml
+  tasks:
+    - import_tasks: monitoring/tasks.yml
+
+#- hosts: redis
+#  vars_files:
+#    - redis/vars.yml
+#  tasks:
+#    - import_tasks: redis/tasks.yml
+
