@@ -1,0 +1,60 @@
+---
+- name: Download Node Exporter tarball
+  get_url:
+    url: https://github.com/prometheus/node_exporter/releases/download/v1.5.0/node_exporter-1.5.0.linux-amd64.tar.gz
+    dest: /tmp/node_exporter-1.5.0.linux-amd64.tar.gz
+
+- name: Extract Node Exporter tarball
+  ansible.builtin.unarchive:
+    src: /tmp/node_exporter-1.5.0.linux-amd64.tar.gz
+    dest: /tmp/
+    remote_src: yes
+
+- name: Move node_exporter binary to /usr/local/bin/
+  command: mv /tmp/node_exporter-1.5.0.linux-amd64/node_exporter /usr/local/bin/
+
+- name: Create node_exporter user
+  user:
+    name: node_exporter
+    shell: /bin/false
+    create_home: no
+
+- name: Change ownership of the node_exporter binary
+  file:
+    path: /usr/local/bin/node_exporter
+    owner: node_exporter
+    group: node_exporter
+    mode: '0755'
+
+- name: Create systemd service file for node_exporter
+  copy:
+    dest: /etc/systemd/system/node_exporter.service
+    content: |
+      [Unit]
+      Description=Node Exporter
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=node_exporter
+      Group=node_exporter
+      Type=simple
+      ExecStart=/usr/local/bin/node_exporter
+
+      [Install]
+      WantedBy=default.target
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Start and enable node_exporter service
+  systemd:
+    name: node_exporter
+    state: started
+    enabled: yes
+
+- name: Check the status of node_exporter service
+  systemd:
+    name: node_exporter
+    state: started

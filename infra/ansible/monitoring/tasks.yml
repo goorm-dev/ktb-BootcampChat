@@ -1,0 +1,123 @@
+---
+## Update and upgrade system packages
+#- name: Update and upgrade system packages
+#  apt:
+#    update_cache: yes
+#    upgrade: dist
+#
+## Create Prometheus user and directories
+#- name: Create Prometheus user
+#  user:
+#    name: prometheus
+#    shell: /bin/false
+#    system: yes
+#    create_home: no
+#
+#- name: Create Prometheus directories
+#  file:
+#    path: "{{ item }}"
+#    state: directory
+#    owner: prometheus
+#    group: prometheus
+#  with_items:
+#    - /etc/prometheus
+#    - /var/lib/prometheus
+#
+## Download and install Prometheus
+#- name: Download Prometheus
+#  get_url:
+#    url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+#    dest: /tmp/prometheus.tar.gz
+#
+#- name: Extract Prometheus
+#  unarchive:
+#    src: /tmp/prometheus.tar.gz
+#    dest: /tmp/
+#    remote_src: yes
+#
+#- name: Move Prometheus binaries
+#  copy:
+#    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+#    dest: "/usr/local/bin/{{ item }}"
+#    remote_src: yes
+#    owner: prometheus
+#    group: prometheus
+#    mode: '0755'
+#  with_items:
+#    - prometheus
+#    - promtool
+#
+#- name: Copy Prometheus configuration files
+#  command: cp -r /tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }} /etc/prometheus/
+#  args:
+#    creates: /etc/prometheus/{{ item }}
+#  with_items:
+#    - consoles
+#    - console_libraries
+
+# Create Prometheus configuration file
+- name: Create Prometheus configuration file
+  copy:
+    dest: /etc/prometheus/prometheus.yml
+    content: |
+      global:
+        scrape_interval: 15s
+
+      scrape_configs:
+        - job_name: 'prometheus'
+          scrape_interval: 5s
+          static_configs:
+            - targets: ['localhost:9090']
+
+        - job_name: "node_exporter"
+          static_configs:
+            - targets: {{ node_exporter_targets | to_json }}
+    owner: prometheus
+    group: prometheus
+    mode: '0644'
+
+# Create Prometheus systemd service
+- name: Create Prometheus service file
+  copy:
+    dest: /etc/systemd/system/prometheus.service
+    content: |
+      [Unit]
+      Description=Prometheus Monitoring
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=prometheus
+      Group=prometheus
+      Type=simple
+      ExecStart=/usr/local/bin/prometheus \
+        --config.file=/etc/prometheus/prometheus.yml \
+        --storage.tsdb.path=/var/lib/prometheus/ \
+        --web.console.templates=/etc/prometheus/consoles \
+        --web.console.libraries=/etc/prometheus/console_libraries
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+
+- name: Reload systemd and start Prometheus
+  systemd:
+    daemon_reload: yes
+    name: prometheus
+    enabled: yes
+    state: restarted
+
+## Install Grafana
+#- name: Add Grafana repository and install
+#  shell: |
+#    sudo apt-get install -y apt-transport-https software-properties-common wget
+#    sudo mkdir -p /etc/apt/keyrings/
+#    wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+#    echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+#    sudo apt-get update && sudo apt-get install grafana -y
+#
+#- name: Start and enable Grafana
+#  systemd:
+#    name: grafana-server
+#    enabled: yes
+#    state: restarted

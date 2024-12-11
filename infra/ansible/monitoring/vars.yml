@@ -1,0 +1,2 @@
+prometheus_version: "2.37.0"
+node_exporter_targets: "{{ groups['all'] | map('regex_replace', '^(.*?):9100$', '\\1:9100') | map('regex_replace', '^(?!.*:9100$)(.*)', '\\1:9100') | list }}"
