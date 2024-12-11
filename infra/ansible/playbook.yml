@@ -1,32 +1,30 @@
 ---
-#- hosts: app
-#  vars_files:
-#    - app/vars.yml
-#    - common/vars.yml
-#  tasks:
-#    - import_tasks: app/tasks.yml
-#    - import_tasks: common/tasks.yml
-#
-#- hosts: mongo
-#  vars_files:
-#    - mongo/vars.yml
-#    - common/vars.yml
-#  tasks:
-#    - import_tasks: mongo/tasks.yml
-#    - import_tasks: common/tasks.yml
-#
+- hosts: app
+  vars_files:
+    - app/vars.yml
+    - common/vars.yml
+  tasks:
+    - import_tasks: app/tasks.yml
+    - import_tasks: common/tasks.yml
+
+- hosts: mongo
+  vars_files:
+    - mongo/vars.yml
+    - common/vars.yml
+  tasks:
+    - import_tasks: mongo/tasks.yml
+    - import_tasks: common/tasks.yml
+
 - hosts: monitoring
   vars_files:
     - monitoring/vars.yml
   tasks:
     - import_tasks: monitoring/tasks.yml
-#
-#- hosts: redis
-#  vars_files:
-#    - redis/vars.yml
-#    - common/vars.yml
-#  tasks:
-#    - import_tasks: redis/tasks.yml
-#    - import_tasks: common/tasks.yml
 
-
+- hosts: redis
+  vars_files:
+    - redis/vars.yml
+    - common/vars.yml
+  tasks:
+    - import_tasks: redis/tasks.yml
+    - import_tasks: common/tasks.yml
