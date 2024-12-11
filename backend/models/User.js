@@ -21,11 +21,6 @@ const UserSchema = new mongoose.Schema({
       '올바른 이메일 형식이 아닙니다.'
     ]
   },
-  encryptedEmail: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
   password: {
     type: String,
     required: [true, '비밀번호는 필수 입력 항목입니다.'],
@@ -68,11 +63,6 @@ UserSchema.pre('save', async function(next) {
     if (this.isModified('password')) {
       const salt = await bcrypt.genSalt(10);
       this.password = await bcrypt.hash(this.password, salt);
-    }
-
-    // 이메일 변경 시에만 암호화
-    if (this.isModified('email')) {
-      this.encryptedEmail = encryptEmail(this.email);
     }
 
     next();
@@ -153,10 +143,7 @@ UserSchema.methods.deleteAccount = async function() {
 
 // 이메일 복호화 메서드
 UserSchema.methods.decryptEmail = function() {
-  if (!this.encryptedEmail) return null;
-  
   try {
-    const [ivHex, encryptedHex] = this.encryptedEmail.split(':');
     const iv = Buffer.from(ivHex, 'hex');
     const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(encryptionKey, 'hex'), iv);
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
@@ -170,7 +157,6 @@ UserSchema.methods.decryptEmail = function() {
 
 // 인덱스 생성
 UserSchema.index({ email: 1 });
-UserSchema.index({ encryptedEmail: 1 }, { unique: true, sparse: true });
 UserSchema.index({ createdAt: 1 });
 UserSchema.index({ lastActive: 1 });
 
