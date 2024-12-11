@@ -1,6 +1,8 @@
+// backend/controllers/fileController.js
 const File = require('../models/File');
 const Message = require('../models/Message');
 const Room = require('../models/Room');
+const s3Service = require('../services/s3Service');
 const { processFileForRAG } = require('../services/fileService');
 const path = require('path');
 const fs = require('fs');
@@ -16,70 +18,120 @@ const fsPromises = {
   rename: promisify(fs.rename)
 };
 
-const isPathSafe = (filepath, directory) => {
-  const resolvedPath = path.resolve(filepath);
-  const resolvedDirectory = path.resolve(directory);
-  return resolvedPath.startsWith(resolvedDirectory);
-};
+const handleFileError = (error, res) => {
+  console.error('File operation error:', error);
 
-const generateSafeFilename = (originalFilename) => {
-  const ext = path.extname(originalFilename || '').toLowerCase();
-  const timestamp = Date.now();
-  const randomBytes = crypto.randomBytes(8).toString('hex');
-  return `${timestamp}_${randomBytes}${ext}`;
-};
-
-// 개선된 파일 정보 조회 함수
-const getFileFromRequest = async (req) => {
-  try {
-    const filename = req.params.filename;
-    const token = req.headers['x-auth-token'] || req.query.token;
-    const sessionId = req.headers['x-session-id'] || req.query.sessionId;
-    
-    if (!filename) {
-      throw new Error('Invalid filename');
-    }
-
-    if (!token || !sessionId) {
-      throw new Error('Authentication required');
-    }
-
-    const filePath = path.join(uploadDir, filename);
-    if (!isPathSafe(filePath, uploadDir)) {
-      throw new Error('Invalid file path');
-    }
-
-    await fsPromises.access(filePath, fs.constants.R_OK);
-
-    const file = await File.findOne({ filename: filename });
-    if (!file) {
-      throw new Error('File not found in database');
-    }
-
-    // 채팅방 권한 검증을 위한 메시지 조회
-    const message = await Message.findOne({ file: file._id });
-    if (!message) {
-      throw new Error('File message not found');
-    }
-
-    // 사용자가 해당 채팅방의 참가자인지 확인
-    const room = await Room.findOne({
-      _id: message.room,
-      participants: req.user.id
+  if (error.code === 'ENOENT') {
+    return res.status(404).json({
+      success: false,
+      message: '파일을 찾을 수 없습니다.'
     });
-
-    if (!room) {
-      throw new Error('Unauthorized access');
-    }
-
-    return { file, filePath };
-  } catch (error) {
-    console.error('getFileFromRequest error:', {
-      filename: req.params.filename,
-      error: error.message
-    });
-    throw error;
   }
+
+  if (error.code === 'NoSuchKey') {
+    return res.status(404).json({
+      success: false,
+      message: 'S3에서 파일을 찾을 수 없습니다.'
+    });
+  }
+
+  if (error.code === 'AccessDenied') {
+    return res.status(403).json({
+      success: false,
+      message: '파일에 접근할 권한이 없습니다.'
+    });
+  }
+
+  res.status(500).json({
+    success: false,
+    message: '파일 처리 중 오류가 발생했습니다.',
+    error: error.message
+  });
+};
+
+// File upload function improvement
+exports.uploadFile = async (req, res) => {
+  let uploadedFile = null;
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '파일이 선택되지 않았습니다.'
+      });
+    }
+
+    // 파일 크기 검증 (예: 50MB 제한)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (req.file.size > maxSize) {
+      throw new Error('파일 크기는 50MB를 초과할 수 없습니다.');
+    }
+
+    const safeFilename = generateSafeFilename(req.file.originalname);
+    const s3Key = generateS3Key(req.user.id, safeFilename);
+
+    // S3에 업로드 전 메타데이터 준비
+    const metadata = {
+      'original-name': encodeURIComponent(req.file.originalname),
+      'content-type': req.file.mimetype,
+      'user-id': req.user.id,
+      'upload-date': new Date().toISOString()
+    };
+
+    // S3 업로드 시도
+    const s3Location = await s3Service.uploadFile(req.file, s3Key, metadata);
+
+    // DB에 파일 정보 저장
+    uploadedFile = new File({
+      filename: safeFilename,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      user: req.user.id,
+      storageType: 's3',
+      s3Key: s3Key,
+      s3Location: s3Location
+    });
+
+    await uploadedFile.save();
+
+    // 임시 파일 정리
+    if (req.file.path) {
+      await fsPromises.unlink(req.file.path).catch(console.error);
+    }
+
+    // 성공 응답
+    res.status(200).json({
+      success: true,
+      message: '파일 업로드 성공',
+      file: {
+        _id: uploadedFile._id,
+        filename: uploadedFile.filename,
+        originalname: uploadedFile.originalname,
+        mimetype: uploadedFile.mimetype,
+        size: uploadedFile.size,
+        uploadDate: uploadedFile.uploadDate
+      }
+    });
+
+  } catch (error) {
+    // 에러 발생 시 정리 작업
+    if (uploadedFile?._id) {
+      await File.deleteOne({ _id: uploadedFile._id }).catch(console.error);
+    }
+
+    if (req.file?.path) {
+      await fsPromises.unlink(req.file.path).catch(console.error);
+    }
+
+    handleFileError(error, res);
+  }
+};
+
+// S3 키 생성 함수
+const generateS3Key = (userId, filename) => {
+  const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
+  return `uploads/${userId}/${datePrefix}/${filename}`;
 };
 
 exports.uploadFile = async (req, res) => {
@@ -92,8 +144,10 @@ exports.uploadFile = async (req, res) => {
     }
 
     const safeFilename = generateSafeFilename(req.file.originalname);
-    const currentPath = req.file.path;
-    const newPath = path.join(uploadDir, safeFilename);
+    const s3Key = generateS3Key(req.user.id, safeFilename);
+
+    // S3에 업로드
+    const s3Location = await s3Service.uploadFile(req.file, s3Key);
 
     const file = new File({
       filename: safeFilename,
@@ -101,11 +155,17 @@ exports.uploadFile = async (req, res) => {
       mimetype: req.file.mimetype,
       size: req.file.size,
       user: req.user.id,
-      path: newPath
+      storageType: 's3',
+      s3Key: s3Key,
+      s3Location: s3Location
     });
 
     await file.save();
-    await fsPromises.rename(currentPath, newPath);
+
+    // 임시 파일 삭제
+    if (req.file.path) {
+      await fsPromises.unlink(req.file.path);
+    }
 
     res.status(200).json({
       success: true,
@@ -139,31 +199,70 @@ exports.uploadFile = async (req, res) => {
 
 exports.downloadFile = async (req, res) => {
   try {
-    const { file, filePath } = await getFileFromRequest(req);
-    const contentDisposition = file.getContentDisposition('attachment');
+    const file = await File.findOne({ filename: req.params.filename });
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        message: '파일을 찾을 수 없습니다.'
+      });
+    }
 
-    res.set({
-      'Content-Type': file.mimetype,
-      'Content-Length': file.size,
-      'Content-Disposition': contentDisposition,
-      'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+    // 권한 검증
+    const message = await Message.findOne({ file: file._id });
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: '파일 메시지를 찾을 수 없습니다.'
+      });
+    }
+
+    const room = await Room.findOne({
+      _id: message.room,
+      participants: req.user.id
     });
 
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.on('error', (error) => {
-      console.error('File streaming error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({
+    if (!room) {
+      return res.status(403).json({
+        success: false,
+        message: '파일에 접근할 권한이 없습니다.'
+      });
+    }
+
+    if (file.storageType === 's3') {
+      // S3 파일 다운로드 URL로 리다이렉트
+      const signedUrl = await s3Service.getSignedUrl(file.s3Key);
+      return res.redirect(signedUrl);
+    } else {
+      // 로컬 파일 스트리밍
+      const filePath = path.join(uploadDir, file.filename);
+      if (!isPathSafe(filePath, uploadDir)) {
+        return res.status(400).json({
           success: false,
-          message: '파일 스트리밍 중 오류가 발생했습니다.'
+          message: '잘못된 파일 경로입니다.'
         });
       }
-    });
 
-    fileStream.pipe(res);
+      const contentDisposition = file.getContentDisposition('attachment');
 
+      res.set({
+        'Content-Type': file.mimetype,
+        'Content-Length': file.size,
+        'Content-Disposition': contentDisposition
+      });
+
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.on('error', (error) => {
+        console.error('File streaming error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: '파일 스트리밍 중 오류가 발생했습니다.'
+          });
+        }
+      });
+
+      fileStream.pipe(res);
+    }
   } catch (error) {
     handleFileError(error, res);
   }
@@ -171,7 +270,34 @@ exports.downloadFile = async (req, res) => {
 
 exports.viewFile = async (req, res) => {
   try {
-    const { file, filePath } = await getFileFromRequest(req);
+    const file = await File.findOne({ filename: req.params.filename });
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        message: '파일을 찾을 수 없습니다.'
+      });
+    }
+
+    // 권한 검증
+    const message = await Message.findOne({ file: file._id });
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: '파일 메시지를 찾을 수 없습니다.'
+      });
+    }
+
+    const room = await Room.findOne({
+      _id: message.room,
+      participants: req.user.id
+    });
+
+    if (!room) {
+      return res.status(403).json({
+        success: false,
+        message: '파일에 접근할 권한이 없습니다.'
+      });
+    }
 
     if (!file.isPreviewable()) {
       return res.status(415).json({
@@ -180,79 +306,51 @@ exports.viewFile = async (req, res) => {
       });
     }
 
-    const contentDisposition = file.getContentDisposition('inline');
-        
-    res.set({
-      'Content-Type': file.mimetype,
-      'Content-Disposition': contentDisposition,
-      'Content-Length': file.size,
-      'Cache-Control': 'public, max-age=31536000, immutable'
-    });
-
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.on('error', (error) => {
-      console.error('File streaming error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({
+    if (file.storageType === 's3') {
+      // S3 파일 URL로 리다이렉트
+      const signedUrl = await s3Service.getSignedUrl(file.s3Key);
+      return res.redirect(signedUrl);
+    } else {
+      // 로컬 파일 스트리밍
+      const filePath = path.join(uploadDir, file.filename);
+      if (!isPathSafe(filePath, uploadDir)) {
+        return res.status(400).json({
           success: false,
-          message: '파일 스트리밍 중 오류가 발생했습니다.'
+          message: '잘못된 파일 경로입니다.'
         });
       }
-    });
 
-    fileStream.pipe(res);
+      const contentDisposition = file.getContentDisposition('inline');
 
+      res.set({
+        'Content-Type': file.mimetype,
+        'Content-Disposition': contentDisposition,
+        'Content-Length': file.size,
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      });
+
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.on('error', (error) => {
+        console.error('File streaming error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: '파일 스트리밍 중 오류가 발생했습니다.'
+          });
+        }
+      });
+
+      fileStream.pipe(res);
+    }
   } catch (error) {
     handleFileError(error, res);
   }
 };
 
-const handleFileStream = (fileStream, res) => {
-  fileStream.on('error', (error) => {
-    console.error('File streaming error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        message: '파일 스트리밍 중 오류가 발생했습니다.'
-      });
-    }
-  });
-
-  fileStream.pipe(res);
-};
-
-const handleFileError = (error, res) => {
-  console.error('File operation error:', {
-    message: error.message,
-    stack: error.stack
-  });
-
-  // 에러 상태 코드 및 메시지 매핑
-  const errorResponses = {
-    'Invalid filename': { status: 400, message: '잘못된 파일명입니다.' },
-    'Authentication required': { status: 401, message: '인증이 필요합니다.' },
-    'Invalid file path': { status: 400, message: '잘못된 파일 경로입니다.' },
-    'File not found in database': { status: 404, message: '파일을 찾을 수 없습니다.' },
-    'File message not found': { status: 404, message: '파일 메시지를 찾을 수 없습니다.' },
-    'Unauthorized access': { status: 403, message: '파일에 접근할 권한이 없습니다.' },
-    'ENOENT': { status: 404, message: '파일을 찾을 수 없습니다.' }
-  };
-
-  const errorResponse = errorResponses[error.message] || {
-    status: 500,
-    message: '파일 처리 중 오류가 발생했습니다.'
-  };
-
-  res.status(errorResponse.status).json({
-    success: false,
-    message: errorResponse.message
-  });
-};
-
 exports.deleteFile = async (req, res) => {
   try {
     const file = await File.findById(req.params.id);
-    
+
     if (!file) {
       return res.status(404).json({
         success: false,
@@ -267,20 +365,25 @@ exports.deleteFile = async (req, res) => {
       });
     }
 
-    const filePath = path.join(uploadDir, file.filename);
+    if (file.storageType === 's3') {
+      // S3 파일 삭제
+      await s3Service.deleteFile(file.s3Key);
+    } else {
+      // 로컬 파일 삭제
+      const filePath = path.join(uploadDir, file.filename);
+      if (!isPathSafe(filePath, uploadDir)) {
+        return res.status(403).json({
+          success: false,
+          message: '잘못된 파일 경로입니다.'
+        });
+      }
 
-    if (!isPathSafe(filePath, uploadDir)) {
-      return res.status(403).json({
-        success: false,
-        message: '잘못된 파일 경로입니다.'
-      });
-    }
-    
-    try {
-      await fsPromises.access(filePath, fs.constants.W_OK);
-      await fsPromises.unlink(filePath);
-    } catch (unlinkError) {
-      console.error('File deletion error:', unlinkError);
+      try {
+        await fsPromises.access(filePath, fs.constants.W_OK);
+        await fsPromises.unlink(filePath);
+      } catch (unlinkError) {
+        console.error('File deletion error:', unlinkError);
+      }
     }
 
     await file.deleteOne();
@@ -297,4 +400,17 @@ exports.deleteFile = async (req, res) => {
       error: error.message
     });
   }
+};
+
+const isPathSafe = (filepath, directory) => {
+  const resolvedPath = path.resolve(filepath);
+  const resolvedDirectory = path.resolve(directory);
+  return resolvedPath.startsWith(resolvedDirectory);
+};
+
+const generateSafeFilename = (originalFilename) => {
+  const ext = path.extname(originalFilename || '').toLowerCase();
+  const timestamp = Date.now();
+  const randomBytes = crypto.randomBytes(8).toString('hex');
+  return `${timestamp}_${randomBytes}${ext}`;
 };
