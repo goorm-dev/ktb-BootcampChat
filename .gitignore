@@ -33,7 +33,7 @@ Thumbs.db
 # VSCode settings
 .vscode/
 
-infra/terraform/.terraform/
-
-frontend/.env.local
-backend/.env
+# terraform
+/infra/terraform/.*
+/infra/terraform/terraform*
+/infra/terraform/planfile

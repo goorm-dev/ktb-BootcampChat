@@ -1,0 +1,15 @@
+---
+# Pull Docker images
+- name: Pull Frontend Docker image
+  docker_image:
+    name: "{{ frontend_image }}"
+    source: pull
+
+# Run Docker containers
+- name: Run Frontend container
+  docker_container:
+    name: stress-frontend
+    image: "{{ frontend_image }}"
+    state: started
+    ports:
+      - "3000:3000"

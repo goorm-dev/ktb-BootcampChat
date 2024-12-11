@@ -22,6 +22,7 @@ const corsOptions = {
     'http://3.34.128.143:3000',
     'http://localhost:3000',
     'https://localhost:3000',
+    'http://total-app-alb-front-1824535157.ap-northeast-2.elb.amazonaws.com',
     'http://0.0.0.0:3000',
     'https://0.0.0.0:3000'
   ],

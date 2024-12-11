@@ -54,8 +54,8 @@ data "aws_security_group" "existing_sg" {
 
 
 
-resource "aws_instance" "ec2_instances_app_a" {
-  count         = 2
+resource "aws_instance" "ec2_instances_front_a" {
+  count         = 4
   ami           = "ami-040c33c6a51fd5d96"
   instance_type = "t3.small"
   key_name      = "stress-test-key"
@@ -66,12 +66,12 @@ resource "aws_instance" "ec2_instances_app_a" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-app-front-${count.index + 1}"
+    Name = "total-app-front-a-${count.index + 1}"
   }
 }
 
-resource "aws_instance" "ec2_instances_app_c" {
-  count         = 2
+resource "aws_instance" "ec2_instances_front_c" {
+  count         = 4
   ami           = "ami-040c33c6a51fd5d96"
   instance_type = "t3.small"
   key_name      = "stress-test-key"
@@ -82,12 +82,47 @@ resource "aws_instance" "ec2_instances_app_c" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-app-back-${count.index + 1}"
+    Name = "total-app-front-c-${count.index + 1}"
+  }
+}
+
+
+
+
+resource "aws_instance" "ec2_instances_back_a" {
+  count         = 4
+  ami           = "ami-040c33c6a51fd5d96"
+  instance_type = "t3.small"
+  key_name      = "stress-test-key"
+
+  subnet_id              = data.aws_subnet.existing_subnet_a.id
+  vpc_security_group_ids = [data.aws_security_group.existing_sg.id]
+
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "total-app-back-a-${count.index + 1}"
+  }
+}
+
+resource "aws_instance" "ec2_instances_back_c" {
+  count         = 4
+  ami           = "ami-040c33c6a51fd5d96"
+  instance_type = "t3.small"
+  key_name      = "stress-test-key"
+
+  subnet_id              = data.aws_subnet.existing_subnet_c.id
+  vpc_security_group_ids = [data.aws_security_group.existing_sg.id]
+
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "total-app-back-c-${count.index + 1}"
   }
 }
 
 resource "aws_instance" "ec2_instances_mongo" {
-  count         = 2
+  count         = 4
   ami           = "ami-040c33c6a51fd5d96"
   instance_type = "t3.small"
   key_name      = "stress-test-key"
@@ -103,7 +138,7 @@ resource "aws_instance" "ec2_instances_mongo" {
 }
 
 resource "aws_instance" "ec2_instances_redis" {
-  count         = 2
+  count         = 4
   ami           = "ami-040c33c6a51fd5d96"
   instance_type = "t3.small"
   key_name      = "stress-test-key"
@@ -143,8 +178,8 @@ resource "aws_instance" "ec2_instances_monitoring" {
 
 
 
-resource "aws_lb" "app_alb" {
-  name               = "total-app-alb"
+resource "aws_lb" "app_alb_front" {
+  name               = "total-app-alb-front"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [data.aws_security_group.existing_sg.id]
@@ -154,12 +189,12 @@ resource "aws_lb" "app_alb" {
   idle_timeout               = 60
 
   tags = {
-    Name = "total-app-alb"
+    Name = "total-app-alb-front"
   }
 }
 
-resource "aws_lb_target_group" "app_tg" {
-  name        = "total-app-tg"
+resource "aws_lb_target_group" "app_tg_front" {
+  name        = "total-app-tg-front"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.existing_vpc.id
@@ -175,35 +210,104 @@ resource "aws_lb_target_group" "app_tg" {
   }
 
   tags = {
-    Name = "total-app-tg"
+    Name = "total-app-front-tg"
   }
 }
 
-resource "aws_lb_listener" "http_listener" {
-  load_balancer_arn = aws_lb.app_alb.arn
+resource "aws_lb_listener" "http_listener_front" {
+  load_balancer_arn = aws_lb.app_alb_front.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app_tg.arn
+    target_group_arn = aws_lb_target_group.app_tg_front.arn
   }
 }
 
 locals {
-  all_app_instance_ids = concat(
-    aws_instance.ec2_instances_app_a[*].id,
-    aws_instance.ec2_instances_app_c[*].id
+  front_app_instance_ids = concat(
+    aws_instance.ec2_instances_front_a[*].id,
+    aws_instance.ec2_instances_front_c[*].id
   )
 }
 
-resource "aws_lb_target_group_attachment" "app_targets" {
-  count            = length(local.all_app_instance_ids)
-  target_group_arn = aws_lb_target_group.app_tg.arn
-  target_id        = local.all_app_instance_ids[count.index]
+resource "aws_lb_target_group_attachment" "app_targets_front" {
+  count            = length(local.front_app_instance_ids)
+  target_group_arn = aws_lb_target_group.app_tg_front.arn
+  target_id        = local.front_app_instance_ids[count.index]
   port             = 3000
 
-  depends_on = [aws_lb_listener.http_listener]
+  depends_on = [aws_lb_listener.http_listener_front]
+}
+
+
+
+
+
+
+
+resource "aws_lb" "app_alb_back" {
+  name               = "total-app-alb-back"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [data.aws_security_group.existing_sg.id]
+  subnets            = [data.aws_subnet.existing_subnet_a.id, data.aws_subnet.existing_subnet_c.id]
+
+  enable_deletion_protection = false
+  idle_timeout               = 60
+
+  tags = {
+    Name = "total-app-alb-back"
+  }
+}
+
+resource "aws_lb_target_group" "app_tg_back" {
+  name        = "total-app-tg-back"
+  port        = 5000
+  protocol    = "HTTP"
+  vpc_id      = data.aws_vpc.existing_vpc.id
+  target_type = "instance"
+
+  health_check {
+    path                = "/health"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 2
+    protocol            = "HTTP"
+  }
+
+  tags = {
+    Name = "total-app-back-tg"
+  }
+}
+
+resource "aws_lb_listener" "http_listener_back" {
+  load_balancer_arn = aws_lb.app_alb_back.arn
+  port              = 5000
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg_back.arn
+  }
+}
+
+locals {
+  back_app_instance_ids = concat(
+    aws_instance.ec2_instances_back_a[*].id,
+    aws_instance.ec2_instances_back_c[*].id
+  )
+}
+
+resource "aws_lb_target_group_attachment" "app_targets_back" {
+  count            = length(local.back_app_instance_ids)
+  target_group_arn = aws_lb_target_group.app_tg_back.arn
+  target_id        = local.back_app_instance_ids[count.index]
+  port             = 5000
+
+  depends_on = [aws_lb_listener.http_listener_back]
 }
 
 
@@ -230,14 +334,29 @@ resource "aws_lb_target_group_attachment" "app_targets" {
 
 
 
-output "instance_public_ips_app_a" {
+
+
+
+
+
+
+
+
+
+output "instance_public_ips_front" {
   description = "생성된 EC2 인스턴스의 퍼블릭 IP 목록"
-  value       = aws_instance.ec2_instances_app_a[*].public_ip
+  value       = concat(
+    aws_instance.ec2_instances_front_a[*].public_ip,
+    aws_instance.ec2_instances_front_c[*].public_ip
+  )
 }
 
-output "instance_public_ips_app_c" {
+output "instance_public_ips_back" {
   description = "생성된 EC2 인스턴스의 퍼블릭 IP 목록"
-  value       = aws_instance.ec2_instances_app_c[*].public_ip
+  value       = concat(
+    aws_instance.ec2_instances_back_a[*].public_ip,
+    aws_instance.ec2_instances_back_c[*].public_ip
+  )
 }
 
 output "instance_public_ips_mongo" {
@@ -255,7 +374,12 @@ output "instance_public_ips_monitoring" {
   value       = aws_instance.ec2_instances_monitoring[*].public_ip
 }
 
-output "alb_dns_name" {
+output "alb_dns_name_front" {
   description = "Application Load Balancer의 DNS 이름"
-  value       = aws_lb.app_alb.dns_name
+  value       = aws_lb.app_alb_front.dns_name
+}
+
+output "alb_dns_name_back" {
+  description = "Application Load Balancer의 DNS 이름"
+  value       = aws_lb.app_alb_back.dns_name
 }
