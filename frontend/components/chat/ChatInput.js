@@ -237,21 +237,21 @@ const ChatInput = forwardRef(({
 
   const handleKeyDown = useCallback((e) => {
     if (showMentionList) {
-      const participants = getFilteredParticipants(room); // room 객체 전달
+      const participants = getFilteredParticipants(room);
       const participantsCount = participants.length;
 
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setMentionIndex(prev => 
-            prev < participantsCount - 1 ? prev + 1 : 0
+          setMentionIndex(prev =>
+              prev < participantsCount - 1 ? prev + 1 : 0
           );
           break;
 
         case 'ArrowUp':
           e.preventDefault();
-          setMentionIndex(prev => 
-            prev > 0 ? prev - 1 : participantsCount - 1
+          setMentionIndex(prev =>
+              prev > 0 ? prev - 1 : participantsCount - 1
           );
           break;
 
@@ -272,6 +272,11 @@ const ChatInput = forwardRef(({
           return;
       }
     } else if (e.key === 'Enter' && !e.shiftKey) {
+      // IME 입력 중인지 확인
+      if (e.isComposing || e.keyCode === 229) {
+        return;
+      }
+
       e.preventDefault();
       if (message.trim() || files.length > 0) {
         handleSubmit(e);
@@ -291,7 +296,7 @@ const ChatInput = forwardRef(({
     setMentionIndex,
     setShowMentionList,
     setShowEmojiPicker,
-    room // room 의존성 추가
+    room
   ]);
 
   const handleMarkdownAction = useCallback((markdown) => {
