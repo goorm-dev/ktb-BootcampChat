@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { encryptionKey, passwordSalt } = require('../config/keys');
-const crypto = require('crypto');
 
 const UserSchema = new mongoose.Schema({
   name: {
@@ -45,21 +43,6 @@ const UserSchema = new mongoose.Schema({
     default: Date.now
   }
 });
-
-// 이메일 암호화 함수
-function encryptEmail(email) {
-  if (!email) return null;
-  try {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(encryptionKey, 'hex'), iv);
-    let encrypted = cipher.update(email, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted;
-  } catch (error) {
-    console.error('Email encryption error:', error);
-    return null;
-  }
-}
 
 // 비밀번호 해싱 및 이메일 암호화 미들웨어
 UserSchema.pre('save', async function(next) {
@@ -153,10 +136,7 @@ UserSchema.methods.deleteAccount = async function() {
 
 // 이메일 복호화 메서드
 UserSchema.methods.decryptEmail = function() {
-  if (!this.encryptedEmail) return null;
-
   try {
-    const [ivHex, encryptedHex] = this.encryptedEmail.split(':');
     const iv = Buffer.from(ivHex, 'hex');
     const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(encryptionKey, 'hex'), iv);
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
