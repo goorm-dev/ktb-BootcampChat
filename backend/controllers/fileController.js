@@ -1,4 +1,5 @@
 // backend/controllers/fileController.js
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const File = require('../models/File');
 const Message = require('../models/Message');
 const Room = require('../models/Room');
@@ -229,11 +230,36 @@ exports.downloadFile = async (req, res) => {
     }
 
     if (file.storageType === 's3') {
-      // S3 파일 다운로드 URL로 리다이렉트
-      const signedUrl = await s3Service.getSignedUrl(file.s3Key);
-      return res.redirect(signedUrl);
+      try {
+        const command = new GetObjectCommand({
+          Bucket: s3Service.bucket,
+          Key: file.s3Key,
+        });
+
+        const response = await s3Service.client.send(command);
+
+        // 헤더 설정
+        res.set({
+          'Content-Type': file.mimetype,
+          'Content-Length': file.size,
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(file.originalname)}`,
+          'Cache-Control': 'no-cache',
+          'Content-Security-Policy': "default-src 'self'",
+          'X-Content-Type-Options': 'nosniff'
+        });
+
+        // 스트림 파이핑
+        response.Body.pipe(res);
+
+      } catch (streamError) {
+        console.error('Streaming error:', streamError);
+        return res.status(500).json({
+          success: false,
+          message: '파일 스트리밍 중 오류가 발생했습니다.'
+        });
+      }
     } else {
-      // 로컬 파일 스트리밍
+      // 로컬 파일 처리
       const filePath = path.join(uploadDir, file.filename);
       if (!isPathSafe(filePath, uploadDir)) {
         return res.status(400).json({
@@ -242,19 +268,20 @@ exports.downloadFile = async (req, res) => {
         });
       }
 
-      const contentDisposition = file.getContentDisposition('attachment');
-
       res.set({
         'Content-Type': file.mimetype,
         'Content-Length': file.size,
-        'Content-Disposition': contentDisposition
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(file.originalname)}`,
+        'Cache-Control': 'no-cache',
+        'Content-Security-Policy': "default-src 'self'",
+        'X-Content-Type-Options': 'nosniff'
       });
 
       const fileStream = fs.createReadStream(filePath);
       fileStream.on('error', (error) => {
         console.error('File streaming error:', error);
         if (!res.headersSent) {
-          res.status(500).json({
+          return res.status(500).json({
             success: false,
             message: '파일 스트리밍 중 오류가 발생했습니다.'
           });

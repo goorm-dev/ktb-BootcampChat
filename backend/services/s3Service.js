@@ -15,6 +15,61 @@ class S3Service {
         this.cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN;
     }
 
+    /**
+     * S3에서 파일 스트림 가져오기
+     */
+    async getFileStream(key) {
+        const command = new GetObjectCommand({
+            Bucket: this.bucket,
+            Key: key
+        });
+
+        const response = await this.client.send(command);
+        return response.Body;
+    }
+
+    /**
+     * 다운로드용 서명된 URL 생성
+     */
+    async getDownloadSignedUrl(key, originalFilename, expiresIn = 3600) {
+        const command = new GetObjectCommand({
+            Bucket: this.bucket,
+            Key: key,
+            ResponseContentDisposition: `attachment; filename="${encodeURIComponent(originalFilename)}"`,
+        });
+
+        return await getSignedUrl(this.client, command, { expiresIn });
+    }
+
+    /**
+     * 파일 업로드 시 Content-Disposition 설정
+     */
+    async uploadFile(file, key, metadata = {}) {
+        try {
+            const fileStream = fs.createReadStream(file.path);
+
+            const command = new PutObjectCommand({
+                Bucket: this.bucket,
+                Key: key,
+                Body: fileStream,
+                ContentType: file.mimetype,
+                ContentDisposition: `attachment; filename="${encodeURIComponent(file.originalname)}"`,
+                Metadata: {
+                    ...metadata,
+                    'original-name': encodeURIComponent(file.originalname)
+                },
+                ServerSideEncryption: 'AES256'
+            });
+
+            const response = await this.client.send(command);
+            return `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+        } catch (error) {
+            console.error('S3 upload error:', error);
+            throw new Error('파일 업로드 중 오류가 발생했습니다.');
+        }
+    }
+
     async uploadFile(file, key, metadata = {}) {
         try {
             const fileStream = fs.createReadStream(file.path);
