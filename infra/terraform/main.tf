@@ -66,7 +66,7 @@ resource "aws_instance" "ec2_instances_front_a" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-app-front-a-${count.index + 1}"
+    Name = "ci-app-front-a-${count.index + 1}"
   }
 }
 
@@ -82,7 +82,7 @@ resource "aws_instance" "ec2_instances_front_c" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-app-front-c-${count.index + 1}"
+    Name = "ci-app-front-c-${count.index + 1}"
   }
 }
 
@@ -101,7 +101,7 @@ resource "aws_instance" "ec2_instances_back_a" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-app-back-a-${count.index + 1}"
+    Name = "ci-app-back-a-${count.index + 1}"
   }
 }
 
@@ -117,7 +117,7 @@ resource "aws_instance" "ec2_instances_back_c" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-app-back-c-${count.index + 1}"
+    Name = "ci-app-back-c-${count.index + 1}"
   }
 }
 
@@ -133,7 +133,7 @@ resource "aws_instance" "ec2_instances_mongo" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-redis-${count.index + 1}"
+    Name = "ci-mongo-${count.index + 1}"
   }
 }
 
@@ -149,7 +149,7 @@ resource "aws_instance" "ec2_instances_redis" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-mongo-${count.index + 1}"
+    Name = "ci-redis-${count.index + 1}"
   }
 }
 
@@ -165,7 +165,7 @@ resource "aws_instance" "ec2_instances_monitoring" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "total-monitoring-${count.index + 1}"
+    Name = "ci-monitoring-${count.index + 1}"
   }
 }
 
@@ -179,7 +179,7 @@ resource "aws_instance" "ec2_instances_monitoring" {
 
 
 resource "aws_lb" "app_alb_front" {
-  name               = "total-app-alb-front"
+  name               = "ci-app-alb-front"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [data.aws_security_group.existing_sg.id]
@@ -189,12 +189,12 @@ resource "aws_lb" "app_alb_front" {
   idle_timeout               = 60
 
   tags = {
-    Name = "total-app-alb-front"
+    Name = "ci-app-alb-front"
   }
 }
 
 resource "aws_lb_target_group" "app_tg_front" {
-  name        = "total-app-tg-front"
+  name        = "ci-app-tg-front"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.existing_vpc.id
@@ -210,7 +210,7 @@ resource "aws_lb_target_group" "app_tg_front" {
   }
 
   tags = {
-    Name = "total-app-front-tg"
+    Name = "ci-app-front-tg"
   }
 }
 
@@ -248,7 +248,7 @@ resource "aws_lb_target_group_attachment" "app_targets_front" {
 
 
 resource "aws_lb" "app_alb_back" {
-  name               = "total-app-alb-back"
+  name               = "ci-app-alb-back"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [data.aws_security_group.existing_sg.id]
@@ -258,12 +258,12 @@ resource "aws_lb" "app_alb_back" {
   idle_timeout               = 60
 
   tags = {
-    Name = "total-app-alb-back"
+    Name = "ci-app-alb-back"
   }
 }
 
 resource "aws_lb_target_group" "app_tg_back" {
-  name        = "total-app-tg-back"
+  name        = "ci-app-tg-back"
   port        = 5000
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.existing_vpc.id
@@ -279,7 +279,7 @@ resource "aws_lb_target_group" "app_tg_back" {
   }
 
   tags = {
-    Name = "total-app-back-tg"
+    Name = "ci-app-back-tg"
   }
 }
 
