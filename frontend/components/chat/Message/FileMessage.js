@@ -103,7 +103,7 @@ const FileMessage = ({
     e.preventDefault();
     e.stopPropagation();
     setError(null);
-    
+
     try {
       if (!msg.file?.filename) {
         throw new Error('파일 정보가 없습니다.');
@@ -114,15 +114,14 @@ const FileMessage = ({
         throw new Error('인증 정보가 없습니다.');
       }
 
-      const baseUrl = fileService.getFileUrl(msg.file.filename, false);
-      const authenticatedUrl = `${baseUrl}?token=${encodeURIComponent(user.token)}&sessionId=${encodeURIComponent(user.sessionId)}&download=true`;
+      const result = await fileService.downloadFile(
+          msg.file.filename,
+          msg.file.originalname
+      );
 
-      const link = document.createElement('a');
-      link.href = authenticatedUrl;
-      link.download = getDecodedFilename(msg.file.originalname);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!result.success) {
+        throw new Error(result.message);
+      }
 
     } catch (error) {
       console.error('File download error:', error);
