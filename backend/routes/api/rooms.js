@@ -3,23 +3,7 @@ const router = express.Router();
 const auth = require('../../middleware/auth');
 const Room = require('../../models/Room');
 const User = require('../../models/User');
-const { rateLimit } = require('express-rate-limit');
 let io;
-
-// 속도 제한 설정
-const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1분
-  max: 60, // IP당 최대 요청 수
-  message: {
-    success: false,
-    error: {
-      message: '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.',
-      code: 'TOO_MANY_REQUESTS'
-    }
-  },
-  standardHeaders: true,
-  legacyHeaders: false
-});
 
 // Socket.IO 초기화 함수
 const initializeSocket = (socketIO) => {
@@ -73,7 +57,7 @@ router.get('/health', async (req, res) => {
 });
 
 // 채팅방 목록 조회 (페이징 적용)
-router.get('/', [limiter, auth], async (req, res) => {
+router.get('/', [auth], async (req, res) => {
   try {
     // 쿼리 파라미터 검증 (페이지네이션)
     const page = Math.max(0, parseInt(req.query.page) || 0);
