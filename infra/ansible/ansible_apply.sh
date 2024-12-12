@@ -22,17 +22,31 @@ else
   echo "MONGO_URI=$MONGO_URI" >> "$ENV_FILE"
 fi
 
+# [redis] 그룹의 첫 번째 IP 주소 가져오기
+REDIS_HOST=$(awk '/^\[redis\]/ {getline; print}' "$HOSTS_FILE")
+
+# .env 파일에서 REDIS_HOST 업데이트
+if grep -q "^REDIS_HOST=" "$ENV_FILE"; then
+  # 기존 REDIS_HOST 교체
+  sed -i.bak "s|^REDIS_HOST=.*|REDIS_HOST=$REDIS_HOST|" "$ENV_FILE"
+else
+  # REDIS_HOST 추가
+  echo "REDIS_HOST=$REDIS_HOST" >> "$ENV_FILE"
+fi
+
+
 # .env 파일 내용 출력
 cat "$ENV_FILE"
 
 
-cd .. && cd ..
+# Docker 빌드 및 푸시
+cd "$ROOT_DIR" || exit
 
 docker compose build
 docker push choiseu98/stress-frontend:latest
 docker push choiseu98/stress-backend:latest
 
-cd infra/ansible
+cd infra/ansible || exit
 ansible-playbook -i hosts.ini playbook.yml
 
 echo "ansible 완료"

@@ -9,6 +9,7 @@ build/
 .npmrc
 .env.local
 .env
+.env.*
 backend/uploads
 
 # Next.js
@@ -37,3 +38,9 @@ Thumbs.db
 /infra/terraform/.*
 /infra/terraform/terraform*
 /infra/terraform/planfile
+
+# ansible
+/infra/ansible/hosts.ini
+/infra/ansible/app/vars.yml
+/infra/ansible/front/vars.yml
+/infra/ansible/back/vars.yml
