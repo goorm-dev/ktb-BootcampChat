@@ -1,0 +1,11 @@
+{
+  "name": "ktb-bootcampchat",
+  "version": "1.0.0",
+  "description": "이 프로젝트는 실시간 채팅을 위한 웹 애플리케이션으로, Node.js, Next.js, Redis, MongoDB를 활용하여 구현되었습니다.",
+  "main": "create_source_codes.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

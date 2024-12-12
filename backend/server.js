@@ -19,6 +19,7 @@ app.set('trust proxy', 1);
 const corsOptions = {
   origin: [
     'https://bootcampchat-fe.run.goorm.site',
+    'http://3.34.128.143:3000',
     'http://localhost:3000',
     'https://localhost:3000',
     'http://0.0.0.0:3000',
@@ -59,7 +60,7 @@ if (process.env.NODE_ENV === 'development') {
 // 기본 상태 체크
 app.get('/health', (req, res) => {
   res.json({ 
-    status: 'ok', 
+    status: 'ok',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV
   });

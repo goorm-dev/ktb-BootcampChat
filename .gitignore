@@ -20,9 +20,16 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+
+
 # OS-specific
 .DS_Store
 Thumbs.db
 
 # VSCode settings
 .vscode/
+
+infra/terraform/.terraform/
+
+frontend/.env.local
+backend/.env
