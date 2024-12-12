@@ -134,20 +134,6 @@ UserSchema.methods.deleteAccount = async function() {
   }
 };
 
-// 이메일 복호화 메서드
-UserSchema.methods.decryptEmail = function() {
-  try {
-    const iv = Buffer.from(ivHex, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(encryptionKey, 'hex'), iv);
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  } catch (error) {
-    console.error('Email decryption error:', error);
-    return null;
-  }
-};
-
 // 인덱스 생성
 UserSchema.index({ email: 1 });
 UserSchema.index({ encryptedEmail: 1 }, { unique: true, sparse: true });
