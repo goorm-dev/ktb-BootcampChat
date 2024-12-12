@@ -267,20 +267,14 @@ router.post('/:roomId/join', auth, async (req, res) => {
     const room = await Room.findById(req.params.roomId).select('+password');
     
     if (!room) {
-      return res.status(404).json({
-        success: false,
-        message: '채팅방을 찾을 수 없습니다.'
-      });
+      return res.status(404).send();
     }
 
     // 비밀번호 확인
     if (room.hasPassword) {
       const isPasswordValid = await room.checkPassword(password);
       if (!isPasswordValid) {
-        return res.status(401).json({
-          success: false,
-          message: '비밀번호가 일치하지 않습니다.'
-        });
+        return res.status(401).send();
       }
     }
 
@@ -309,11 +303,7 @@ router.post('/:roomId/join', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('방 입장 에러:', error);
-    res.status(500).json({
-      success: false,
-      message: '서버 에러가 발생했습니다.',
-      error: error.message
-    });
+    res.status(500).send();
   }
 });
 
