@@ -19,21 +19,22 @@
     "emoji-mart": "^5.5.2",
     "lucide-react": "^0.263.1",
     "marked": "^14.1.3",
-    "next": "^15.0.2",
-    "prismjs": "^1.29.0",
+    "next": "^14.2.5",
     "react": "^18.3.1",
-    "react-bootstrap": "^2.8.0",
+    "react-bootstrap": "^2.10.2",
     "react-canvas-confetti": "^2.0.7",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
-    "react-syntax-highlighter": "^15.6.1",
+    "react-syntax-highlighter": "^15.5.0",
     "react-toastify": "^10.0.6",
-    "reactstrap": "^8.10.1",
     "remark-breaks": "^4.0.0",
     "remark-emoji": "^5.0.1",
     "remark-gfm": "^4.0.0",
     "socket.io-client": "^4.7.2"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "overrides": {
+    "prismjs": "^1.30.0"
+  }
 }
