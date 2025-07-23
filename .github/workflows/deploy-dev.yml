@@ -41,7 +41,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key.pem
           echo "Host dev-server
             HostName ${{ secrets.SSH_HOST }}
-            User ubuntu
+            User ec2-user
             IdentityFile ~/.ssh/deploy_key.pem
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null" > ~/.ssh/config
