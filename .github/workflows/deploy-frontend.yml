@@ -1,0 +1,42 @@
+name: Build & Upload Frontend to S3
+
+on:
+  push:
+    branches: [main]  # main 브랜치 push 시 실행
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'  # 필요 시 버전 수정
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build Next.js
+      run: npm run build
+
+    - name: Zip frontend with node_modules and build output
+      run: |
+        cd ..
+        zip -r frontend.zip frontend -x "**/.git*" "**/.next/cache/**"
+
+    - name: Upload to S3
+      uses: aws-actions/s3cp@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+        source: frontend.zip
+        dest: s3://ktb13-bucket/roles/frontend.zip
