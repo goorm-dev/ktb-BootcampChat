@@ -9,7 +9,7 @@ import socketService from '../services/socket';
 import authService from '../services/authService';
 import axiosInstance from '../services/axios';
 import { withAuth } from '../middleware/withAuth';
-import { Toast } from '../components/Toast';
+import ToastContainer$, { Toast } from '../components/Toast';
 import {Modal,ModalBody,ModalFooter} from "../components/ui/Modal";
 import {Input} from "reactstrap";
 
@@ -602,20 +602,15 @@ function ChatRoomsComponent() {
         router.push(`/chat?room=${roomId}`);
       }
     } catch (error) {
-      console.error('Room join error:', error);
-
       let errorMessage = '입장에 실패했습니다.';
-      if (error.response?.status === 404) {
+      if (error.status === 404) {
         errorMessage = '채팅방을 찾을 수 없습니다.';
-      } else if (error.response?.status === 403) {
-        errorMessage = '채팅방 입장 권한이 없습니다.';
+      } else if (error.status === 403) {
+        errorMessage = '비밀번호가 틀렸습니다.';
       }
 
-      setError({
-        title: '채팅방 입장 실패',
-        message: error.response?.data?.message || errorMessage,
-        type: 'danger'
-      });
+      setShowPasswordModal(false);
+      Toast.error(errorMessage);
     } finally {
       setJoiningRoom(false);
     }
@@ -689,6 +684,7 @@ function ChatRoomsComponent() {
 
   return (
     <div className="auth-container">
+      <ToastContainer$/>
       <Modal
           isOpen={showPasswordModal}
           onClose={() => closePasswordModal()}
@@ -750,7 +746,7 @@ function ChatRoomsComponent() {
                   <ErrorCircleIcon size={16} style={{ marginTop: '4px' }} />
                 )}
                 <div>
-                  <Text typography="subtitle2" style={{ fontWeight: 500 }}>{error.title}</Text>
+                  <Text typography="heading6" style={{ fontWeight: 500, paddingRight: 10 }}>{error.title} </Text>
                   <Text typography="body2" style={{ marginTop: 'var(--vapor-space-050)' }}>{error.message}</Text>
                   {error.showRetry && !isRetrying && (
                     <Button
