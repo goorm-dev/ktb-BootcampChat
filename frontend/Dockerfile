@@ -11,7 +11,7 @@ WORKDIR /app
 
 # 패키지 파일들을 먼저 복사하여 Docker 레이어 캐싱 최적화
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # 개발 의존성을 포함한 빌드용 단계
 FROM base AS builder
@@ -26,8 +26,8 @@ RUN npm ci
 
 # Next.js 애플리케이션 빌드
 # 환경변수는 빌드 시점에 주입되어야 함
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
 # 빌드 실행
 RUN npm run build
@@ -38,8 +38,8 @@ FROM base AS production
 WORKDIR /app
 
 # 프로덕션 환경 설정
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # 애플리케이션 실행을 위한 사용자 생성 (보안 강화)
 RUN addgroup --system --gid 1001 nodejs
@@ -60,8 +60,8 @@ USER nextjs
 EXPOSE 3000
 
 # 환경변수 설정
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 # 헬스체크 추가
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
