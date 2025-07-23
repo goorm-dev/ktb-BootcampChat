@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feat/dev-cicd
 
 jobs:
   build-and-deploy:
@@ -25,7 +24,7 @@ jobs:
 
       - name: Inject .env file
         run: |
-          echo "REACT_APP_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" > .env
+          echo "REACT_APP_API_URL=https://dev-backend.goorm-ktb-016.goorm.team" > .env
           echo "NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}" >> .env
           echo "NEXT_PUBLIC_PASSWORD_SALT=${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}" >> .env
         working-directory: ./frontend-react
