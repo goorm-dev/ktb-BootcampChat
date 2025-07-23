@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  PdfIcon as FileText, 
-  ImageIcon as Image, 
-  MovieIcon as Film, 
-  CorrectOutlineIcon as CheckCheck, 
-  CorrectOutlineIcon as Check, 
-  MusicIcon as Music, 
-  ExternalLinkIcon as ExternalLink, 
-  DownloadIcon as Download,
-  ErrorCircleIcon as AlertCircle 
-} from '@vapor-ui/icons';
+import {
+  FileText,
+  Image,
+  Film,
+  CheckCheck,
+  Check,
+  Music,
+  ExternalLink,
+  Download,
+  AlertCircle
+} from 'lucide-react';
 import { Button, Text, Callout } from '@vapor-ui/core';
 import PersistentAvatar from '../../common/PersistentAvatar';
 import MessageContent from './MessageContent';
