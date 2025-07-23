@@ -1,35 +1,35 @@
 import React from 'react';
-import { ErrorCircleIcon, SuccessCircleIcon, InfoIcon, WarningIcon, CloseOutlineIcon } from '@vapor-ui/icons';
+import { ErrorCircleIcon, CheckCircleIcon, InfoCircleIcon, WarningIcon, CloseOutlineIcon } from '@vapor-ui/icons';
 import { Button } from '@vapor-ui/core';
 import { cn } from '../../utils/cn';
 
 // Alert 컴포넌트 - Bootstrap alert 대체
-export const Alert = ({ 
-  children, 
+export const Alert = ({
+  children,
   variant = 'info',
   dismissible = false,
   onClose,
   className = '',
-  ...props 
+  ...props
 }) => {
   const variants = {
     primary: {
       backgroundColor: 'var(--vapor-color-primary-light)',
       borderColor: 'var(--vapor-color-primary)',
       color: 'var(--vapor-color-primary-dark)',
-      icon: InfoIcon,
+      icon: InfoCircleIcon,
     },
     secondary: {
       backgroundColor: 'var(--vapor-color-secondary-light)',
       borderColor: 'var(--vapor-color-secondary)',
       color: 'var(--vapor-color-secondary-dark)',
-      icon: InfoIcon,
+      icon: InfoCircleIcon,
     },
     success: {
       backgroundColor: 'var(--vapor-color-success-light)',
       borderColor: 'var(--vapor-color-success)',
       color: 'var(--vapor-color-success-dark)',
-      icon: SuccessCircleIcon,
+      icon: CheckCircleIcon,
     },
     danger: {
       backgroundColor: 'var(--vapor-color-danger-light)',
@@ -47,7 +47,7 @@ export const Alert = ({
       backgroundColor: 'var(--vapor-color-info-light)',
       borderColor: 'var(--vapor-color-info)',
       color: 'var(--vapor-color-info-dark)',
-      icon: InfoIcon,
+      icon: InfoCircleIcon,
     },
   };
 

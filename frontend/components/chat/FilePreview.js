@@ -1,22 +1,22 @@
 import React, { useEffect, useRef, useCallback, memo } from 'react';
-import { 
-  CloseOutlineIcon as X, 
-  ErrorCircleIcon as AlertCircle, 
-  ImageIcon, 
-  PdfIcon as FileText, 
-  MovieIcon as Film, 
-  LoadingOutlineIcon as Loader,
-  MusicIcon as Music,
+import {
+  CloseOutlineIcon as X,
+  ErrorCircleIcon as AlertCircle,
+  ImageIcon,
+  PdfIcon as FileText,
+  MovieIcon as Film,
+  ReloadOutlineIcon as ReloadOutline,
+  SoundOnIcon as SoundOn,
   FileIcon as File
 } from '@vapor-ui/icons';
 import { Button, IconButton, Callout } from '@vapor-ui/core';
 import fileService from '../../services/fileService';
 
-const FilePreview = ({ 
+const FilePreview = ({
   files = [],
-  uploading = false, 
-  uploadProgress = 0, 
-  uploadError = null, 
+  uploading = false,
+  uploadProgress = 0,
+  uploadError = null,
   onRemove,
   onRetry,
   onDrop,
@@ -55,7 +55,7 @@ const FilePreview = ({
 
       const previewUrl = URL.createObjectURL(file);
       previewUrlsRef.current.set(fileObject.name, previewUrl);
-      
+
       return fileObject;
     } catch (error) {
       console.error('File processing error:', error);
@@ -75,10 +75,10 @@ const FilePreview = ({
       if (!items) return;
 
       const fileItems = Array.from(items).filter(
-        item => item.kind === 'file' && 
-        (item.type.startsWith('image/') || 
-         item.type.startsWith('video/') || 
-         item.type.startsWith('audio/') || 
+        item => item.kind === 'file' &&
+        (item.type.startsWith('image/') ||
+         item.type.startsWith('video/') ||
+         item.type.startsWith('audio/') ||
          item.type === 'application/pdf')
       );
 
@@ -120,10 +120,10 @@ const FilePreview = ({
       if (files.length >= maxFiles) return;
 
       const droppedFiles = Array.from(e.dataTransfer.files)
-        .filter(file => 
-          file.type.startsWith('image/') || 
-          file.type.startsWith('video/') || 
-          file.type.startsWith('audio/') || 
+        .filter(file =>
+          file.type.startsWith('image/') ||
+          file.type.startsWith('video/') ||
+          file.type.startsWith('audio/') ||
           file.type === 'application/pdf'
         );
 
@@ -194,7 +194,7 @@ const FilePreview = ({
     } else if (file.type.startsWith('video/')) {
       return <Film {...iconProps} color="#2196F3" />;
     } else if (file.type.startsWith('audio/')) {
-      return <Music {...iconProps} color="#9C27B0" />;
+      return <SoundOn {...iconProps} color="#9C27B0" />;
     } else if (file.type === 'application/pdf') {
       return <FileText {...iconProps} color="#F44336" />;
     } else {
@@ -265,14 +265,14 @@ const FilePreview = ({
     if (!uploading) return null;
 
     return (
-      <div 
+      <div
         className="mt-4 h-1 w-full bg-gray-200 rounded-full overflow-hidden"
         role="progressbar"
         aria-valuenow={uploadProgress}
         aria-valuemin="0"
         aria-valuemax="100"
       >
-        <div 
+        <div
           className="h-full bg-primary transition-all duration-300 ease-in-out"
           style={{ width: `${uploadProgress}%` }}
         />
@@ -302,7 +302,7 @@ const FilePreview = ({
     if (uploading) {
       return (
         <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-          <Loader className="w-4 h-4 animate-spin" aria-hidden="true" />
+          <ReloadOutline className="w-4 h-4 animate-spin" aria-hidden="true" />
           <span>{uploadProgress}% 업로드 중...</span>
         </div>
       );
@@ -314,7 +314,7 @@ const FilePreview = ({
   if (files.length === 0) return null;
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`file-preview-scroll-container ${className} ${onDrop ? 'cursor-pointer' : ''}`}
       role="region"
@@ -322,17 +322,17 @@ const FilePreview = ({
     >
       <div className="file-preview-list">
         {files.map((file, index) => (
-          <div 
+          <div
             key={`${file.name}-${index}`}
             className="file-preview-item"
           >
             <div className="file-preview-content">
               {renderFilePreview(file)}
-              
+
               <div className="flex-1 min-w-0">
                 {showFileName && (
-                  <div 
-                    className="text-sm font-medium truncate" 
+                  <div
+                    className="text-sm font-medium truncate"
                     title={file.name}
                   >
                     {file.name}
@@ -383,7 +383,7 @@ const FilePreview = ({
       )}
 
       {onDrop && (
-        <div 
+        <div
           className="absolute inset-0 bg-primary/10 border-2 border-primary border-dashed rounded-lg opacity-0 pointer-events-none transition-opacity drag-over:opacity-100"
           aria-hidden="true"
         >

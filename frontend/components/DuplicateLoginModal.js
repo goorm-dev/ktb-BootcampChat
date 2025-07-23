@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { WarningIcon, TimeIcon, ExternalLinkIcon } from '@vapor-ui/icons';
+import { WarningIcon, TimeIcon } from '@vapor-ui/icons';
 import { Button, Text, Callout } from '@vapor-ui/core';
 
-const DuplicateLoginModal = ({ 
-  isOpen, 
-  onClose, 
-  deviceInfo, 
+const DuplicateLoginModal = ({
+  isOpen,
+  onClose,
+  deviceInfo,
   ipAddress,
-  onTimeout 
+  onTimeout
 }) => {
   const [timeLeft, setTimeLeft] = useState(10);
 
@@ -50,7 +50,7 @@ const DuplicateLoginModal = ({
                 ×
               </Button>
             </div>
-            
+
             <div className="modal-body">
               <Callout color="danger">
                 <div className="d-flex align-items-start gap-2">
@@ -77,10 +77,10 @@ const DuplicateLoginModal = ({
               </div>
 
               <div className="progress" style={{ height: '4px' }}>
-                <div 
+                <div
                   className="progress-bar bg-warning"
                   role="progressbar"
-                  style={{ 
+                  style={{
                     width: `${(timeLeft / 10) * 100}%`,
                     transition: 'width 1s linear'
                   }}
