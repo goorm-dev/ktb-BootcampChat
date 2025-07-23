@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { WarningIcon, TimeIcon, ExternalLinkIcon } from '@vapor-ui/icons';
+import { WarningIcon, TimeIcon, LinkOutlineIcon as ExternalLinkIcon } from '@vapor-ui/icons';
 import { Button, Text, Callout } from '@vapor-ui/core';
 
 const DuplicateLoginModal = ({ 
