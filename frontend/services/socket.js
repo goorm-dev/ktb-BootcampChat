@@ -84,6 +84,7 @@ class SocketService {
         console.log('[Socket] Connecting to:', socketUrl);
 
         this.socket = io(socketUrl, {
+          path: '/ws/socket.io',
           ...options,
           transports: ['websocket', 'polling'],
           reconnection: true,

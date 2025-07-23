@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { openaiApiKey } = require('../config/keys');
+const amqp = require('amqplib');
 
 class AIService {
   constructor() {
@@ -10,6 +11,30 @@ class AIService {
         'Content-Type': 'application/json'
       }
     });
+    this.amqpConn = null;
+    this.amqpChannel = null;
+    this.queueName = 'ai-tasks';
+    this.initRabbitMQ();
+  }
+
+  async initRabbitMQ() {
+    try {
+      this.amqpConn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+      this.amqpChannel = await this.amqpConn.createChannel();
+      await this.amqpChannel.assertQueue(this.queueName, { durable: true });
+      console.log('[AIService] RabbitMQ 연결 및 큐 준비 완료');
+    } catch (err) {
+      console.error('[AIService] RabbitMQ 연결 실패:', err.message);
+    }
+  }
+
+  async publishAITask(task) {
+    if (!this.amqpChannel) {
+      await this.initRabbitMQ();
+    }
+    const payload = Buffer.from(JSON.stringify(task));
+    await this.amqpChannel.sendToQueue(this.queueName, payload, { persistent: true });
+    console.log('[AIService] AI 작업 메시지큐 발행:', task);
   }
 
   async generateResponse(message, persona = 'wayneAI', callbacks) {
@@ -129,6 +154,33 @@ class AIService {
       callbacks.onError(error);
       throw new Error('AI 응답 생성 중 오류가 발생했습니다.');
     }
+  }
+
+  async consumeAITasks(onResult) {
+    if (!this.amqpChannel) {
+      await this.initRabbitMQ();
+    }
+    this.amqpChannel.consume(this.queueName, async (msg) => {
+      if (msg !== null) {
+        const task = JSON.parse(msg.content.toString());
+        try {
+          // 실제 AI 응답 생성
+          const result = await this.generateResponse(task.query, task.aiName, {
+            onStart: () => {},
+            onChunk: () => {},
+            onComplete: (finalContent) => {
+              if (onResult) onResult({ ...task, result: finalContent });
+            },
+            onError: (error) => {
+              if (onResult) onResult({ ...task, error });
+            }
+          });
+        } catch (error) {
+          if (onResult) onResult({ ...task, error });
+        }
+        this.amqpChannel.ack(msg);
+      }
+    });
   }
 }
 
