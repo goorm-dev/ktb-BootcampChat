@@ -23,6 +23,7 @@
     "mongoose-cache": "^0.1.5",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "nanoid": "^5.1.5",
     "pdf-parse": "^1.1.1",
     "redis": "^4.6.7",
     "socket.io": "^4.7.2"
