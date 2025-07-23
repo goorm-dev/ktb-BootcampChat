@@ -1,13 +1,6 @@
 import React from 'react';
 import { ToastContainer, toast, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import { 
-  ErrorCircleIcon, 
-  SuccessCircleIcon, 
-  InfoIcon, 
-  WarningIcon,
-  ErrorCircleIcon as XCircleIcon 
-} from '@vapor-ui/icons';
 
 // Toast 타입별 설정
 const TOAST_TYPES = {
@@ -65,7 +58,7 @@ class Toast {
   static info(message, options = {}) {
     this.show(message, 'info', options);
   }
-  
+
   static dismiss(toastId) {
     if (toastId) {
       toast.dismiss(toastId);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { ErrorCircleIcon } from '@vapor-ui/icons';
-import { Button, TextInput, Card, Text, Callout, Avatar } from '@vapor-ui/core';
+import { Button, TextInput, Card, Text, Callout } from '@vapor-ui/core';
 import { Flex, Stack, Center, Box } from '../components/ui/Layout';
 import authService from '../services/authService';
 import { withAuth } from '../middleware/withAuth';
@@ -26,8 +26,8 @@ const Profile = () => {
   // 프로필 이미지 URL 생성
   const getProfileImageUrl = useCallback((imagePath) => {
     if (!imagePath) return null;
-    return imagePath.startsWith('http') ? 
-      imagePath : 
+    return imagePath.startsWith('http') ?
+      imagePath :
       `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
   }, []);
 
@@ -81,14 +81,14 @@ const Profile = () => {
         ...user,
         profileImage: imageUrl
       };
-      
+
       // localStorage 업데이트
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
 
       // 성공 메시지 표시
       setSuccess('프로필 이미지가 업데이트되었습니다.');
-      
+
       // 3초 후 성공 메시지 제거
       setTimeout(() => {
         setSuccess('');
@@ -100,7 +100,7 @@ const Profile = () => {
     } catch (error) {
       console.error('Image update error:', error);
       setError('프로필 이미지 업데이트에 실패했습니다.');
-      
+
       setTimeout(() => {
         setError('');
       }, 3000);
@@ -138,11 +138,11 @@ const Profile = () => {
       setSuccess('프로필이 성공적으로 업데이트되었습니다.');
 
       // 비밀번호 필드 초기화
-      setFormData(prev => ({ 
-        ...prev, 
-        currentPassword: '', 
-        newPassword: '', 
-        confirmPassword: '' 
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       }));
 
       // 전역 이벤트 발생
@@ -166,9 +166,9 @@ const Profile = () => {
             <Center>
               <Text typography="heading3">프로필 설정</Text>
             </Center>
-            
+
             <Center>
-              <ProfileImageUpload 
+              <ProfileImageUpload
                 currentImage={profileImage}
                 onImageChange={handleImageChange}
               />
@@ -211,7 +211,7 @@ const Profile = () => {
                     />
                   </TextInput.Root>
                 </Box>
-                
+
                 <Box>
                   <TextInput.Root
                     type="text"
@@ -229,7 +229,7 @@ const Profile = () => {
                     />
                   </TextInput.Root>
                 </Box>
-                
+
                 <Box>
                   <TextInput.Root
                     type="password"
@@ -246,7 +246,7 @@ const Profile = () => {
                     />
                   </TextInput.Root>
                 </Box>
-                
+
                 <Box>
                   <TextInput.Root
                     type="password"
@@ -263,7 +263,7 @@ const Profile = () => {
                     />
                   </TextInput.Root>
                 </Box>
-                
+
                 <Box>
                   <TextInput.Root
                     type="password"

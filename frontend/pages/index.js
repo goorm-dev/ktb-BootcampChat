@@ -1,6 +1,6 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { ErrorCircleIcon, InfoIcon, TimeIcon, LockIcon, MailIcon, NetworkIcon } from '@vapor-ui/icons';
+import { ErrorCircleIcon, NetworkIcon } from '@vapor-ui/icons';
 import authService from '../services/authService';
 import { withoutAuth } from '../middleware/withAuth';
 
@@ -30,15 +30,15 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const Login = () => {
-  const [formData, setFormData] = useState({ 
-    email: '', 
-    password: '' 
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [serverStatus, setServerStatus] = useState({ 
+  const [serverStatus, setServerStatus] = useState({
     checking: typeof window !== 'undefined', // 클라이언트에서만 체크
-    connected: false 
+    connected: false
   });
   const router = useRouter();
   const { redirect } = router.query;
@@ -58,7 +58,7 @@ const Login = () => {
         setServerStatus({ checking: false, connected: true });
       } catch (error) {
         console.error('Server connection check failed:', error);
-        
+
         // 개발 환경에서는 더 관대하게 처리
         if (process.env.NODE_ENV === 'development') {
           console.warn('Development mode: proceeding despite connection check failure');
@@ -251,14 +251,14 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="mb-3">
-              <TextInput.Root 
-                type="email" 
-                value={formData.email} 
+              <TextInput.Root
+                type="email"
+                value={formData.email}
                 onValueChange={(value) => {
                   setFormData(prev => ({ ...prev, email: value }));
                   if (error?.field === 'email') setError(null);
-                }} 
-                disabled={loading} 
+                }}
+                disabled={loading}
                 invalid={error?.field === 'email'}
                 placeholder="이메일을 입력하세요"
               >
@@ -277,14 +277,14 @@ const Login = () => {
             </div>
 
             <div className="mb-3">
-              <TextInput.Root 
-                type="password" 
-                value={formData.password} 
+              <TextInput.Root
+                type="password"
+                value={formData.password}
                 onValueChange={(value) => {
                   setFormData(prev => ({ ...prev, password: value }));
                   if (error?.field === 'password') setError(null);
-                }} 
-                disabled={loading} 
+                }}
+                disabled={loading}
                 invalid={error?.field === 'password'}
                 placeholder="비밀번호를 입력하세요"
               >
