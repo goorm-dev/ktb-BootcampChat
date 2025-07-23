@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, forwardRef } from 'react';
-import { 
+import {
   LikeIcon,
   AttachFileOutlineIcon,
   SendIcon
@@ -50,7 +50,7 @@ const ChatInput = forwardRef(({
 
     try {
       await fileService.validateFile(file);
-      
+
       const filePreview = {
         file,
         url: URL.createObjectURL(file),
@@ -58,11 +58,11 @@ const ChatInput = forwardRef(({
         type: file.type,
         size: file.size
       };
-      
+
       setFiles(prev => [...prev, filePreview]);
       setUploadError(null);
       onFileSelect?.(file);
-      
+
     } catch (error) {
       console.error('File validation error:', error);
       setUploadError(error.message);
@@ -145,9 +145,9 @@ const ChatInput = forwardRef(({
       if (!items) return;
 
       const fileItem = Array.from(items).find(
-        item => item.kind === 'file' && 
-        (item.type.startsWith('image/') || 
-         item.type.startsWith('video/') || 
+        item => item.kind === 'file' &&
+        (item.type.startsWith('image/') ||
+         item.type.startsWith('video/') ||
          item.type.startsWith('audio/') ||
          item.type === 'application/pdf')
       );
@@ -181,7 +181,7 @@ const ChatInput = forwardRef(({
     const lines = textBeforeAt.split('\n');
     const currentLineIndex = lines.length - 1;
     const currentLineText = lines[currentLineIndex];
-    
+
     // Create a hidden div to measure exact text width
     const measureDiv = document.createElement('div');
     measureDiv.style.position = 'absolute';
@@ -194,11 +194,11 @@ const ChatInput = forwardRef(({
     measureDiv.style.letterSpacing = window.getComputedStyle(textarea).letterSpacing;
     measureDiv.style.textTransform = window.getComputedStyle(textarea).textTransform;
     measureDiv.textContent = currentLineText;
-    
+
     document.body.appendChild(measureDiv);
     const textWidth = measureDiv.offsetWidth;
     document.body.removeChild(measureDiv);
-    
+
     // Get textarea position and compute styles
     const textareaRect = textarea.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(textarea);
@@ -206,18 +206,18 @@ const ChatInput = forwardRef(({
     const paddingTop = parseInt(computedStyle.paddingTop);
     const lineHeight = parseInt(computedStyle.lineHeight) || (parseFloat(computedStyle.fontSize) * 1.5);
     const scrollTop = textarea.scrollTop;
-    
+
     // Calculate exact position of @ symbol
     let left = textareaRect.left + paddingLeft + textWidth;
     // Position directly above the @ character (with small gap)
     let top = textareaRect.top + paddingTop + (currentLineIndex * lineHeight) - scrollTop;
-    
+
     // Ensure dropdown stays within viewport
     const dropdownWidth = 320; // Approximate width
     const dropdownHeight = 250; // Approximate height
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    
+
     // Adjust horizontal position if needed
     if (left + dropdownWidth > viewportWidth) {
       left = viewportWidth - dropdownWidth - 10;
@@ -225,10 +225,10 @@ const ChatInput = forwardRef(({
     if (left < 10) {
       left = 10;
     }
-    
+
     // Position dropdown 40px lower to be closer to the @ cursor
     top = top + 40; // Move 40px down from the cursor line
-    
+
     // If not enough space above, show below
     if (top - dropdownHeight < 10) {
       top = textareaRect.top + paddingTop + ((currentLineIndex + 1) * lineHeight) - scrollTop + 2;
@@ -236,7 +236,7 @@ const ChatInput = forwardRef(({
       // Show above - adjust top to account for dropdown height
       top = top - dropdownHeight;
     }
-    
+
     return { top, left };
   }, []);
 
@@ -245,7 +245,7 @@ const ChatInput = forwardRef(({
     const cursorPosition = e.target.selectionStart;
     const textBeforeCursor = value.slice(0, cursorPosition);
     const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
-    
+
     const textarea = e.target;
     textarea.style.height = 'auto';
     const maxHeight = parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.5 * 10;
@@ -263,19 +263,19 @@ const ChatInput = forwardRef(({
     if (lastAtSymbol !== -1) {
       const textAfterAt = textBeforeCursor.slice(lastAtSymbol + 1);
       const hasSpaceAfterAt = textAfterAt.includes(' ');
-      
+
       if (!hasSpaceAfterAt) {
         setMentionFilter(textAfterAt.toLowerCase());
         setShowMentionList(true);
         setMentionIndex(0);
-        
+
         // Calculate and set mention dropdown position
         const position = calculateMentionPosition(textarea, lastAtSymbol);
         setMentionPosition(position);
         return;
       }
     }
-    
+
     setShowMentionList(false);
   }, [onMessageChange, setMentionFilter, setShowMentionList, setMentionIndex, calculateMentionPosition]);
 
@@ -288,7 +288,7 @@ const ChatInput = forwardRef(({
     const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
 
     if (lastAtSymbol !== -1) {
-      const newMessage = 
+      const newMessage =
         message.slice(0, lastAtSymbol) +
         `@${user.name} ` +
         textAfterCursor;
@@ -314,14 +314,14 @@ const ChatInput = forwardRef(({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setMentionIndex(prev => 
+          setMentionIndex(prev =>
             prev < participantsCount - 1 ? prev + 1 : 0
           );
           break;
 
         case 'ArrowUp':
           e.preventDefault();
-          setMentionIndex(prev => 
+          setMentionIndex(prev =>
             prev > 0 ? prev - 1 : participantsCount - 1
           );
           break;
@@ -382,7 +382,22 @@ const ChatInput = forwardRef(({
     let newSelectionStart;
     let newSelectionEnd;
 
-    if (markdown.includes('\n')) {
+    // url 입력의 경우 별도 처리
+    if (markdown.includes('url')) {
+      const prefix = '[';
+      const suffix = '](url)';
+      newText = message.substring(0, start) +
+        prefix + selectedText + suffix +
+        message.substring(end);
+
+      if (selectedText) {
+        newSelectionStart = start + prefix.length;
+        newSelectionEnd = newSelectionStart + selectedText.length;
+      } else {
+        newSelectionStart = newSelectionEnd = start + 1;
+      }
+    }
+    else if (markdown.includes('\n')) {
       newText = message.substring(0, start) +
                 markdown.replace('\n\n', '\n' + selectedText + '\n') +
                 message.substring(end);
@@ -433,11 +448,11 @@ const ChatInput = forwardRef(({
     if (!messageInputRef?.current) return;
 
     const cursorPosition = messageInputRef.current.selectionStart || message.length;
-    const newMessage = 
-      message.slice(0, cursorPosition) + 
-      emoji.native + 
+    const newMessage =
+      message.slice(0, cursorPosition) +
+      emoji.native +
       message.slice(cursorPosition);
-    
+
     setMessage(newMessage);
     setShowEmojiPicker(false);
 
@@ -458,7 +473,7 @@ const ChatInput = forwardRef(({
 
   return (
     <>
-      <div 
+      <div
         className={`chat-input-wrapper ${isDragging ? 'dragging' : ''}`}
         ref={dropZoneRef}
         onDragEnter={(e) => {
@@ -494,7 +509,7 @@ const ChatInput = forwardRef(({
         )}
 
         <div className="chat-input-toolbar">
-          <MarkdownToolbar 
+          <MarkdownToolbar
             onAction={handleMarkdownAction}
             size="md"
           />
@@ -534,7 +549,7 @@ const ChatInput = forwardRef(({
             onClick={handleSubmit}
             disabled={isDisabled || (!message.trim() && files.length === 0)}
             aria-label="메시지 보내기"
-            style={{ 
+            style={{
               position: 'absolute',
               bottom: '8px',
               right: '8px',
@@ -548,13 +563,13 @@ const ChatInput = forwardRef(({
 
         <div className="chat-input-actions">
           {showEmojiPicker && (
-            <div 
+            <div
               ref={emojiPickerRef}
               className="emoji-picker-wrapper"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="emoji-picker-container">
-                <EmojiPicker 
+                <EmojiPicker
                   onSelect={handleEmojiSelect}
                   emojiSize={20}
                   emojiButtonSize={36}
@@ -563,7 +578,7 @@ const ChatInput = forwardRef(({
                 />
               </div>
             </div>
-          )}          
+          )}
           <HStack gap="100">
             <IconButton
               ref={emojiButtonRef}
