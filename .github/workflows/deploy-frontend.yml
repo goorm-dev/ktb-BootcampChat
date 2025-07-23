@@ -8,10 +8,6 @@ jobs:
   build-and-upload:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: frontend
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -22,15 +18,15 @@ jobs:
         node-version: '18'
 
     - name: Install dependencies
+      working-directory: frontend
       run: npm install
 
     - name: Build frontend
+      working-directory: frontend
       run: npm run build
 
     - name: Zip build output
-      run: |
-        cd ..
-        zip -r frontend.zip frontend -x "**/.git*" "**/.next/cache/**"
+      run: zip -r frontend.zip frontend -x "**/.git*" "**/.next/cache/**"
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
@@ -40,5 +36,4 @@ jobs:
         aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Upload to S3
-      run: |
-        aws s3 cp frontend.zip s3://ktb13-bucket/roles/frontend.zip
+      run: aws s3 cp frontend.zip s3://ktb13-bucket/roles/frontend.zip
