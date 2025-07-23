@@ -11,7 +11,9 @@ const { router: roomsRouter, initializeSocket } = require('./routes/api/rooms');
 const routes = require('./routes');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { createClient } = require('redis');
-const aiService = require('./services/aiService');
+const aiServiceModule = require('./services/aiService');
+const aiService = aiServiceModule.default;
+const { setSocketIO } = require('./sockets/chat');
 
 const app = express();
 const server = http.createServer(app);
@@ -80,7 +82,7 @@ app.use('/api', routes);
 
 // Socket.IO 설정
 const io = socketIO(server, { cors: corsOptions, path: '/ws/socket.io' });
-require('./sockets/chat')(io);
+setSocketIO(io);
 
 (async () => {
   const pubClient = createClient({ url: process.env.REDIS_URL });
@@ -114,12 +116,14 @@ app.use((err, req, res, next) => {
 });
 
 // 서버 시작 시 AI 작업 큐 소비 워커 실행
+aiServiceModule.setSocketIO(io);
 aiService.consumeAITasks(async (taskResult) => {
-  const { room, aiName, query, result, error } = taskResult;
+  const { room, aiName, query, result, error, messageId } = taskResult;
   if (!room) return;
+  const io = require('./sockets/chat').getSocketIO();
   if (error) {
     io.to(room).emit('aiMessageError', {
-      messageId: `${aiName}-${Date.now()}`,
+      messageId: messageId || `${aiName}-${Date.now()}`,
       error: error.message || 'AI 응답 생성 중 오류가 발생했습니다.',
       aiType: aiName
     });
@@ -140,9 +144,9 @@ aiService.consumeAITasks(async (taskResult) => {
       // 필요시 completionTokens, totalTokens 등 추가
     }
   });
-  // 채팅방에 AI 메시지 push
+  // 채팅방에 AI 메시지 push (스트리밍 완료)
   io.to(room).emit('aiMessageComplete', {
-    messageId: aiMessage._id,
+    messageId: messageId || aiMessage._id,
     _id: aiMessage._id,
     content: result.content,
     aiType: aiName,

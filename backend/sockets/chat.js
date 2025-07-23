@@ -6,9 +6,12 @@ const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/keys');
 const redisClient = require('../utils/redisClient');
 const SessionService = require('../services/sessionService');
-const aiService = require('../services/aiService');
+const aiService = require('../services/aiService').default;
 
-module.exports = function(io) {
+let ioInstance = null;
+
+function setSocketIO(io) {
+  ioInstance = io;
   const connectedUsers = new Map();
   const streamingSessions = new Map();
   const userRooms = new Map();
@@ -972,4 +975,14 @@ module.exports = function(io) {
   }
 
   return io;
+}
+
+function getSocketIO() {
+  if (!ioInstance) throw new Error('Socket.IO 인스턴스가 설정되지 않았습니다.');
+  return ioInstance;
+}
+
+module.exports = {
+  setSocketIO,
+  getSocketIO
 };

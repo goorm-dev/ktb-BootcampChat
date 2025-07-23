@@ -2,6 +2,9 @@
 const axios = require('axios');
 const { openaiApiKey } = require('../config/keys');
 const amqp = require('amqplib');
+let ioInstance = null;
+function setSocketIO(io) { ioInstance = io; }
+function getSocketIO() { if (!ioInstance) throw new Error('Socket.IO 인스턴스가 설정되지 않았습니다.'); return ioInstance; }
 
 class AIService {
   constructor() {
@@ -146,14 +149,34 @@ class AIService {
       if (msg !== null) {
         const task = JSON.parse(msg.content.toString());
         try {
+          const io = getSocketIO();
+          const messageId = `${task.aiName}-${Date.now()}`;
+          let accumulatedContent = '';
+          // 스트리밍 시작 알림
+          io.to(task.room).emit('aiMessageStart', {
+            messageId,
+            aiType: task.aiName,
+            timestamp: new Date()
+          });
           await this.generateResponse(task.query, task.aiName, {
             onStart: () => {},
-            onChunk: () => {},
+            onChunk: (chunk) => {
+              accumulatedContent += chunk.currentChunk || '';
+              io.to(task.room).emit('aiMessageChunk', {
+                messageId,
+                currentChunk: chunk.currentChunk,
+                fullContent: accumulatedContent,
+                isCodeBlock: chunk.isCodeBlock,
+                timestamp: new Date(),
+                aiType: task.aiName,
+                isComplete: false
+              });
+            },
             onComplete: (finalContent) => {
-              if (onResult) onResult({ ...task, result: finalContent });
+              if (onResult) onResult({ ...task, result: finalContent, messageId });
             },
             onError: (error) => {
-              if (onResult) onResult({ ...task, error });
+              if (onResult) onResult({ ...task, error, messageId });
             }
           });
         } catch (error) {
@@ -166,4 +189,9 @@ class AIService {
   }
 }
 
-module.exports = new AIService();
+const aiService = new AIService();
+module.exports = {
+  setSocketIO,
+  getSocketIO,
+  default: aiService
+};
