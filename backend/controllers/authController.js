@@ -75,7 +75,7 @@ const authController = {
       // Generate token with additional claims
       const token = jwt.sign(
         { 
-          user: { id: user.id, userEmail: user.email },
+          user: { id: user.id, email: user.email },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -252,7 +252,7 @@ const authController = {
       // JWT 토큰 생성
       const token = jwt.sign(
         { 
-          user: { id: user.id, userEmail: user.email },
+          user: { id: user.id, email: user.email },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -372,7 +372,7 @@ const authController = {
       }
 
       // 사용자 정보 조회
-      const user = await redis.hGetAll(`user:${decoded.user.userEmail}`)
+      const user = await redis.hGetAll(`user:${decoded.user.email}`)
       if (!user || Object.keys(user).length === 0) {
         return res.status(404).json({
           success: false,
