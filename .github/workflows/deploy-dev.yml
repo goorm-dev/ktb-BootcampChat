@@ -39,20 +39,27 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key.pem
           chmod 600 ~/.ssh/deploy_key.pem
-          echo "Host dev-server
+          cat <<EOF > ~/.ssh/config
+          Host dev-server
             HostName ${{ secrets.SSH_HOST }}
             User ec2-user
             IdentityFile ~/.ssh/deploy_key.pem
             StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null" > ~/.ssh/config
+            UserKnownHostsFile /dev/null
+          EOF
 
-      - name: Clean Nginx directory on server
+      - name: Copy built files to temp location on server
         run: |
-          ssh dev-server "sudo rm -rf /var/www/html/* && sudo mkdir -p /var/www/html"
+          ssh dev-server "mkdir -p ~/temp-fe-deploy"
+          scp -r ./frontend-react/build/* dev-server:~/temp-fe-deploy/
 
-      - name: Copy built files to server
+      - name: Move files to Nginx directory with sudo
         run: |
-          scp -r ./frontend-react/build/* dev-server:/var/www/html/
+          ssh dev-server <<'EOF'
+            sudo rm -rf /var/www/html/*
+            sudo cp -r ~/temp-fe-deploy/* /var/www/html/
+            rm -rf ~/temp-fe-deploy
+          EOF
 
       - name: Reload Nginx
         run: |
