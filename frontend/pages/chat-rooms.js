@@ -10,6 +10,8 @@ import authService from '../services/authService';
 import axiosInstance from '../services/axios';
 import { withAuth } from '../middleware/withAuth';
 import { Toast } from '../components/Toast';
+import {Modal,ModalBody,ModalFooter} from "../components/ui/Modal";
+import {Input} from "reactstrap";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -54,11 +56,11 @@ const TableWrapper = ({ children, onScroll, loadingMore, hasMore, rooms }) => {
   const tableRef = useRef(null);
   const scrollTimeoutRef = useRef(null);
   const lastScrollTime = useRef(Date.now());
-  
+
   const handleScroll = useCallback((e) => {
     const now = Date.now();
     const container = e.target;
-    
+
     // 마지막 스크롤 체크로부터 150ms가 지났는지 확인
     if (now - lastScrollTime.current >= SCROLL_DEBOUNCE_DELAY) {
       const { scrollHeight, scrollTop, clientHeight } = container;
@@ -124,13 +126,13 @@ const TableWrapper = ({ children, onScroll, loadingMore, hasMore, rooms }) => {
       }
     };
   }, [handleScroll]);
-  
+
   return (
-    <div 
-      ref={tableRef} 
+    <div
+      ref={tableRef}
       className="chat-rooms-table"
       style={{
-        height: '430px', 
+        height: '430px',
         overflowY: 'auto',
         position: 'relative',
         borderRadius: '0.5rem',
@@ -147,8 +149,8 @@ const TableWrapper = ({ children, onScroll, loadingMore, hasMore, rooms }) => {
         </div>
       )}
       {!hasMore && rooms?.length > 0 && (
-        <Flex justify="center" align="center" style={{ 
-          padding: 'var(--vapor-space-300)', 
+        <Flex justify="center" align="center" style={{
+          padding: 'var(--vapor-space-300)',
           borderTop: '1px solid var(--vapor-color-border)',
           width: '100%'
         }}>
@@ -179,6 +181,12 @@ function ChatRoomsComponent() {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [joiningRoom, setJoiningRoom] = useState(false);
+  // 비밀번호 방 진입 시 비밀번호 입력 모달 띄우기
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  // 현재 비밀번호 모달로 띄운 room의 id
+  const [currentModalRoomId, setCurrentModalRoomId] = useState(null);
+  // 비밀번호 입력 모달 내 입력 값
+  const [password, setPassword] = useState('');
 
   // Refs
   const socketRef = useRef(null);
@@ -189,7 +197,7 @@ function ChatRoomsComponent() {
   const lastLoadedPageRef = useRef(0);
 
   const getRetryDelay = useCallback((retryCount) => {
-    const delay = RETRY_CONFIG.baseDelay * 
+    const delay = RETRY_CONFIG.baseDelay *
       Math.pow(RETRY_CONFIG.backoffFactor, retryCount) *
       (1 + Math.random() * 0.1);
     return Math.min(delay, RETRY_CONFIG.maxDelay);
@@ -280,9 +288,9 @@ function ChatRoomsComponent() {
 
   const fetchRooms = useCallback(async (isLoadingMore = false) => {
     if (!currentUser?.token || isLoadingRef.current) {
-      console.log('Fetch prevented:', { 
-        hasToken: !!currentUser?.token, 
-        isLoading: isLoadingRef.current 
+      console.log('Fetch prevented:', {
+        hasToken: !!currentUser?.token,
+        isLoading: isLoadingRef.current
       });
       return;
     }
@@ -308,15 +316,15 @@ function ChatRoomsComponent() {
           sortOrder: sorting[0]?.desc ? 'desc' : 'asc'
         }
       });
-      
+
       if (!response?.data?.data) {
         throw new Error('INVALID_RESPONSE');
       }
 
       const { data, metadata } = response.data;
-      console.log('Fetched rooms:', { 
-        count: data.length, 
-        hasMore: metadata.hasMore 
+      console.log('Fetched rooms:', {
+        count: data.length,
+        hasMore: metadata.hasMore
       });
 
       setRooms(prev => {
@@ -372,7 +380,7 @@ function ChatRoomsComponent() {
       const nextPage = Math.floor(rooms.length / pageSize);
       console.log('Loading page:', nextPage);
       setPageIndex(nextPage);
-      
+
       const response = await axiosInstance.get('/api/rooms', {
         params: {
           page: nextPage,
@@ -384,11 +392,11 @@ function ChatRoomsComponent() {
 
       if (response.data?.success) {
         const { data: newRooms, metadata } = response.data;
-        console.log('Loaded new rooms:', { 
-          count: newRooms.length, 
-          hasMore: metadata.hasMore 
+        console.log('Loaded new rooms:', {
+          count: newRooms.length,
+          hasMore: metadata.hasMore
         });
-        
+
         setRooms(prev => {
           const existingIds = new Set(prev.map(room => room._id));
           const uniqueNewRooms = newRooms.filter(room => !existingIds.has(room._id));
@@ -521,7 +529,7 @@ function ChatRoomsComponent() {
           },
           roomUpdated: (updatedRoom) => {
             setRooms(prev => {
-              const updatedRooms = prev.map(room => 
+              const updatedRooms = prev.map(room =>
                 room._id === updatedRoom._id ? updatedRoom : room
               );
               previousRoomsRef.current = updatedRooms;
@@ -537,12 +545,12 @@ function ChatRoomsComponent() {
       } catch (error) {
         console.error('Socket connection error:', error);
         if (!isSubscribed) return;
-        
-        if (error.message?.includes('Authentication required') || 
+
+        if (error.message?.includes('Authentication required') ||
             error.message?.includes('Invalid session')) {
           handleAuthError({ response: { status: 401 } });
         }
-        
+
         setConnectionStatus(CONNECTION_STATUS.ERROR);
       }
     };
@@ -558,7 +566,16 @@ function ChatRoomsComponent() {
     };
   }, [currentUser, handleAuthError]);
 
-  const handleJoinRoom = async (roomId) => {
+  const handleJoinRoom = (roomId, hasPassword) => {
+    if (hasPassword) {
+      setCurrentModalRoomId(roomId);
+      setShowPasswordModal(true)
+    } else {
+      joinRoom(roomId);
+    }
+  }
+
+  const joinRoom = async (roomId, password = null) => {
     if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
       setError({
         title: '채팅방 입장 실패',
@@ -571,23 +588,29 @@ function ChatRoomsComponent() {
     setJoiningRoom(true);
 
     try {
-      const response = await axiosInstance.post(`/api/rooms/${roomId}/join`, {}, {
-        timeout: 5000
-      });
-      
+      const response = await axiosInstance.post(
+          `/api/rooms/${roomId}/join`,
+          {
+              password,
+          },
+          {
+              timeout: 5000
+          }
+      );
+
       if (response.data.success) {
         router.push(`/chat?room=${roomId}`);
       }
     } catch (error) {
       console.error('Room join error:', error);
-      
+
       let errorMessage = '입장에 실패했습니다.';
       if (error.response?.status === 404) {
         errorMessage = '채팅방을 찾을 수 없습니다.';
       } else if (error.response?.status === 403) {
         errorMessage = '채팅방 입장 권한이 없습니다.';
       }
-      
+
       setError({
         title: '채팅방 입장 실패',
         message: error.response?.data?.message || errorMessage,
@@ -600,7 +623,7 @@ function ChatRoomsComponent() {
 
   const renderRoomsTable = () => {
     if (!rooms || rooms.length === 0) return null;
-    
+
     return (
       <StyledTable>
         <StyledTableHead>
@@ -645,7 +668,7 @@ function ChatRoomsComponent() {
                   color="primary"
                   variant="outline"
                   size="md"
-                  onClick={() => handleJoinRoom(room._id)}
+                  onClick={() => handleJoinRoom(room._id, room.hasPassword)}
                   disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
                 >
                   입장
@@ -658,11 +681,36 @@ function ChatRoomsComponent() {
     );
   };
 
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setCurrentModalRoomId(null)
+  }
+
 
   return (
     <div className="auth-container">
+      <Modal
+          isOpen={showPasswordModal}
+          onClose={() => closePasswordModal()}
+          size="md"
+          title="비밀번호를 입력해주세요."
+      >
+        <ModalBody>
+          <Input
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            type={'password'}
+            style={{color: 'black'}}
+          />
+        </ModalBody>
+
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => closePasswordModal()}>닫기</Button>
+          <Button variant="ghost" onClick={() => joinRoom(currentModalRoomId, password)}>확인</Button>
+        </ModalFooter>
+      </Modal>
       <Card.Root className="chat-rooms-card">
-        
+
         <Card.Body className="card-body">
           <Stack gap="300" align="center">
             <Text typography="heading3">채팅방 목록</Text>
@@ -691,8 +739,8 @@ function ChatRoomsComponent() {
 
           {error && (
             <Box mt="400">
-            <Callout 
-              color={error.type === 'danger' ? 'danger' : error.type === 'warning' ? 'warning' : 'primary'} 
+            <Callout
+              color={error.type === 'danger' ? 'danger' : error.type === 'warning' ? 'warning' : 'primary'}
               className="mb-4"
             >
               <Flex align="flex-start" gap="200">
@@ -724,7 +772,7 @@ function ChatRoomsComponent() {
             </Callout>
             </Box>
           )}
-          
+
           {loading ? (
             <Box mt="400">
               <LoadingIndicator text="채팅방 목록을 불러오는 중..." />
@@ -754,7 +802,7 @@ function ChatRoomsComponent() {
           )}
         </Card.Body>
       </Card.Root>
-      
+
       {joiningRoom && (
         <div style={{
           position: 'fixed',
