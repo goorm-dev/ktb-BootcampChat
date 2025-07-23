@@ -741,15 +741,17 @@ function ChatRoomsComponent() {
               </TableWrapper>
             </Box>
           ) : !error && (
-            <Box mt="400" style={{ textAlign: 'center' }}>
-              <Text typography="body1" style={{ marginBottom: 'var(--vapor-space-400)' }}>생성된 채팅방이 없습니다.</Text>
-              <Button
-                color="primary"
-                onClick={() => router.push('/chat-rooms/new')}
-                disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
-              >
-                새 채팅방 만들기
-              </Button>
+            <Box mt="400">
+              <Stack gap="300" align="center">
+                <Text typography="body1">생성된 채팅방이 없습니다.</Text>
+                <Button
+                  color="primary"
+                  onClick={() => router.push('/chat-rooms/new')}
+                  disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
+                >
+                  새 채팅방 만들기
+                </Button>
+              </Stack>
             </Box>
           )}
         </Card.Body>
