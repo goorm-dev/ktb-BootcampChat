@@ -599,7 +599,7 @@ module.exports = function(io) {
         if (aiMentions.length > 0) {
           for (const ai of aiMentions) {
             const query = content.replace(new RegExp(`@${ai}\\b`, 'g'), '').trim();
-            await handleAIResponse(io, room, ai, query);
+            await aiService.publishAITask({ room, aiName: ai, query });
           }
         }
 
