@@ -1,0 +1,51 @@
+name: Frontend Main Prod Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./frontend-react
+
+      - name: Inject .env file
+        run: |
+          echo "REACT_APP_API_URL=https://backend.goorm-ktb-016.goorm.team" > .env
+          echo "NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}" >> .env
+          echo "NEXT_PUBLIC_PASSWORD_SALT=${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}" >> .env
+        working-directory: ./frontend-react
+
+      - name: Build React app
+        run: CI=false npm run build
+        working-directory: ./frontend-react
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Sync build files to S3
+        run: |
+          aws s3 sync ./frontend-react/build s3://ktb-bootcamp-chat-16/frontend/prod \
+            --delete \
+            --cache-control "no-cache"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E2QBMEQGI8VSSS \
+            --paths "/frontend/prod/*"
