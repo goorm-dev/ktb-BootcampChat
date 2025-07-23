@@ -47,8 +47,7 @@ jobs:
         run: |
           aws s3 sync ./frontend-react/build s3://ktb-bootcamp-chat-16/frontend/prod \
             --delete \
-            --cache-control "no-cache" \
-            --acl public-read
+            --cache-control "no-cache"
 
       - name: Invalidate CloudFront cache
         run: |
