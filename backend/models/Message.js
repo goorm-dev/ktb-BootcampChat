@@ -92,9 +92,18 @@ const MessageSchema = new mongoose.Schema({
 
 // 복합 인덱스 설정
 MessageSchema.index({ room: 1, timestamp: -1 });
-MessageSchema.index({ room: 1, isDeleted: 1 });
+MessageSchema.index({ room: 1, isDeleted: 1, timestamp: -1 });
+MessageSchema.index({ room: 1, type: 1, timestamp: -1 });
+
 MessageSchema.index({ 'readers.userId': 1 });
-MessageSchema.index({ sender: 1 });
+MessageSchema.index({ sender: 1, timestamp: -1 });
+MessageSchema.index({ sender: 1, room: 1 });
+
+MessageSchema.index({ content: "text" });
+MessageSchema.index({ room: 1, file: 1 });
+
+MessageSchema.index({ timestamp: -1 }, { partialFilterExpression: { isDeleted: false } });
+
 MessageSchema.index({ type: 1 });
 MessageSchema.index({ timestamp: -1 });
 MessageSchema.index({ 'reactions.userId': 1 });
