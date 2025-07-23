@@ -1,0 +1,59 @@
+name: Frontend Main Dev Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - feat/dev-cicd
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./frontend-react
+
+      - name: Inject .env file
+        run: |
+          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} > .env
+          echo "NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}" >> .env
+          echo "NEXT_PUBLIC_PASSWORD_SALT=${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}" >> .env
+        working-directory: ./frontend-react
+
+      - name: Build React app
+        run: npm run build
+        working-directory: ./frontend-react
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key.pem
+          chmod 600 ~/.ssh/deploy_key.pem
+          echo "Host dev-server
+            HostName ${{ secrets.SSH_HOST }}
+            User ubuntu
+            IdentityFile ~/.ssh/deploy_key.pem
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null" > ~/.ssh/config
+
+      - name: Clean Nginx directory on server
+        run: |
+          ssh dev-server "sudo rm -rf /var/www/html/* && sudo mkdir -p /var/www/html"
+
+      - name: Copy built files to server
+        run: |
+          scp -r ./frontend-react/build/* dev-server:/var/www/html/
+
+      - name: Reload Nginx
+        run: |
+          ssh dev-server "sudo systemctl reload nginx"
