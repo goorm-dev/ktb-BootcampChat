@@ -31,7 +31,7 @@ jobs:
         working-directory: ./frontend-react
 
       - name: Build React app
-        run: npm run build
+        run: CI=false npm run build
         working-directory: ./frontend-react
 
       - name: Set up SSH
