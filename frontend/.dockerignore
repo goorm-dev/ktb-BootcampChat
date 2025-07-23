@@ -1,0 +1,103 @@
+# Node.js 관련 파일들
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js 빌드 파일들
+.next/
+out/
+build/
+
+# 환경 설정 파일들 (보안상 제외)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 로그 파일들
+logs
+*.log
+logs/
+
+# 임시 파일들
+.tmp
+.temp
+*.tmp
+*.temp
+
+# 개발 도구 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 버전 관리 시스템
+.git
+.gitignore
+.gitattributes
+
+# CI/CD 관련 파일들
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# 테스트 관련 파일들
+test/
+tests/
+spec/
+coverage/
+.nyc_output
+.jest/
+__tests__/
+cypress/
+playwright-report/
+test-results/
+
+# 문서 파일들
+README.md
+CHANGELOG.md
+*.md
+docs/
+
+# OS 관련 파일들
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE 관련 파일들
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# 빌드 아티팩트
+dist/
+*.tgz
+*.tar.gz
+
+# Vercel 관련
+.vercel
+
+# 기타 불필요한 파일들
+.npmrc
+package-lock.json
+yarn.lock
+
+# Storybook 관련
+.storybook/
+storybook-static/
+
+# ESLint 캐시
+.eslintcache
+
+# Prettier 캐시
+.prettiercache 
