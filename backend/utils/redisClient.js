@@ -244,6 +244,41 @@ class RedisClient {
       }
     }
   }
+
+  async lPush(key, value) {
+    if (!this.isConnected) {
+      await this.connect();
+    }
+    if (this.useMock) {
+      // mock: 배열을 문자열로 저장
+      let arr = [];
+      const item = this.client.store.get(key);
+      if (item) {
+        try { arr = JSON.parse(item.value); } catch { arr = []; }
+      }
+      arr.unshift(value);
+      this.client.store.set(key, { value: JSON.stringify(arr), expires: null });
+      return arr.length;
+    }
+    return await this.client.lPush(key, value);
+  }
+
+  async lTrim(key, start, stop) {
+    if (!this.isConnected) {
+      await this.connect();
+    }
+    if (this.useMock) {
+      let arr = [];
+      const item = this.client.store.get(key);
+      if (item) {
+        try { arr = JSON.parse(item.value); } catch { arr = []; }
+      }
+      arr = arr.slice(start, stop + 1);
+      this.client.store.set(key, { value: JSON.stringify(arr), expires: null });
+      return 'OK';
+    }
+    return await this.client.lTrim(key, start, stop);
+  }
 }
 
 const redisClient = new RedisClient();

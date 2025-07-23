@@ -157,6 +157,37 @@ aiService.consumeAITasks(async (taskResult) => {
   });
 });
 
+// --- chat-messages 워커 함수 추가 ---
+const amqp = require('amqplib');
+const redisClient = require('./utils/redisClient');
+const Message = require('./models/Message');
+
+async function startChatWorker(io) {
+  const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+  const channel = await conn.createChannel();
+  await channel.assertQueue('chat-messages', { durable: true });
+
+  channel.consume('chat-messages', async (msg) => {
+    if (msg !== null) {
+      const messageData = JSON.parse(msg.content.toString());
+      try {
+        const message = await Message.create(messageData);
+        const redisKey = `chat:room:${message.room}:messages`;
+        await redisClient.lPush(redisKey, JSON.stringify(message));
+        await redisClient.lTrim(redisKey, 0, 99);
+        io.to(message.room).emit('message', message);
+        channel.ack(msg);
+      } catch (err) {
+        console.error('[chatWorker] 메시지 처리 오류:', err);
+        channel.nack(msg, false, false);
+      }
+    }
+  });
+  console.log('[chatWorker] 메시지 워커가 서버 프로세스에서 시작되었습니다.');
+}
+// --- 워커 실행 ---
+startChatWorker(io);
+
 // 서버 시작
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {

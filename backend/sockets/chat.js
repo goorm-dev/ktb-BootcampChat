@@ -7,6 +7,16 @@ const { jwtSecret } = require('../config/keys');
 const redisClient = require('../utils/redisClient');
 const SessionService = require('../services/sessionService');
 const aiService = require('../services/aiService').default;
+const amqp = require('amqplib');
+let mqChannel = null;
+async function getMQChannel() {
+  if (!mqChannel) {
+    const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+    mqChannel = await conn.createChannel();
+    await mqChannel.assertQueue('chat-messages', { durable: true });
+  }
+  return mqChannel;
+}
 
 let ioInstance = null;
 
@@ -447,125 +457,53 @@ function setSocketIO(io) {
         if (!socket.user) {
           throw new Error('Unauthorized');
         }
-
         if (!messageData) {
           throw new Error('메시지 데이터가 없습니다.');
         }
-
         const { room, type, content, fileData } = messageData;
-
         if (!room) {
           throw new Error('채팅방 정보가 없습니다.');
         }
-
         // 채팅방 권한 확인
         const chatRoom = await Room.findOne({
           _id: room,
           participants: socket.user.id
         });
-
         if (!chatRoom) {
           throw new Error('채팅방 접근 권한이 없습니다.');
         }
-
         // 세션 유효성 재확인
         const sessionValidation = await SessionService.validateSession(
           socket.user.id, 
           socket.user.sessionId
         );
-        
         if (!sessionValidation.isValid) {
           throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
         }
-
         // AI 멘션 확인
         const aiMentions = extractAIMentions(content);
-        let message;
-
-        logDebug('message received', {
-          type,
-          room,
-          userId: socket.user.id,
-          hasFileData: !!fileData,
-          hasAIMentions: aiMentions.length
-        });
-
-        // 메시지 타입별 처리
-        switch (type) {
-          case 'file':
-            if (!fileData || !fileData._id) {
-              throw new Error('파일 데이터가 올바르지 않습니다.');
-            }
-
-            const file = await File.findOne({
-              _id: fileData._id,
-              user: socket.user.id
-            });
-
-            if (!file) {
-              throw new Error('파일을 찾을 수 없거나 접근 권한이 없습니다.');
-            }
-
-            message = new Message({
-              room,
-              sender: socket.user.id,
-              type: 'file',
-              file: file._id,
-              content: content || '',
-              timestamp: new Date(),
-              reactions: {},
-              metadata: {
-                fileType: file.mimetype,
-                fileSize: file.size,
-                originalName: file.originalname
-              }
-            });
-            break;
-
-          case 'text':
-            const messageContent = content?.trim() || messageData.msg?.trim();
-            if (!messageContent) {
-              return;
-            }
-
-            message = new Message({
-              room,
-              sender: socket.user.id,
-              content: messageContent,
-              type: 'text',
-              timestamp: new Date(),
-              reactions: {}
-            });
-            break;
-
-          default:
-            throw new Error('지원하지 않는 메시지 타입입니다.');
-        }
-
-        await message.save();
-        await message.populate([
-          { path: 'sender', select: 'name email profileImage' },
-          { path: 'file', select: 'filename originalname mimetype size' }
-        ]);
-
-        io.to(room).emit('message', message);
-
-        // AI 멘션이 있는 경우 AI 응답 생성
+        // 메시지큐에 발행할 데이터 구성
+        const queueData = {
+          ...messageData,
+          sender: socket.user.id,
+          timestamp: new Date(),
+          aiMentions
+        };
+        const channel = await getMQChannel();
+        channel.sendToQueue('chat-messages', Buffer.from(JSON.stringify(queueData)), { persistent: true });
+        // AI 멘션이 있는 경우 AI 작업 큐에도 발행
         if (aiMentions.length > 0) {
           for (const ai of aiMentions) {
             const query = content.replace(new RegExp(`@${ai}\\b`, 'g'), '').trim();
             await aiService.publishAITask({ room, aiName: ai, query });
           }
         }
-
         await SessionService.updateLastActivity(socket.user.id);
-
-        logDebug('message processed', {
-          messageId: message._id,
-          type: message.type,
-          room
+        logDebug('message processed (queued)', {
+          type: messageData.type,
+          room,
+          userId: socket.user.id
         });
-
       } catch (error) {
         console.error('Message handling error:', error);
         socket.emit('error', {
