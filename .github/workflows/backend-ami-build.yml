@@ -19,6 +19,9 @@ env:
   AWS_REGION: ap-northeast-2
   BASE_AMI_ID: ami-0f5e205427609c732  # Amazon Linux 2023 최신 AMI ID
   INSTANCE_TYPE: t3.small
+  # 네트워크 설정
+  VPC_ID: vpc-0cbb28aa7ecfee012
+  SUBNET_ID: subnet-054215bf6c92eb539
   # GitHub 레포지토리 설정
   GITHUB_REPO: https://github.com/100-hours-a-week/8-ktb-chat.git
   GITHUB_BRANCH: jacky
@@ -62,7 +65,7 @@ jobs:
       run: |
         echo "📝 AMI 설정을 위한 User Data 스크립트 생성..."
         
-        cat > ami-setup.sh << 'EOF'
+        cat > ami-setup.sh << EOF
         #!/bin/bash
         
         # 로그 설정
@@ -109,16 +112,9 @@ jobs:
         # 소유권 변경
         chown -R appuser:appuser /opt/ktb-chat-backend
         
-        # 환경 변수 파일 생성 (개발용 기본값)
+        # GitHub Secrets에서 환경 변수 파일 생성
         cat > .env << 'EOFENV'
-        NODE_ENV=production
-        PORT=5000
-        MONGO_URI=mongodb://localhost:27017/ktb-chat-dev
-        JWT_SECRET=dev-jwt-secret-change-in-production
-        REDIS_HOST=localhost
-        REDIS_PORT=6379
-        ENCRYPTION_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        PASSWORD_SALT=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        ${{ secrets.ENV_BACKEND_DEV }}
         EOFENV
         
         # PM2 ecosystem 파일 생성
@@ -214,15 +210,71 @@ jobs:
         # 스크립트 권한 설정
         chmod +x ami-setup.sh
 
+    - name: 보안 그룹 생성 또는 확인
+      id: security-group
+      run: |
+        echo "🔒 보안 그룹 설정 중..."
+        
+        # AMI 빌드용 보안 그룹 이름
+        SG_NAME="ktb-chat-ami-build-sg"
+        
+        # 기존 보안 그룹 확인
+        SG_ID=$(aws ec2 describe-security-groups \
+          --filters "Name=group-name,Values=${SG_NAME}" "Name=vpc-id,Values=${{ env.VPC_ID }}" \
+          --query 'SecurityGroups[0].GroupId' \
+          --output text 2>/dev/null || echo "None")
+        
+        if [[ "$SG_ID" == "None" || "$SG_ID" == "" ]]; then
+          echo "새 보안 그룹 생성 중..."
+          
+          # 보안 그룹 생성
+          SG_ID=$(aws ec2 create-security-group \
+            --group-name "${SG_NAME}" \
+            --description "Security group for KTB Chat AMI build instances" \
+            --vpc-id ${{ env.VPC_ID }} \
+            --query 'GroupId' \
+            --output text)
+          
+          # 인바운드 규칙 추가 (SSH 접근용 - 전체 인터넷에서 접근 가능)
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${SG_ID} \
+            --protocol tcp \
+            --port 22 \
+            --cidr 0.0.0.0/0
+          
+          # HTTP 접근 허용 (패키지 다운로드용)
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${SG_ID} \
+            --protocol tcp \
+            --port 80 \
+            --cidr 0.0.0.0/0
+          
+          # HTTPS 접근 허용 (패키지 다운로드용)
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${SG_ID} \
+            --protocol tcp \
+            --port 443 \
+            --cidr 0.0.0.0/0
+          
+          echo "✅ 새 보안 그룹 생성됨: ${SG_ID}"
+        else
+          echo "✅ 기존 보안 그룹 사용: ${SG_ID}"
+        fi
+        
+        echo "security_group_id=${SG_ID}" >> $GITHUB_OUTPUT
+
     - name: EC2 인스턴스 생성 및 AMI 빌드
       id: create-instance
       run: |
         echo "🖥️ AMI 빌드용 EC2 인스턴스 생성 중..."
         
-        # EC2 인스턴스 실행 (IAM Instance Profile 없이)
+        # EC2 인스턴스 실행 (VPC 및 서브넷 지정)
         INSTANCE_ID=$(aws ec2 run-instances \
           --image-id ${{ env.BASE_AMI_ID }} \
           --instance-type ${{ env.INSTANCE_TYPE }} \
+          --subnet-id ${{ env.SUBNET_ID }} \
+          --security-group-ids ${{ steps.security-group.outputs.security_group_id }} \
+          --associate-public-ip-address \
           --user-data file://ami-setup.sh \
           --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=AMI-Build-${{ steps.meta.outputs.ami_name }}},{Key=Purpose,Value=AMI-Build},{Key=Application,Value=ktb-chat-backend}]' \
           --query 'Instances[0].InstanceId' \
