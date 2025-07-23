@@ -182,7 +182,6 @@ const ReadStatus = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <ConfirmOutlineIcon size={12} style={{ color: 'var(--vapor-color-success)' }} />
-            <ConfirmOutlineIcon size={12} style={{ color: 'var(--vapor-color-success)', marginLeft: '-6px' }} />
           </div>
           <Text typography="caption" style={{ fontSize: '0.65rem', color: 'var(--vapor-color-text-muted)' }}>모두 읽음</Text>
         </div>
