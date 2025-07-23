@@ -772,7 +772,8 @@ module.exports = function(io) {
           }
         );
 
-        socket.to(roomId).emit('messagesRead', {
+        // 모든 인스턴스에 읽음 상태 브로드캐스트
+        io.to(roomId).emit('messagesRead', {
           userId: socket.user.id,
           messageIds
         });

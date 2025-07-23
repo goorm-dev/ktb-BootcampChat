@@ -1,3 +1,4 @@
+// 개선 사항 적용 버전
 const axios = require('axios');
 const { openaiApiKey } = require('../config/keys');
 const amqp = require('amqplib');
@@ -17,18 +18,26 @@ class AIService {
     this.initRabbitMQ();
   }
 
-  async initRabbitMQ() {
-    try {
-      this.amqpConn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
-      this.amqpChannel = await this.amqpConn.createChannel();
-      await this.amqpChannel.assertQueue(this.queueName, { durable: true });
-      console.log('[AIService] RabbitMQ 연결 및 큐 준비 완료');
-    } catch (err) {
-      console.error('[AIService] RabbitMQ 연결 실패:', err.message);
+  async initRabbitMQ(retryCount = 5) {
+    for (let i = 0; i < retryCount; i++) {
+      try {
+        this.amqpConn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+        this.amqpChannel = await this.amqpConn.createChannel();
+        await this.amqpChannel.assertQueue(this.queueName, { durable: true });
+        console.log('[AIService] RabbitMQ 연결 및 큐 준비 완료');
+        return;
+      } catch (err) {
+        console.error(`[AIService] RabbitMQ 연결 실패 (${i + 1}/${retryCount}):`, err.message);
+        await new Promise(res => setTimeout(res, 2000));
+      }
     }
+    throw new Error('RabbitMQ 연결 실패: 재시도 횟수 초과');
   }
 
   async publishAITask(task) {
+    if (!task?.room || !task?.aiName || !task?.query) {
+      throw new Error('AI task 필수 필드 누락');
+    }
     if (!this.amqpChannel) {
       await this.initRabbitMQ();
     }
@@ -58,16 +67,7 @@ class AIService {
         throw new Error('Unknown AI persona');
       }
 
-      const systemPrompt = `당신은 ${aiPersona.name}입니다.
-역할: ${aiPersona.role}
-특성: ${aiPersona.traits}
-톤: ${aiPersona.tone}
-
-답변 시 주의사항:
-1. 명확하고 이해하기 쉬운 언어로 답변하세요.
-2. 정확하지 않은 정보는 제공하지 마세요.
-3. 필요한 경우 예시를 들어 설명하세요.
-4. ${aiPersona.tone}을 유지하세요.`;
+      const systemPrompt = `당신은 ${aiPersona.name}입니다.\n역할: ${aiPersona.role}\n특성: ${aiPersona.traits}\n톤: ${aiPersona.tone}\n\n답변 시 주의사항:\n1. 명확하고 이해하기 쉬운 언어로 답변하세요.\n2. 정확하지 않은 정보는 제공하지 마세요.\n3. 필요한 경우 예시를 들어 설명하세요.\n4. ${aiPersona.tone}을 유지하세요.`;
 
       callbacks.onStart();
 
@@ -90,44 +90,27 @@ class AIService {
       return new Promise((resolve, reject) => {
         response.data.on('data', async chunk => {
           try {
-            // 청크 데이터를 문자열로 변환하고 버퍼에 추가
             buffer += chunk.toString();
-
-            // 완전한 JSON 객체를 찾아 처리
             while (true) {
               const newlineIndex = buffer.indexOf('\n');
               if (newlineIndex === -1) break;
-
               const line = buffer.slice(0, newlineIndex).trim();
               buffer = buffer.slice(newlineIndex + 1);
-
               if (line === '') continue;
               if (line === 'data: [DONE]') {
-                callbacks.onComplete({
-                  content: fullResponse.trim()
-                });
+                callbacks.onComplete({ content: fullResponse.trim() });
                 resolve(fullResponse.trim());
                 return;
               }
-
               if (line.startsWith('data: ')) {
                 try {
                   const data = JSON.parse(line.slice(6));
                   const content = data.choices[0]?.delta?.content;
-                  
                   if (content) {
-                    // 코드 블록 상태 업데이트
                     if (content.includes('```')) {
                       isCodeBlock = !isCodeBlock;
                     }
-
-                    // 현재 청크만 전송
-                    await callbacks.onChunk({
-                      currentChunk: content,
-                      isCodeBlock
-                    });
-
-                    // 전체 응답은 서버에서만 관리
+                    await callbacks.onChunk({ currentChunk: content, isCodeBlock });
                     fullResponse += content;
                   }
                 } catch (err) {
@@ -148,7 +131,6 @@ class AIService {
           reject(error);
         });
       });
-
     } catch (error) {
       console.error('AI response generation error:', error);
       callbacks.onError(error);
@@ -164,8 +146,7 @@ class AIService {
       if (msg !== null) {
         const task = JSON.parse(msg.content.toString());
         try {
-          // 실제 AI 응답 생성
-          const result = await this.generateResponse(task.query, task.aiName, {
+          await this.generateResponse(task.query, task.aiName, {
             onStart: () => {},
             onChunk: () => {},
             onComplete: (finalContent) => {
@@ -177,8 +158,9 @@ class AIService {
           });
         } catch (error) {
           if (onResult) onResult({ ...task, error });
+        } finally {
+          this.amqpChannel.ack(msg);
         }
-        this.amqpChannel.ack(msg);
       }
     });
   }
