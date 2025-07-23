@@ -9,7 +9,9 @@ import socketService from '../services/socket';
 import authService from '../services/authService';
 import axiosInstance from '../services/axios';
 import { withAuth } from '../middleware/withAuth';
-import { Toast } from '../components/Toast';
+import ToastContainer$, { Toast } from '../components/Toast';
+import {Modal,ModalBody,ModalFooter} from "../components/ui/Modal";
+import {Input} from "reactstrap";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -54,7 +56,7 @@ const TableWrapper = ({ children, onScroll, loadingMore, hasMore, rooms }) => {
   const tableRef = useRef(null);
   const scrollTimeoutRef = useRef(null);
   const lastScrollTime = useRef(Date.now());
-  
+
   const handleScroll = useCallback((e) => {
     const now = Date.now();
     const container = e.target;
@@ -126,11 +128,11 @@ const TableWrapper = ({ children, onScroll, loadingMore, hasMore, rooms }) => {
   }, [handleScroll]);
   
   return (
-    <div 
-      ref={tableRef} 
+    <div
+      ref={tableRef}
       className="chat-rooms-table"
       style={{
-        height: '430px', 
+        height: '430px',
         overflowY: 'auto',
         position: 'relative',
         borderRadius: '0.5rem',
@@ -147,8 +149,8 @@ const TableWrapper = ({ children, onScroll, loadingMore, hasMore, rooms }) => {
         </div>
       )}
       {!hasMore && rooms?.length > 0 && (
-        <Flex justify="center" align="center" style={{ 
-          padding: 'var(--vapor-space-300)', 
+        <Flex justify="center" align="center" style={{
+          padding: 'var(--vapor-space-300)',
           borderTop: '1px solid var(--vapor-color-border)',
           width: '100%'
         }}>
@@ -179,6 +181,9 @@ function ChatRoomsComponent() {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [joiningRoom, setJoiningRoom] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentModalRoomId, setCurrentModalRoomId] = useState(null);
+  const [password, setPassword] = useState('');
 
   // Refs
   const socketRef = useRef(null);
@@ -558,7 +563,16 @@ function ChatRoomsComponent() {
     };
   }, [currentUser, handleAuthError]);
 
-  const handleJoinRoom = async (roomId) => {
+  const handleJoinRoom = (roomId, hasPassword) => {
+    if (hasPassword) {
+      setCurrentModalRoomId(roomId);
+      setShowPasswordModal(true)
+    } else {
+      joinRoom(roomId);
+    }
+  }
+
+  const joinRoom = async (roomId, password = null) => {
     if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
       setError({
         title: '채팅방 입장 실패',
@@ -571,28 +585,29 @@ function ChatRoomsComponent() {
     setJoiningRoom(true);
 
     try {
-      const response = await axiosInstance.post(`/api/rooms/${roomId}/join`, {}, {
-        timeout: 5000
-      });
-      
+      const response = await axiosInstance.post(
+          `/api/rooms/${roomId}/join`,
+          {
+              password,
+          },
+          {
+              timeout: 5000
+          }
+      );
+
       if (response.data.success) {
         router.push(`/chat?room=${roomId}`);
       }
     } catch (error) {
-      console.error('Room join error:', error);
-      
       let errorMessage = '입장에 실패했습니다.';
-      if (error.response?.status === 404) {
+      if (error.status === 404) {
         errorMessage = '채팅방을 찾을 수 없습니다.';
-      } else if (error.response?.status === 403) {
-        errorMessage = '채팅방 입장 권한이 없습니다.';
+      } else if (error.status === 403) {
+        errorMessage = '비밀번호가 틀렸습니다.';
       }
-      
-      setError({
-        title: '채팅방 입장 실패',
-        message: error.response?.data?.message || errorMessage,
-        type: 'danger'
-      });
+
+      setShowPasswordModal(false);
+      Toast.error(errorMessage);
     } finally {
       setJoiningRoom(false);
     }
@@ -645,7 +660,7 @@ function ChatRoomsComponent() {
                   color="primary"
                   variant="outline"
                   size="md"
-                  onClick={() => handleJoinRoom(room._id)}
+                  onClick={() => handleJoinRoom(room._id, room.hasPassword)}
                   disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
                 >
                   입장
@@ -658,11 +673,36 @@ function ChatRoomsComponent() {
     );
   };
 
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setCurrentModalRoomId(null)
+  }
 
   return (
     <div className="auth-container">
+      <ToastContainer$/>
+      <Modal
+          isOpen={showPasswordModal}
+          onClose={() => closePasswordModal()}
+          size="md"
+          title="비밀번호를 입력해주세요."
+      >
+        <ModalBody>
+          <Input
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            type={'password'}
+            style={{color: 'black'}}
+          />
+        </ModalBody>
+
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => closePasswordModal()}>닫기</Button>
+          <Button variant="ghost" onClick={() => joinRoom(currentModalRoomId, password)}>확인</Button>
+        </ModalFooter>
+      </Modal>
       <Card.Root className="chat-rooms-card">
-        
+
         <Card.Body className="card-body">
           <Stack gap="300" align="center">
             <Text typography="heading3">채팅방 목록</Text>
@@ -702,7 +742,7 @@ function ChatRoomsComponent() {
                   <ErrorCircleIcon size={16} style={{ marginTop: '4px' }} />
                 )}
                 <div>
-                  <Text typography="subtitle2" style={{ fontWeight: 500 }}>{error.title}</Text>
+                  <Text typography="heading6" style={{ fontWeight: 500, paddingRight: 10 }}>{error.title} </Text>
                   <Text typography="body2" style={{ marginTop: 'var(--vapor-space-050)' }}>{error.message}</Text>
                   {error.showRetry && !isRetrying && (
                     <Button
@@ -741,17 +781,15 @@ function ChatRoomsComponent() {
               </TableWrapper>
             </Box>
           ) : !error && (
-            <Box mt="400">
-              <Stack gap="300" align="center">
-                <Text typography="body1">생성된 채팅방이 없습니다.</Text>
-                <Button
-                  color="primary"
-                  onClick={() => router.push('/chat-rooms/new')}
-                  disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
-                >
-                  새 채팅방 만들기
-                </Button>
-              </Stack>
+            <Box mt="400" style={{ textAlign: 'center' }}>
+              <Text typography="body1" style={{ marginBottom: 'var(--vapor-space-400)' }}>생성된 채팅방이 없습니다.</Text>
+              <Button
+                color="primary"
+                onClick={() => router.push('/chat-rooms/new')}
+                disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
+              >
+                새 채팅방 만들기
+              </Button>
             </Box>
           )}
         </Card.Body>
