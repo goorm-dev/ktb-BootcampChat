@@ -1,6 +1,6 @@
-# 백엔드 ASG용 커스텀 AMI 생성 파이프라인
-# 백엔드 코드를 직접 배포하여 systemd로 실행하는 AMI 생성 및 ASG 업데이트
-name: Backend AMI Build
+# 백엔드 ASG용 커스텀 AMI 생성 파이프라인 (개발 환경)
+# 백엔드 코드를 GitHub에서 직접 clone하여 systemd로 실행하는 AMI 생성 및 ASG 업데이트
+name: Backend AMI Build (Dev)
 
 on:
   push:
@@ -19,54 +19,16 @@ env:
   AWS_REGION: ap-northeast-2
   BASE_AMI_ID: ami-0f5e205427609c732  # Amazon Linux 2023 최신 AMI ID
   INSTANCE_TYPE: t3.small
-  S3_BUCKET: 8-ktb-chat-common
+  # GitHub 레포지토리 설정
+  GITHUB_REPO: https://github.com/100-hours-a-week/8-ktb-chat.git
+  GITHUB_BRANCH: jacky
   # ASG 관련 설정
   LAUNCH_TEMPLATE_NAME: ktb-chat-backend-template
   ASG_NAME: ktb-chat-backend-asg
-  TARGET_GROUP_ARN: ${{ secrets.TARGET_GROUP_ARN }}  # ALB 타겟 그룹 ARN
 
 jobs:
-  # 백엔드 코드 품질 검사
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: 코드 체크아웃
-      uses: actions/checkout@v4
-
-    - name: Node.js 18 설정
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'backend/package-lock.json'
-
-    - name: 백엔드 의존성 설치
-      working-directory: ./backend
-      run: npm ci
-
-    - name: 백엔드 린팅 (선택사항)
-      working-directory: ./backend
-      run: |
-        if npm list eslint >/dev/null 2>&1; then
-          npm run lint
-        else
-          echo "ESLint 설정이 없습니다. 스킵합니다."
-        fi
-      continue-on-error: true
-
-    - name: 백엔드 테스트 실행
-      working-directory: ./backend
-      run: |
-        if npm run | grep -q "test"; then
-          npm test
-        else
-          echo "테스트 스크립트가 없습니다. 스킵합니다."
-        fi
-      continue-on-error: true
-
   # AMI 생성 및 백엔드 배포
   build-ami:
-    needs: test
     runs-on: ubuntu-latest
     
     steps:
@@ -95,42 +57,6 @@ jobs:
         echo "ami_name=${AMI_NAME}" >> $GITHUB_OUTPUT
         echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
         echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
-        echo "deployment_package=backend-${TIMESTAMP}-${SHORT_SHA}.tar.gz" >> $GITHUB_OUTPUT
-
-    - name: 백엔드 배포 패키지 생성
-      run: |
-        echo "📦 백엔드 배포 패키지 생성 중..."
-        
-        # 백엔드 코드만 압축 (node_modules 제외)
-        tar -czf ${{ steps.meta.outputs.deployment_package }} \
-          --exclude=node_modules \
-          --exclude=.git \
-          --exclude='*.log' \
-          --exclude='.env*' \
-          --exclude='coverage' \
-          --exclude='test' \
-          backend/
-        
-        # 압축 파일 크기 확인
-        echo "압축 파일 크기:"
-        ls -lh ${{ steps.meta.outputs.deployment_package }}
-
-    - name: S3에 배포 패키지 업로드
-      run: |
-        echo "☁️ S3에 백엔드 배포 패키지 업로드..."
-        
-        # S3 버킷 존재 확인
-        if ! aws s3 ls s3://${{ env.S3_BUCKET }} >/dev/null 2>&1; then
-          echo "❌ S3 버킷이 존재하지 않습니다: ${{ env.S3_BUCKET }}"
-          exit 1
-        fi
-        
-        # S3에 업로드
-        aws s3 cp ${{ steps.meta.outputs.deployment_package }} \
-          s3://${{ env.S3_BUCKET }}/backend/deployments/${{ steps.meta.outputs.deployment_package }} \
-          --metadata "commit-sha=${{ github.sha }},build-timestamp=${{ steps.meta.outputs.timestamp }},branch=jacky"
-        
-        echo "✅ S3 업로드 완료"
 
     - name: AMI 설정 스크립트 생성
       run: |
@@ -146,6 +72,11 @@ jobs:
         # 시스템 업데이트
         echo "시스템 업데이트 중..."
         yum update -y
+        
+        # 개발 도구 설치
+        echo "개발 도구 설치 중..."
+        yum groupinstall -y "Development Tools"
+        yum install -y git curl unzip
         
         # Node.js 18 설치
         echo "Node.js 18 설치 중..."
@@ -165,18 +96,10 @@ jobs:
         mkdir -p /opt/ktb-chat-backend
         chown appuser:appuser /opt/ktb-chat-backend
         
-        # AWS CLI 설치 (최신 버전)
-        echo "AWS CLI 설치 중..."
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip
-        ./aws/install
-        rm -rf aws awscliv2.zip
-        
-        # S3에서 애플리케이션 코드 다운로드 및 설치
-        echo "S3에서 백엔드 코드 다운로드..."
+        # GitHub에서 코드 클론
+        echo "GitHub에서 백엔드 코드 클론 중..."
         cd /opt/ktb-chat-backend
-        aws s3 cp s3://${{ env.S3_BUCKET }}/backend/deployments/${{ steps.meta.outputs.deployment_package }} .
-        tar -xzf ${{ steps.meta.outputs.deployment_package }}
+        git clone -b ${{ env.GITHUB_BRANCH }} ${{ env.GITHUB_REPO }} .
         
         # 백엔드 디렉토리로 이동 및 의존성 설치
         cd backend
@@ -185,6 +108,18 @@ jobs:
         
         # 소유권 변경
         chown -R appuser:appuser /opt/ktb-chat-backend
+        
+        # 환경 변수 파일 생성 (개발용 기본값)
+        cat > .env << 'EOFENV'
+        NODE_ENV=production
+        PORT=5000
+        MONGO_URI=mongodb://localhost:27017/ktb-chat-dev
+        JWT_SECRET=dev-jwt-secret-change-in-production
+        REDIS_HOST=localhost
+        REDIS_PORT=6379
+        ENCRYPTION_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        PASSWORD_SALT=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        EOFENV
         
         # PM2 ecosystem 파일 생성
         cat > ecosystem.config.js << 'EOFPM2'
@@ -254,7 +189,7 @@ jobs:
         }
         EOFLOGROTATE
         
-        # CloudWatch 에이전트 설치
+        # CloudWatch 에이전트 설치 (선택사항)
         echo "CloudWatch 에이전트 설치..."
         yum install -y amazon-cloudwatch-agent
         
@@ -266,10 +201,11 @@ jobs:
         EOFHEALTH
         chmod +x /usr/local/bin/health-check.sh
         
-        # 임시 파일 정리
-        rm -f /opt/ktb-chat-backend/${{ steps.meta.outputs.deployment_package }}
-        
-        echo "=== AMI 설정 완료: $(date) ==="
+        # 개발 환경 설정 완료 표시
+        echo "=== 개발 환경 AMI 설정 완료: $(date) ==="
+        echo "GitHub 레포지토리: ${{ env.GITHUB_REPO }}"
+        echo "브랜치: ${{ env.GITHUB_BRANCH }}"
+        echo "커밋: ${{ github.sha }}"
         
         # 시스템 준비 완료 신호
         touch /tmp/ami-setup-complete
@@ -283,11 +219,10 @@ jobs:
       run: |
         echo "🖥️ AMI 빌드용 EC2 인스턴스 생성 중..."
         
-        # EC2 인스턴스 실행
+        # EC2 인스턴스 실행 (IAM Instance Profile 없이)
         INSTANCE_ID=$(aws ec2 run-instances \
           --image-id ${{ env.BASE_AMI_ID }} \
           --instance-type ${{ env.INSTANCE_TYPE }} \
-          --iam-instance-profile Name=EC2-S3-Access-Role \
           --user-data file://ami-setup.sh \
           --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=AMI-Build-${{ steps.meta.outputs.ami_name }}},{Key=Purpose,Value=AMI-Build},{Key=Application,Value=ktb-chat-backend}]' \
           --query 'Instances[0].InstanceId' \
@@ -301,8 +236,8 @@ jobs:
         aws ec2 wait instance-running --instance-ids ${INSTANCE_ID}
         
         # 추가 대기 시간 (애플리케이션 설치 완료를 위해)
-        echo "📦 백엔드 애플리케이션 설치 중... (약 5분 소요)"
-        sleep 300
+        echo "📦 백엔드 애플리케이션 설치 중... (약 7분 소요)"
+        sleep 420
         
         echo "✅ 인스턴스 설정 완료"
 
@@ -321,9 +256,9 @@ jobs:
         AMI_ID=$(aws ec2 create-image \
           --instance-id ${{ steps.create-instance.outputs.instance_id }} \
           --name "${{ steps.meta.outputs.ami_name }}" \
-          --description "KTB Chat Backend AMI - jacky branch - Built on $(date)" \
+          --description "KTB Chat Backend AMI - jacky branch (Dev) - Built on $(date)" \
           --no-reboot \
-          --tag-specifications 'ResourceType=image,Tags=[{Key=Name,Value=${{ steps.meta.outputs.ami_name }}},{Key=Branch,Value=jacky},{Key=Application,Value=ktb-chat-backend},{Key=BuildTimestamp,Value=${{ steps.meta.outputs.timestamp }}}]' \
+          --tag-specifications 'ResourceType=image,Tags=[{Key=Name,Value=${{ steps.meta.outputs.ami_name }}},{Key=Branch,Value=jacky},{Key=Application,Value=ktb-chat-backend},{Key=Environment,Value=development},{Key=BuildTimestamp,Value=${{ steps.meta.outputs.timestamp }}}]' \
           --query 'ImageId' \
           --output text)
         
@@ -336,7 +271,6 @@ jobs:
         
         echo "🎉 AMI 생성 완료: ${AMI_ID}"
 
-    # ASG Launch Template 업데이트
     - name: Launch Template 업데이트
       id: update-template
       run: |
@@ -356,9 +290,9 @@ jobs:
                 {
                   "ResourceType": "instance",
                   "Tags": [
-                    {"Key": "Name", "Value": "ktb-chat-backend-instance"},
+                    {"Key": "Name", "Value": "ktb-chat-backend-dev-instance"},
                     {"Key": "Application", "Value": "ktb-chat-backend"},
-                    {"Key": "Environment", "Value": "production"},
+                    {"Key": "Environment", "Value": "development"},
                     {"Key": "Branch", "Value": "jacky"},
                     {"Key": "AMI-Version", "Value": "${{ steps.meta.outputs.timestamp }}-${{ steps.meta.outputs.short_sha }}"}
                   ]
@@ -381,16 +315,12 @@ jobs:
         else
           echo "Launch Template이 존재하지 않습니다. 새로 생성합니다..."
           
-          # 새 Launch Template 생성
+          # 새 Launch Template 생성 (개발 환경용 설정)
           aws ec2 create-launch-template \
             --launch-template-name ${{ env.LAUNCH_TEMPLATE_NAME }} \
             --launch-template-data '{
               "ImageId": "${{ steps.create-ami.outputs.ami_id }}",
-              "InstanceType": "t3.medium",
-              "SecurityGroupIds": ["${{ secrets.BACKEND_SECURITY_GROUP_ID }}"],
-              "IamInstanceProfile": {
-                "Name": "EC2-S3-Access-Role"
-              },
+              "InstanceType": "t3.small",
               "Monitoring": {
                 "Enabled": true
               },
@@ -398,9 +328,9 @@ jobs:
                 {
                   "ResourceType": "instance",
                   "Tags": [
-                    {"Key": "Name", "Value": "ktb-chat-backend-instance"},
+                    {"Key": "Name", "Value": "ktb-chat-backend-dev-instance"},
                     {"Key": "Application", "Value": "ktb-chat-backend"},
-                    {"Key": "Environment", "Value": "production"},
+                    {"Key": "Environment", "Value": "development"},
                     {"Key": "Branch", "Value": "jacky"},
                     {"Key": "AMI-Version", "Value": "${{ steps.meta.outputs.timestamp }}-${{ steps.meta.outputs.short_sha }}"}
                   ]
@@ -412,10 +342,9 @@ jobs:
           echo "✅ 새 Launch Template 생성 완료"
         fi
 
-    # ASG 업데이트
-    - name: Auto Scaling Group 업데이트
+    - name: Auto Scaling Group 업데이트 (선택사항)
       run: |
-        echo "📈 Auto Scaling Group 업데이트 중..."
+        echo "📈 Auto Scaling Group 업데이트 확인 중..."
         
         # ASG 존재 확인
         if aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names ${{ env.ASG_NAME }} >/dev/null 2>&1; then
@@ -428,25 +357,13 @@ jobs:
           
           echo "✅ ASG Launch Template 업데이트 완료"
           
-          # 인스턴스 새로고침 시작 (점진적 배포)
-          echo "🔄 인스턴스 새로고침 시작..."
-          REFRESH_ID=$(aws autoscaling start-instance-refresh \
-            --auto-scaling-group-name ${{ env.ASG_NAME }} \
-            --preferences '{
-              "InstanceWarmup": 300,
-              "MinHealthyPercentage": 50,
-              "CheckpointPercentages": [50],
-              "CheckpointDelay": 600
-            }' \
-            --query 'InstanceRefreshId' \
-            --output text)
-          
-          echo "✅ 인스턴스 새로고침 시작됨: ${REFRESH_ID}"
-          echo "📊 새로고침 진행 상황은 AWS 콘솔에서 확인할 수 있습니다."
+          # 개발 환경에서는 즉시 인스턴스 교체하지 않음
+          echo "ℹ️ 개발 환경이므로 인스턴스 새로고침을 자동으로 시작하지 않습니다."
+          echo "필요시 AWS 콘솔에서 수동으로 인스턴스 새로고침을 시작하세요."
           
         else
           echo "⚠️ ASG가 존재하지 않습니다: ${{ env.ASG_NAME }}"
-          echo "ASG를 수동으로 생성한 후 다시 실행해주세요."
+          echo "필요시 AWS 콘솔에서 ASG를 생성한 후 Launch Template을 사용하세요."
         fi
 
     - name: 인스턴스 정리
@@ -462,49 +379,11 @@ jobs:
         
         # 임시 파일 정리
         rm -f ami-setup.sh
-        rm -f ${{ steps.meta.outputs.deployment_package }}
-
-    - name: AMI 정보 S3에 저장
-      if: success()
-      run: |
-        echo "📄 AMI 정보 파일 생성 및 S3 업로드..."
-        
-        # AMI 정보 JSON 파일 생성
-        cat > ami-info.json << EOF
-        {
-          "amiId": "${{ steps.create-ami.outputs.ami_id }}",
-          "amiName": "${{ steps.meta.outputs.ami_name }}",
-          "buildTimestamp": "${{ steps.meta.outputs.timestamp }}",
-          "commitSha": "${{ github.sha }}",
-          "shortSha": "${{ steps.meta.outputs.short_sha }}",
-          "branch": "jacky",
-          "repository": "${{ github.repository }}",
-          "workflow": "${{ github.workflow }}",
-          "runId": "${{ github.run_id }}",
-          "deploymentPackage": "${{ steps.meta.outputs.deployment_package }}",
-          "baseAmiId": "${{ env.BASE_AMI_ID }}",
-          "instanceType": "${{ env.INSTANCE_TYPE }}",
-          "region": "${{ env.AWS_REGION }}",
-          "launchTemplate": {
-            "name": "${{ env.LAUNCH_TEMPLATE_NAME }}",
-            "version": "${{ steps.update-template.outputs.template_version }}"
-          },
-          "asgName": "${{ env.ASG_NAME }}"
-        }
-        EOF
-        
-        # S3에 AMI 정보 업로드
-        aws s3 cp ami-info.json \
-          s3://${{ env.S3_BUCKET }}/backend/ami-info/backend-ami-${{ steps.meta.outputs.timestamp }}-${{ steps.meta.outputs.short_sha }}.json
-        
-        # 최신 AMI 정보도 업로드
-        aws s3 cp ami-info.json \
-          s3://${{ env.S3_BUCKET }}/backend/ami-info/backend-ami-latest-jacky.json
 
     - name: 배포 결과 요약
       if: success()
       run: |
-        echo "## 🎉 백엔드 AMI 빌드 및 배포 완료" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎉 백엔드 AMI 빌드 완료 (개발 환경)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📋 AMI 정보" >> $GITHUB_STEP_SUMMARY
         echo "- **AMI ID**: \`${{ steps.create-ami.outputs.ami_id }}\`" >> $GITHUB_STEP_SUMMARY
@@ -513,16 +392,21 @@ jobs:
         echo "- **브랜치**: jacky" >> $GITHUB_STEP_SUMMARY
         echo "- **빌드 시간**: ${{ steps.meta.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔧 개발 환경 설정" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub 레포**: ${{ env.GITHUB_REPO }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **브랜치**: ${{ env.GITHUB_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **환경**: 개발용 (기본 설정 포함)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🚀 배포 정보" >> $GITHUB_STEP_SUMMARY
         echo "- **Launch Template**: \`${{ env.LAUNCH_TEMPLATE_NAME }}\` (버전 ${{ steps.update-template.outputs.template_version }})" >> $GITHUB_STEP_SUMMARY
-        echo "- **Auto Scaling Group**: \`${{ env.ASG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "- **인스턴스 새로고침**: 진행 중 (AWS 콘솔에서 확인)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Auto Scaling Group**: \`${{ env.ASG_NAME }}\` (자동 교체 비활성화)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 모니터링" >> $GITHUB_STEP_SUMMARY
         echo "- 애플리케이션 포트: 5000" >> $GITHUB_STEP_SUMMARY
         echo "- 헬스체크: \`/health\` 엔드포인트" >> $GITHUB_STEP_SUMMARY
         echo "- 로그 위치: \`/var/log/ktb-chat-backend*.log\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📦 S3 저장 위치" >> $GITHUB_STEP_SUMMARY
-        echo "- 배포 패키지: \`s3://${{ env.S3_BUCKET }}/backend/deployments/${{ steps.meta.outputs.deployment_package }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "- AMI 정보: \`s3://${{ env.S3_BUCKET }}/backend/ami-info/backend-ami-${{ steps.meta.outputs.timestamp }}-${{ steps.meta.outputs.short_sha }}.json\`" >> $GITHUB_STEP_SUMMARY
+        echo "### ⚠️ 개발 환경 주의사항" >> $GITHUB_STEP_SUMMARY
+        echo "- 기본 환경 변수가 설정되어 있습니다" >> $GITHUB_STEP_SUMMARY
+        echo "- 프로덕션 사용 전 보안 설정을 변경하세요" >> $GITHUB_STEP_SUMMARY
+        echo "- MongoDB, Redis는 별도로 설치/설정이 필요합니다" >> $GITHUB_STEP_SUMMARY
