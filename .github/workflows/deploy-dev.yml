@@ -1,0 +1,65 @@
+name: Frontend Main Dev Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./frontend-react
+
+      - name: Inject .env file
+        run: |
+          echo "REACT_APP_API_URL=https://dev-backend.goorm-ktb-016.goorm.team" > .env
+          echo "NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}" >> .env
+          echo "NEXT_PUBLIC_PASSWORD_SALT=${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}" >> .env
+        working-directory: ./frontend-react
+
+      - name: Build React app
+        run: CI=false npm run build
+        working-directory: ./frontend-react
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key.pem
+          chmod 600 ~/.ssh/deploy_key.pem
+          cat <<EOF > ~/.ssh/config
+          Host dev-server
+            HostName ${{ secrets.SSH_HOST }}
+            User ec2-user
+            IdentityFile ~/.ssh/deploy_key.pem
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          EOF
+
+      - name: Copy built files to temp location on server
+        run: |
+          ssh dev-server "mkdir -p ~/temp-fe-deploy"
+          scp -r ./frontend-react/build/* dev-server:~/temp-fe-deploy/
+
+      - name: Move files to Nginx directory with sudo
+        run: |
+          ssh dev-server <<'EOF'
+            sudo rm -rf /var/www/html/*
+            sudo cp -r ~/temp-fe-deploy/* /var/www/html/
+            rm -rf ~/temp-fe-deploy
+          EOF
+
+      - name: Reload Nginx
+        run: |
+          ssh dev-server "sudo systemctl reload nginx"
