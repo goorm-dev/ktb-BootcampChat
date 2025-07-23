@@ -1,12 +1,7 @@
 name: Frontend Main Prod Deploy
 
 on:
-  push:
-    branches:
-      - feat/prod-cicd
-
-# on:
-#   workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
