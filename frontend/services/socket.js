@@ -79,8 +79,8 @@ class SocketService {
           console.log('[Socket] Cleaning up existing socket before new connection');
           this.cleanup(CLEANUP_REASONS.RECONNECT);
         }
-
-        const socketUrl = process.env.NEXT_PUBLIC_API_URL;
+        
+        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
         console.log('[Socket] Connecting to:', socketUrl);
 
         this.socket = io(socketUrl, {

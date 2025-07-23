@@ -3,16 +3,22 @@
   "version": "1.0.0",
   "description": "Real-time chat application",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:chat-server\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
+    "dev:chat-server": "cd chat-server && npm run dev",
+    
     "setup": "npm run setup:backend && npm run setup:frontend",
     "setup:backend": "cd backend && npm install",
     "setup:frontend": "cd frontend && npm install --legacy-peer-deps",
+    "setup:chat-server": "cd chat-server && npm install",
+
     "build": "cd frontend && npm run build",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm start",
+    "start:chat-server": "cd chat-server && npm start",
+
     "test": "cd e2e && npm test"
   },
   "devDependencies": {
