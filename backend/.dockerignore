@@ -75,4 +75,4 @@ build/
 
 # 기타 불필요한 파일들
 .npmrc
-package-lock.json 
+# package-lock.json은 빌드에 필요하므로 제외하지 않음 
