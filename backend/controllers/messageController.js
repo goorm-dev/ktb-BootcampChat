@@ -20,7 +20,8 @@ const messageController = {
         return res.status(403).json({
           success: false,
           message: '채팅방에 접근할 권한이 없습니다.'
-        });
+        })
+        .lean();
       }
 
       // 메시지 조회
@@ -28,8 +29,8 @@ const messageController = {
         room: roomId,
         isDeleted: false
       })
-      .populate('sender', 'username profileImage')
-      .populate('file', 'filename originalname mimetype size')
+      .populate({path: 'sender', select: 'username profileImage', options: {lean: true}})
+      .populate({path: 'file', select: 'filename originalname mimetype size', options: { lean: true }})
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))

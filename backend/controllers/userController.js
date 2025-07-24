@@ -11,7 +11,7 @@ exports.register = async (req, res) => {
 
     // 입력값 검증
     const validationErrors = [];
-    
+
     if (!name || name.trim().length === 0) {
       validationErrors.push({
         field: 'name',
@@ -55,8 +55,11 @@ exports.register = async (req, res) => {
       });
     }
 
-    // 사용자 중복 확인
-    const existingUser = await User.findOne({ email });
+    // 🚀 LEAN 최적화: 사용자 중복 확인
+    const existingUser = await User.findOne({ email })
+    .select('_id') // ID만 확인하면 충분
+    .lean(); // 순수 객체로 조회
+
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -64,10 +67,10 @@ exports.register = async (req, res) => {
       });
     }
 
-    // 비밀번호 암호화 및 사용자 생성
-    const newUser = new User({ 
-      name, 
-      email, 
+    // 비밀번호 암호화 및 사용자 생성 (새 생성 시에는 lean() 사용 불가)
+    const newUser = new User({
+      name,
+      email,
       password,
       profileImage: '' // 기본 프로필 이미지 없음
     });
@@ -96,10 +99,13 @@ exports.register = async (req, res) => {
   }
 };
 
-// 프로필 조회
+// 🚀 LEAN 최적화: 프로필 조회
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id)
+    .select('_id name email profileImage') // 필요한 필드만 선택
+    .lean(); // 순수 객체로 조회
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -126,7 +132,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// 프로필 업데이트
+// 프로필 업데이트 (수정이 필요하므로 lean() 사용 불가)
 exports.updateProfile = async (req, res) => {
   try {
     const { name } = req.body;
@@ -138,6 +144,7 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
+    // 수정 작업이므로 lean() 사용 불가
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
@@ -169,7 +176,7 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// 프로필 이미지 업로드
+// 프로필 이미지 업로드 (수정이 필요하므로 lean() 사용 불가)
 exports.uploadProfileImage = async (req, res) => {
   try {
     if (!req.file) {
@@ -202,6 +209,7 @@ exports.uploadProfileImage = async (req, res) => {
       });
     }
 
+    // 수정 작업이므로 lean() 사용 불가
     const user = await User.findById(req.user.id);
     if (!user) {
       // 업로드된 파일 삭제
@@ -251,9 +259,10 @@ exports.uploadProfileImage = async (req, res) => {
   }
 };
 
-// 프로필 이미지 삭제
+// 프로필 이미지 삭제 (수정이 필요하므로 lean() 사용 불가)
 exports.deleteProfileImage = async (req, res) => {
   try {
+    // 수정 작업이므로 lean() 사용 불가
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
@@ -289,9 +298,10 @@ exports.deleteProfileImage = async (req, res) => {
   }
 };
 
-// 회원 탈퇴
+// 회원 탈퇴 (수정이 필요하므로 lean() 사용 불가)
 exports.deleteAccount = async (req, res) => {
   try {
+    // 삭제 작업이므로 lean() 사용 불가
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
@@ -323,6 +333,107 @@ exports.deleteAccount = async (req, res) => {
     res.status(500).json({
       success: false,
       message: '회원 탈퇴 처리 중 오류가 발생했습니다.'
+    });
+  }
+};
+
+// 🚀 추가: 사용자 검색 기능 (lean() 최적화)
+exports.searchUsers = async (req, res) => {
+  try {
+    const { query, page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '검색어를 입력해주세요.'
+      });
+    }
+
+    // 🚀 LEAN 최적화: 사용자 검색
+    const users = await User.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    })
+    .select('_id name email profileImage') // 필요한 필드만
+    .skip(skip)
+    .limit(parseInt(limit))
+    .lean(); // 순수 객체로 조회
+
+    // 총 개수 조회 (카운트만 필요하므로 더 가벼움)
+    const totalCount = await User.countDocuments({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    });
+
+    res.json({
+      success: true,
+      users: users.map(user => ({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount,
+        hasMore: skip + users.length < totalCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({
+      success: false,
+      message: '사용자 검색 중 오류가 발생했습니다.'
+    });
+  }
+};
+
+// 🚀 추가: 사용자 목록 조회 (lean() 최적화)
+exports.getUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // 🚀 LEAN 최적화: 사용자 목록 조회
+    const users = await User.find({})
+    .select('_id name email profileImage createdAt') // 필요한 필드만
+    .sort({ createdAt: -1 }) // 최신 가입자부터
+    .skip(skip)
+    .limit(parseInt(limit))
+    .lean(); // 순수 객체로 조회
+
+    // 총 사용자 수 조회
+    const totalCount = await User.countDocuments();
+
+    res.json({
+      success: true,
+      users: users.map(user => ({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage,
+        joinedAt: user.createdAt
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount,
+        hasMore: skip + users.length < totalCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: '사용자 목록 조회 중 오류가 발생했습니다.'
     });
   }
 };

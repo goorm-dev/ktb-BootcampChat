@@ -7,7 +7,7 @@ const authController = {
   async register(req, res) {
     try {
       console.log('Register request received:', req.body);
-      
+
       const { name, email, password } = req.body;
 
       // Input validation
@@ -31,17 +31,17 @@ const authController = {
           message: '비밀번호는 6자 이상이어야 합니다.'
         });
       }
-      
-      // Check existing user
-      const existingUser = await User.findOne({ email });
+
+      // 🚀 LEAN 최적화: 중복 이메일 체크 시 lean() 사용
+      const existingUser = await User.findOne({ email }).lean();
       if (existingUser) {
         return res.status(409).json({
           success: false,
           message: '이미 등록된 이메일입니다.'
         });
       }
-      
-      // Create user
+
+      // Create user (새로 생성하는 경우는 lean() 불가)
       const user = new User({
         name,
         email,
@@ -58,23 +58,23 @@ const authController = {
         deviceInfo: req.headers['user-agent'],
         createdAt: Date.now()
       });
-      
+
       if (!sessionInfo || !sessionInfo.sessionId) {
         throw new Error('Session creation failed');
       }
 
       // Generate token with additional claims
       const token = jwt.sign(
-        { 
-          user: { id: user._id },
-          sessionId: sessionInfo.sessionId,
-          iat: Math.floor(Date.now() / 1000)
-        },
-        jwtSecret,
-        { 
-          expiresIn: '24h',
-          algorithm: 'HS256'
-        }
+          {
+            user: { id: user._id },
+            sessionId: sessionInfo.sessionId,
+            iat: Math.floor(Date.now() / 1000)
+          },
+          jwtSecret,
+          {
+            expiresIn: '24h',
+            algorithm: 'HS256'
+          }
       );
 
       res.status(201).json({
@@ -91,7 +91,7 @@ const authController = {
 
     } catch (error) {
       console.error('Register error:', error);
-      
+
       if (error.name === 'ValidationError') {
         return res.status(400).json({
           success: false,
@@ -99,7 +99,7 @@ const authController = {
           errors: Object.values(error.errors).map(err => err.message)
         });
       }
-      
+
       res.status(500).json({
         success: false,
         message: '회원가입 처리 중 오류가 발생했습니다.'
@@ -119,8 +119,12 @@ const authController = {
         });
       }
 
-      // 사용자 조회
-      const user = await User.findOne({ email }).select('+password');
+      // 🚀 LEAN 최적화: 로그인 시에는 비밀번호 검증이 필요하므로 lean() 사용 불가
+      // 하지만 필요한 필드만 선택해서 성능 개선
+      const user = await User.findOne({ email })
+      .select('+password _id name email profileImage') // 필요한 필드만 선택
+      .exec();
+
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -128,7 +132,7 @@ const authController = {
         });
       }
 
-      // 비밀번호 확인
+      // 비밀번호 확인 (Mongoose 메서드 사용 필요)
       const isMatch = await user.matchPassword(password);
       if (!isMatch) {
         return res.status(401).json({
@@ -147,7 +151,7 @@ const authController = {
 
       if (existingSession) {
         const io = req.app.get('io');
-        
+
         if (io) {
           try {
             // 중복 로그인 이벤트 발생 시 더 자세한 정보 제공
@@ -243,16 +247,16 @@ const authController = {
 
       // JWT 토큰 생성
       const token = jwt.sign(
-        { 
-          user: { id: user._id },
-          sessionId: sessionInfo.sessionId,
-          iat: Math.floor(Date.now() / 1000)
-        },
-        jwtSecret,
-        { 
-          expiresIn: '24h',
-          algorithm: 'HS256'
-        }
+          {
+            user: { id: user._id },
+            sessionId: sessionInfo.sessionId,
+            iat: Math.floor(Date.now() / 1000)
+          },
+          jwtSecret,
+          {
+            expiresIn: '24h',
+            algorithm: 'HS256'
+          }
       );
 
       // 응답 헤더 설정
@@ -275,14 +279,14 @@ const authController = {
 
     } catch (error) {
       console.error('Login error:', error);
-      
+
       if (error.message === 'INVALID_TOKEN') {
         return res.status(401).json({
           success: false,
           message: '인증 토큰이 유효하지 않습니다.'
         });
       }
-      
+
       res.status(500).json({
         success: false,
         message: '로그인 처리 중 오류가 발생했습니다.',
@@ -314,11 +318,11 @@ const authController = {
           });
         }
       }
-      
+
       // 쿠키 및 헤더 정리
       res.clearCookie('token');
       res.clearCookie('sessionId');
-      
+
       res.json({
         success: true,
         message: '로그아웃되었습니다.'
@@ -347,7 +351,7 @@ const authController = {
 
       // JWT 토큰 검증
       const decoded = jwt.verify(token, jwtSecret);
-      
+
       if (!decoded?.user?.id || !decoded?.sessionId) {
         return res.status(401).json({
           success: false,
@@ -363,8 +367,11 @@ const authController = {
         });
       }
 
-      // 사용자 정보 조회
-      const user = await User.findById(decoded.user.id);
+      // 🚀 LEAN 최적화: 토큰 검증 시 사용자 정보 조회
+      const user = await User.findById(decoded.user.id)
+      .select('_id name email profileImage') // 필요한 필드만 선택
+      .lean(); // lean() 사용으로 성능 개선
+
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -438,7 +445,11 @@ const authController = {
         });
       }
 
-      const user = await User.findById(req.user.id);
+      // 🚀 LEAN 최적화: 토큰 갱신 시 사용자 정보 조회
+      const user = await User.findById(req.user.id)
+      .select('_id name email profileImage')
+      .lean();
+
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -463,16 +474,16 @@ const authController = {
 
       // 새로운 JWT 토큰 생성
       const token = jwt.sign(
-        { 
-          user: { id: user._id },
-          sessionId: sessionInfo.sessionId,
-          iat: Math.floor(Date.now() / 1000)
-        },
-        jwtSecret,
-        { 
-          expiresIn: '24h',
-          algorithm: 'HS256'
-        }
+          {
+            user: { id: user._id },
+            sessionId: sessionInfo.sessionId,
+            iat: Math.floor(Date.now() / 1000)
+          },
+          jwtSecret,
+          {
+            expiresIn: '24h',
+            algorithm: 'HS256'
+          }
       );
 
       res.json({
