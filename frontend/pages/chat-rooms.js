@@ -306,6 +306,10 @@ function ChatRoomsComponent() {
 
       await attemptConnection();
 
+      console.log('📡 API 요청 시도: /api/rooms');
+      console.log('🌐 axiosInstance baseURL:', axiosInstance.defaults.baseURL);
+      console.log('🔐 현재 사용자 토큰:', currentUser?.token?.slice(0, 10));
+
       const response = await axiosInstance.get('/api/rooms', {
         params: {
           page: isLoadingMore ? pageIndex : 0,
