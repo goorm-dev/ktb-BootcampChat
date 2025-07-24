@@ -4,6 +4,17 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # 수동 실행 옵션 추가
+    inputs:
+      deploy_target:
+        description: 'Deploy target'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+        - both
+        - frontend
+        - backend
 
 jobs:
   # 변경된 파일 감지
@@ -12,6 +23,8 @@ jobs:
     outputs:
       frontend-changed: ${{ steps.changes.outputs.frontend }}
       backend-changed: ${{ steps.changes.outputs.backend }}
+      manual-frontend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'frontend' || inputs.deploy_target == 'both') }}
+      manual-backend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'backend' || inputs.deploy_target == 'both') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,8 +45,8 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.frontend-changed == 'true'
-    
+    if: needs.detect-changes.outputs.frontend-changed == 'true' || needs.detect-changes.outputs.manual-frontend == 'true'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,8 +89,8 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true'
-    
+    if: needs.detect-changes.outputs.backend-changed == 'true' || needs.detect-changes.outputs.manual-backend == 'true'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -136,11 +149,11 @@ jobs:
           # EC2 인스턴스에 접속하여 Docker 컨테이너 업데이트
           for HOST in ${{ secrets.EC2_HOSTS }}; do
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$HOST "
-              docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} -p ${{ secrets.GHCR_PAT }} && \
+              sudo docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} -p ${{ secrets.GHCR_PAT }} && \
               cd /home/ubuntu/loadtest && \
-              docker compose pull && \
-              docker rm -f backend || true && \
-              docker compose up -d && \
-              docker image prune -a -f || true
+              sudo docker compose pull && \
+              sudo docker rm -f backend || true && \
+              sudo docker compose up -d && \
+              sudo docker image prune -a -f || true
             "
           done
