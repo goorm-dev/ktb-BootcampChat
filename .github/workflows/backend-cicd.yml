@@ -131,7 +131,7 @@ jobs:
             max_memory_restart: '1G',
             env: {
               NODE_ENV: 'production',
-              PORT: 5000
+              PORT: 5001
             },
             log_file: '/var/log/ktb-chat-backend.log',
             out_file: '/var/log/ktb-chat-backend-out.log',
@@ -193,7 +193,7 @@ jobs:
         cat > /usr/local/bin/health-check.sh << 'EOFHEALTH'
         #!/bin/bash
         # 백엔드 애플리케이션 헬스체크
-        curl -f http://localhost:5000/health || exit 1
+        curl -f http://localhost:5001/health || exit 1
         EOFHEALTH
         chmod +x /usr/local/bin/health-check.sh
         
@@ -464,7 +464,7 @@ jobs:
         echo "- **인스턴스 새로고침 ID**: \`${{ steps.update-asg.outputs.refresh_id }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 모니터링" >> $GITHUB_STEP_SUMMARY
-        echo "- 애플리케이션 포트: 5000" >> $GITHUB_STEP_SUMMARY
+        echo "- 애플리케이션 포트: 5001" >> $GITHUB_STEP_SUMMARY
         echo "- 헬스체크: \`/health\` 엔드포인트" >> $GITHUB_STEP_SUMMARY
         echo "- 로그 위치: \`/var/log/ktb-chat-backend*.log\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
