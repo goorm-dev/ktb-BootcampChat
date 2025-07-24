@@ -50,7 +50,7 @@ module.exports = function(io) {
           .populate('sender', 'name email profileImage')
           .populate({
             path: 'file',
-            select: 'filename originalname mimetype size'
+            select: 'filename originalname mimetype size path'
           })
           .sort({ timestamp: -1 })
           .limit(limit + 1)
@@ -542,7 +542,7 @@ module.exports = function(io) {
         await message.save();
         await message.populate([
           { path: 'sender', select: 'name email profileImage' },
-          { path: 'file', select: 'filename originalname mimetype size' }
+          { path: 'file', select: 'filename originalname mimetype size path' }
         ]);
 
         io.to(room).emit('message', message);

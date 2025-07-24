@@ -21,18 +21,29 @@ router.put('/profile',
   userController.updateProfile
 );
 
-// 프로필 이미지 업로드
-router.post('/profile-image',
-  auth,
-  upload.single('profileImage'),
-  userController.uploadProfileImage
-);
+// // 프로필 이미지 업로드
+// router.post('/profile-image',
+//   auth,
+//   upload.single('profileImage'),
+//   userController.uploadProfileImage
+// );
+
+// Pre-signed URL 생성 (업로드용)
+router.post('/profile-image/upload-url', auth, userController.getUploadPresignedUrl);
+
+// 프로필 이미지 업로드 완료
+router.post('/profile-image/complete', auth, userController.completeProfileImageUpload);
+
+
+// // 프로필 이미지 삭제
+// router.delete('/profile-image',
+//   auth,
+//   userController.deleteProfileImage
+// );
 
 // 프로필 이미지 삭제
-router.delete('/profile-image',
-  auth,
-  userController.deleteProfileImage
-);
+router.delete('/profile-image', auth, userController.deleteProfileImage);
+
 
 // 회원 탈퇴
 router.delete('/account',

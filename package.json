@@ -21,6 +21,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@vapor-ui/core": "^0.3.1"
+    "@vapor-ui/core": "^0.3.1",
+    "aws-sdk": "^2.1692.0",
+    "uuid": "^11.1.0"
   }
 }
