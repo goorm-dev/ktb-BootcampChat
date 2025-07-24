@@ -114,6 +114,15 @@ const ChatInput = forwardRef(({
         setMessage('');
         setFiles([]);
 
+        // Reset textarea height after submission
+        setTimeout(() => {
+          if (messageInputRef?.current) {
+            messageInputRef.current.style.height = 'auto';
+            messageInputRef.current.style.height = '40px';
+            messageInputRef.current.style.overflowY = 'hidden';
+          }
+        }, 0);
+
       } catch (error) {
         console.error('File submit error:', error);
         setUploadError(error.message);
@@ -124,8 +133,17 @@ const ChatInput = forwardRef(({
         content: message.trim()
       });
       setMessage('');
+      
+      // Reset textarea height after submission
+      setTimeout(() => {
+        if (messageInputRef?.current) {
+          messageInputRef.current.style.height = 'auto';
+          messageInputRef.current.style.height = '40px';
+          messageInputRef.current.style.overflowY = 'hidden';
+        }
+      }, 0);
     }
-  }, [files, message, onSubmit, setMessage]);
+  }, [files, message, onSubmit, setMessage, messageInputRef]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -343,9 +361,6 @@ const ChatInput = forwardRef(({
           return;
       }
     } else if (e.key === 'Enter' && !e.shiftKey) {
-      if (e.nativeEvent.isComposing) {
-        return;
-      }
       e.preventDefault();
       if (message.trim() || files.length > 0) {
         handleSubmit(e);
