@@ -403,6 +403,8 @@ function setSocketIO(io) {
       try {
         if (!socket.user) throw new Error('Unauthorized');
 
+        const messageId = Date.now();
+
         // 1. 이미 해당 방에 참여 중인지 확인 (userRooms Map 사용)
         const currentRoom = userRooms.get(socket.user.id);
         if (currentRoom === roomId) {
@@ -457,7 +459,7 @@ function setSocketIO(io) {
 
         // 5. 입장 메시지 Redis에 저장
         const joinMessage = {
-          _id: roomId,
+          _id: messageId,
           room: roomId,
           content: `${socket.user.name}님이 입장하였습니다.`,
           type: 'system',
@@ -481,7 +483,7 @@ function setSocketIO(io) {
         const activeStreams = Array.from(streamingSessions.values())
             .filter(session => session.room === roomId)
             .map(session => ({
-              _id: session.messageId,
+              _id: messageId,
               type: 'ai',
               aiType: session.aiType,
               content: session.content,
@@ -491,7 +493,7 @@ function setSocketIO(io) {
 
         // 8. 이벤트 발송
         socket.emit('joinRoomSuccess', {
-          _id: roomId,
+          _id: messageId,
           participants: participantArr,
           messages,
           hasMore,
@@ -523,6 +525,8 @@ function setSocketIO(io) {
       try {
         if (!socket.user) throw new Error('Unauthorized');
         if (!messageData) throw new Error('메시지 데이터가 없습니다.');
+
+        const messageId = Date.now();
 
         const { room, type, content, fileData } = messageData;
         if (!room) throw new Error('채팅방 정보가 없습니다.');
@@ -593,7 +597,7 @@ function setSocketIO(io) {
                 email: socket.user.email,
                 profileImage: socket.user.profileImage
               },
-              _id: room,
+              _id: messageId,
               type: 'file',
               file: fileMeta,
               content: content || '',
@@ -609,7 +613,7 @@ function setSocketIO(io) {
             if (!messageContent) return;
 
             messageObj = {
-              _id: room,
+              _id: messageId,
               room: room,
               sender: socket.user.id,
               content: messageContent,
@@ -623,6 +627,7 @@ function setSocketIO(io) {
           default:
             throw new Error('지원하지 않는 메시지 타입입니다.');
         }
+        console.log("[socket user id]: ", socket.user.id);
 
         // 5. 메시지 Redis에 저장 (append)
         await redis.rPush(`chat:messages:${room}`, JSON.stringify(messageObj));
@@ -662,6 +667,8 @@ function setSocketIO(io) {
           throw new Error('Unauthorized');
         }
 
+        const messageId = Date.now();
+
         // 실제로 해당 방에 참여 중인지 먼저 확인 (메모리 관리 userRooms)
         const currentRoom = userRooms?.get(socket.user.id);
         if (!currentRoom || currentRoom !== roomId) {
@@ -689,7 +696,7 @@ function setSocketIO(io) {
 
         // 퇴장 메시지 생성 및 Redis 저장
         const leaveMessage = {
-          _id: roomId,
+          _id: messageId,
           room: roomId,
           content: `${socket.user.name}님이 퇴장하였습니다.`,
           type: 'system',
@@ -745,6 +752,8 @@ function setSocketIO(io) {
           connectedUsers.delete(socket.user.id);
         }
 
+        const messageId = Date.now();
+
         // 메모리 상 room info/세션/큐 모두 정리
         const roomId = userRooms.get(socket.user.id);
         userRooms.delete(socket.user.id);
@@ -779,7 +788,7 @@ function setSocketIO(io) {
 
               // 2. 퇴장 메시지 생성 및 Redis에 저장
               const leaveMessage = {
-                _id: roomId,
+                _id: messageId,
                 room: roomId,
                 content: `${socket.user.name}님이 연결이 끊어졌습니다.`,
                 type: 'system',
