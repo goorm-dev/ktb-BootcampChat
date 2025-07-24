@@ -25,9 +25,9 @@ env:
   # GitHub 레포지토리 설정
   GITHUB_REPO: https://github.com/100-hours-a-week/8-ktb-chat.git
   GITHUB_BRANCH: jacky
-  # ASG 관련 설정
-  LAUNCH_TEMPLATE_NAME: ktb-chat-backend-template
-  ASG_NAME: ktb-chat-backend-asg
+  # ASG 관련 설정 - 사용자 요청에 따라 변경
+  LAUNCH_TEMPLATE_NAME: pumati-load-test-backend-20250724001044978300000001
+  ASG_NAME: pumati-load-test-backend-asg
 
 jobs:
   # AMI 생성 및 백엔드 배포
@@ -210,58 +210,30 @@ jobs:
         # 스크립트 권한 설정
         chmod +x ami-setup.sh
 
-    - name: 보안 그룹 생성 또는 확인
+    - name: 기본 보안 그룹 확인
       id: security-group
       run: |
-        echo "🔒 보안 그룹 설정 중..."
+        echo "🔒 VPC 기본 보안 그룹 사용..."
         
-        # AMI 빌드용 보안 그룹 이름
-        SG_NAME="ktb-chat-ami-build-sg"
-        
-        # 기존 보안 그룹 확인
-        SG_ID=$(aws ec2 describe-security-groups \
-          --filters "Name=group-name,Values=${SG_NAME}" "Name=vpc-id,Values=${{ env.VPC_ID }}" \
+        # VPC의 기본 보안 그룹 찾기
+        DEFAULT_SG_ID=$(aws ec2 describe-security-groups \
+          --filters "Name=group-name,Values=default" "Name=vpc-id,Values=${{ env.VPC_ID }}" \
           --query 'SecurityGroups[0].GroupId' \
-          --output text 2>/dev/null || echo "None")
+          --output text)
         
-        if [[ "$SG_ID" == "None" || "$SG_ID" == "" ]]; then
-          echo "새 보안 그룹 생성 중..."
-          
-          # 보안 그룹 생성
-          SG_ID=$(aws ec2 create-security-group \
-            --group-name "${SG_NAME}" \
-            --description "Security group for KTB Chat AMI build instances" \
-            --vpc-id ${{ env.VPC_ID }} \
-            --query 'GroupId' \
-            --output text)
-          
-          # 인바운드 규칙 추가 (SSH 접근용 - 전체 인터넷에서 접근 가능)
-          aws ec2 authorize-security-group-ingress \
-            --group-id ${SG_ID} \
-            --protocol tcp \
-            --port 22 \
-            --cidr 0.0.0.0/0
-          
-          # HTTP 접근 허용 (패키지 다운로드용)
-          aws ec2 authorize-security-group-ingress \
-            --group-id ${SG_ID} \
-            --protocol tcp \
-            --port 80 \
-            --cidr 0.0.0.0/0
-          
-          # HTTPS 접근 허용 (패키지 다운로드용)
-          aws ec2 authorize-security-group-ingress \
-            --group-id ${SG_ID} \
-            --protocol tcp \
-            --port 443 \
-            --cidr 0.0.0.0/0
-          
-          echo "✅ 새 보안 그룹 생성됨: ${SG_ID}"
-        else
-          echo "✅ 기존 보안 그룹 사용: ${SG_ID}"
+        if [[ "$DEFAULT_SG_ID" == "None" || "$DEFAULT_SG_ID" == "" ]]; then
+          echo "❌ VPC 기본 보안 그룹을 찾을 수 없습니다."
+          exit 1
         fi
         
-        echo "security_group_id=${SG_ID}" >> $GITHUB_OUTPUT
+        echo "✅ VPC 기본 보안 그룹 사용: ${DEFAULT_SG_ID}"
+        echo "ℹ️ 기본 보안 그룹이므로 별도 정리 불필요"
+        
+        # 기본 보안 그룹에 필요한 아웃바운드 규칙이 있는지 확인 (보통 기본값으로 모든 아웃바운드 허용)
+        echo "📋 보안 그룹 규칙 확인 중..."
+        aws ec2 describe-security-groups --group-ids ${DEFAULT_SG_ID} --query 'SecurityGroups[0].{Inbound:IpPermissions,Outbound:IpPermissionsEgress}'
+        
+        echo "security_group_id=${DEFAULT_SG_ID}" >> $GITHUB_OUTPUT
 
     - name: EC2 인스턴스 생성 및 AMI 빌드
       id: create-instance
@@ -332,30 +304,28 @@ jobs:
         if aws ec2 describe-launch-templates --launch-template-names ${{ env.LAUNCH_TEMPLATE_NAME }} >/dev/null 2>&1; then
           echo "기존 Launch Template 발견: ${{ env.LAUNCH_TEMPLATE_NAME }}"
           
-          # 새 버전 생성
+          # 기존 템플릿의 최신 버전 정보 가져오기
+          echo "기존 템플릿 설정 정보 가져오는 중..."
+          EXISTING_CONFIG=$(aws ec2 describe-launch-template-versions \
+            --launch-template-name ${{ env.LAUNCH_TEMPLATE_NAME }} \
+            --versions '$Latest' \
+            --query 'LaunchTemplateVersions[0].LaunchTemplateData' \
+            --output json)
+          
+          # 기존 설정에서 AMI ID만 업데이트
+          echo "기존 설정을 유지하면서 AMI ID만 업데이트..."
+          UPDATED_CONFIG=$(echo "$EXISTING_CONFIG" | jq --arg ami_id "${{ steps.create-ami.outputs.ami_id }}" '.ImageId = $ami_id')
+          
+          # 새 버전 생성 (기존 설정 + 새 AMI ID)
           NEW_VERSION=$(aws ec2 create-launch-template-version \
             --launch-template-name ${{ env.LAUNCH_TEMPLATE_NAME }} \
             --source-version '$Latest' \
-            --launch-template-data '{
-              "ImageId": "${{ steps.create-ami.outputs.ami_id }}",
-              "TagSpecifications": [
-                {
-                  "ResourceType": "instance",
-                  "Tags": [
-                    {"Key": "Name", "Value": "ktb-chat-backend-dev-instance"},
-                    {"Key": "Application", "Value": "ktb-chat-backend"},
-                    {"Key": "Environment", "Value": "development"},
-                    {"Key": "Branch", "Value": "jacky"},
-                    {"Key": "AMI-Version", "Value": "${{ steps.meta.outputs.timestamp }}-${{ steps.meta.outputs.short_sha }}"}
-                  ]
-                }
-              ]
-            }' \
+            --launch-template-data "$UPDATED_CONFIG" \
             --query 'LaunchTemplateVersion.VersionNumber' \
             --output text)
           
           echo "template_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
-          echo "✅ Launch Template 새 버전 생성됨: ${NEW_VERSION}"
+          echo "✅ Launch Template 새 버전 생성됨: ${NEW_VERSION} (AMI ID만 업데이트)"
           
           # 기본 버전으로 설정
           aws ec2 modify-launch-template \
@@ -363,40 +333,19 @@ jobs:
             --default-version ${NEW_VERSION}
           
           echo "✅ Launch Template 기본 버전 업데이트 완료"
+          echo "ℹ️ 기존 템플릿의 모든 설정이 유지되었습니다 (AMI ID 제외)"
           
         else
-          echo "Launch Template이 존재하지 않습니다. 새로 생성합니다..."
-          
-          # 새 Launch Template 생성 (개발 환경용 설정)
-          aws ec2 create-launch-template \
-            --launch-template-name ${{ env.LAUNCH_TEMPLATE_NAME }} \
-            --launch-template-data '{
-              "ImageId": "${{ steps.create-ami.outputs.ami_id }}",
-              "InstanceType": "t3.small",
-              "Monitoring": {
-                "Enabled": true
-              },
-              "TagSpecifications": [
-                {
-                  "ResourceType": "instance",
-                  "Tags": [
-                    {"Key": "Name", "Value": "ktb-chat-backend-dev-instance"},
-                    {"Key": "Application", "Value": "ktb-chat-backend"},
-                    {"Key": "Environment", "Value": "development"},
-                    {"Key": "Branch", "Value": "jacky"},
-                    {"Key": "AMI-Version", "Value": "${{ steps.meta.outputs.timestamp }}-${{ steps.meta.outputs.short_sha }}"}
-                  ]
-                }
-              ]
-            }'
-          
-          echo "template_version=1" >> $GITHUB_OUTPUT
-          echo "✅ 새 Launch Template 생성 완료"
+          echo "❌ Launch Template이 존재하지 않습니다: ${{ env.LAUNCH_TEMPLATE_NAME }}"
+          echo "템플릿이 존재하지 않으므로 워크플로우를 중단합니다."
+          echo "먼저 AWS 콘솔에서 해당 템플릿을 생성하거나 템플릿 이름을 확인해주세요."
+          exit 1
         fi
 
-    - name: Auto Scaling Group 업데이트 (선택사항)
+    - name: Auto Scaling Group 업데이트 및 인스턴스 새로고침
+      id: update-asg
       run: |
-        echo "📈 Auto Scaling Group 업데이트 확인 중..."
+        echo "📈 Auto Scaling Group 업데이트 및 인스턴스 교체 중..."
         
         # ASG 존재 확인
         if aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names ${{ env.ASG_NAME }} >/dev/null 2>&1; then
@@ -409,13 +358,73 @@ jobs:
           
           echo "✅ ASG Launch Template 업데이트 완료"
           
-          # 개발 환경에서는 즉시 인스턴스 교체하지 않음
-          echo "ℹ️ 개발 환경이므로 인스턴스 새로고침을 자동으로 시작하지 않습니다."
-          echo "필요시 AWS 콘솔에서 수동으로 인스턴스 새로고침을 시작하세요."
+          # 인스턴스 새로고침 시작
+          echo "🔄 인스턴스 새로고침 시작 중..."
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name ${{ env.ASG_NAME }} \
+            --preferences '{
+              "InstanceWarmup": 300,
+              "MinHealthyPercentage": 50,
+              "CheckpointPercentages": [50, 100],
+              "CheckpointDelay": 600,
+              "SkipMatching": false
+            }' \
+            --query 'InstanceRefreshId' \
+            --output text)
+          
+          echo "refresh_id=${REFRESH_ID}" >> $GITHUB_OUTPUT
+          echo "✅ 인스턴스 새로고침 시작됨: ${REFRESH_ID}"
+          
+          # 새로고침 진행 상황 모니터링
+          echo "⏳ 인스턴스 새로고침 진행 상황 모니터링 중..."
+          
+          while true; do
+            # 새로고침 상태 확인
+            REFRESH_STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name ${{ env.ASG_NAME }} \
+              --instance-refresh-ids ${REFRESH_ID} \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text)
+            
+            # 진행률 확인
+            PERCENTAGE=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name ${{ env.ASG_NAME }} \
+              --instance-refresh-ids ${REFRESH_ID} \
+              --query 'InstanceRefreshes[0].PercentageComplete' \
+              --output text)
+            
+            echo "현재 상태: ${REFRESH_STATUS}, 진행률: ${PERCENTAGE}%"
+            
+            # 완료 상태 확인
+            if [[ "$REFRESH_STATUS" == "Successful" ]]; then
+              echo "🎉 인스턴스 새로고침 성공적으로 완료!"
+              break
+            elif [[ "$REFRESH_STATUS" == "Failed" || "$REFRESH_STATUS" == "Cancelled" ]]; then
+              echo "❌ 인스턴스 새로고침 실패: ${REFRESH_STATUS}"
+              
+              # 실패 원인 조회
+              FAILURE_REASON=$(aws autoscaling describe-instance-refreshes \
+                --auto-scaling-group-name ${{ env.ASG_NAME }} \
+                --instance-refresh-ids ${REFRESH_ID} \
+                --query 'InstanceRefreshes[0].StatusReason' \
+                --output text)
+              
+              echo "실패 원인: ${FAILURE_REASON}"
+              exit 1
+            elif [[ "$REFRESH_STATUS" == "InProgress" ]]; then
+              echo "계속 진행 중... 30초 후 다시 확인합니다."
+              sleep 30
+            else
+              echo "알 수 없는 상태: ${REFRESH_STATUS}"
+              sleep 30
+            fi
+          done
           
         else
-          echo "⚠️ ASG가 존재하지 않습니다: ${{ env.ASG_NAME }}"
-          echo "필요시 AWS 콘솔에서 ASG를 생성한 후 Launch Template을 사용하세요."
+          echo "❌ ASG가 존재하지 않습니다: ${{ env.ASG_NAME }}"
+          echo "템플릿은 업데이트되었지만 ASG가 없으므로 인스턴스 새로고침을 진행할 수 없습니다."
+          echo "AWS 콘솔에서 ASG를 확인해주세요."
+          exit 1
         fi
 
     - name: 인스턴스 정리
@@ -451,14 +460,16 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🚀 배포 정보" >> $GITHUB_STEP_SUMMARY
         echo "- **Launch Template**: \`${{ env.LAUNCH_TEMPLATE_NAME }}\` (버전 ${{ steps.update-template.outputs.template_version }})" >> $GITHUB_STEP_SUMMARY
-        echo "- **Auto Scaling Group**: \`${{ env.ASG_NAME }}\` (자동 교체 비활성화)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Auto Scaling Group**: \`${{ env.ASG_NAME }}\` (인스턴스 새로고침 완료)" >> $GITHUB_STEP_SUMMARY
+        echo "- **인스턴스 새로고침 ID**: \`${{ steps.update-asg.outputs.refresh_id }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 모니터링" >> $GITHUB_STEP_SUMMARY
         echo "- 애플리케이션 포트: 5000" >> $GITHUB_STEP_SUMMARY
         echo "- 헬스체크: \`/health\` 엔드포인트" >> $GITHUB_STEP_SUMMARY
         echo "- 로그 위치: \`/var/log/ktb-chat-backend*.log\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### ⚠️ 개발 환경 주의사항" >> $GITHUB_STEP_SUMMARY
-        echo "- 기본 환경 변수가 설정되어 있습니다" >> $GITHUB_STEP_SUMMARY
-        echo "- 프로덕션 사용 전 보안 설정을 변경하세요" >> $GITHUB_STEP_SUMMARY
-        echo "- MongoDB, Redis는 별도로 설치/설정이 필요합니다" >> $GITHUB_STEP_SUMMARY
+        echo "### ⚠️ 배포 주의사항" >> $GITHUB_STEP_SUMMARY
+        echo "- 모든 기존 인스턴스가 새 AMI로 교체되었습니다" >> $GITHUB_STEP_SUMMARY
+        echo "- 인스턴스 새로고침 중 서비스 가용성이 50% 이상 유지되었습니다" >> $GITHUB_STEP_SUMMARY
+        echo "- 새 인스턴스는 5분의 워밍업 시간을 거쳤습니다" >> $GITHUB_STEP_SUMMARY
+        echo "- MongoDB, Redis 연결을 확인해주세요" >> $GITHUB_STEP_SUMMARY
