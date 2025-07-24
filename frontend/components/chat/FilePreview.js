@@ -5,8 +5,8 @@ import {
   ImageIcon, 
   PdfIcon as FileText, 
   MovieIcon as Film, 
-  LoadingOutlineIcon as Loader,
-  MusicIcon as Music,
+  HourglassIcon as Loader,
+  SoundOnIcon as Music,
   FileIcon as File
 } from '@vapor-ui/icons';
 import { Button, IconButton, Callout } from '@vapor-ui/core';

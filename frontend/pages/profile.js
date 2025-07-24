@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { ErrorCircleIcon } from '@vapor-ui/icons';
-import { Button, TextInput, Card, Text, Callout, Avatar } from '@vapor-ui/core';
+import { Button, TextInput, Card, Text, Callout } from '@vapor-ui/core';
 import { Flex, Stack, Center, Box } from '../components/ui/Layout';
 import authService from '../services/authService';
 import { withAuth } from '../middleware/withAuth';

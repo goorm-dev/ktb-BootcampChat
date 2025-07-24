@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/router';
-import { ErrorCircleIcon, InfoIcon, TimeIcon, LockIcon, MailIcon, NetworkIcon } from '@vapor-ui/icons';
+import { ErrorCircleIcon, NetworkIcon } from '@vapor-ui/icons';
 import authService from '../services/authService';
 import { withoutAuth } from '../middleware/withAuth';
 
