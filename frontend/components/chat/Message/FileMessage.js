@@ -30,15 +30,15 @@ const FileMessage = ({
   const [previewUrl, setPreviewUrl] = useState('');
 
   useEffect(() => {
-    if (msg?.file) {
-      const url = fileService.getPreviewUrl(msg.file, true);
-      setPreviewUrl(url);
-      console.debug('Preview URL generated:', {
-        filename: msg.file.filename,
-        url
-      });
-    }
-  }, [msg?.file]);
+  const loadPreviewUrl = async () => {
+    const url = await fileService.getPreviewUrl(msg.file);
+    setPreviewUrl(url);
+  };
+
+  if (msg?.file) {
+    loadPreviewUrl();
+  }
+}, [msg?.file]);
 
   if (!msg?.file) {
     console.error('File data is missing:', msg);
@@ -171,14 +171,31 @@ const FileMessage = ({
         throw new Error('인증 정보가 없습니다.');
       }
 
-      const previewUrl = fileService.getPreviewUrl(msg.file, true);
+      const [error, setError] = useState(null);
+      const [previewUrl, setPreviewUrl] = useState('');
+    
+      useEffect(() => {
+  const loadPreviewUrl = async () => {
+    const url = await fileService.getPreviewUrl(msg.file);
+    setPreviewUrl(url);
+  };
 
+  if (msg?.file) {
+    loadPreviewUrl();
+  }
+}, [msg?.file]);
+    
+      if (!msg?.file) {
+        console.error('File data is missing:', msg);
+        return null;
+      }
+      
       return (
-        <div className="bg-transparent-pattern">
+        <div className="bg-transparent-pattern flex">
           <img 
             src={previewUrl}
             alt={originalname}
-            className="object-cover rounded-sm"
+            className="object-cover rounded-sm h-full w-full"
             onLoad={() => {
               console.debug('Image loaded successfully:', originalname);
             }}
