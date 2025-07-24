@@ -149,6 +149,7 @@ jobs:
           # EC2 인스턴스에 접속하여 Docker 컨테이너 업데이트
           for HOST in ${{ secrets.EC2_HOSTS }}; do
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$HOST "
+              sudo -i
               docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} -p ${{ secrets.GHCR_PAT }} && \
               cd /home/ubuntu/loadtest && \
               docker compose pull && \
