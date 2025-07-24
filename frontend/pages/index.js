@@ -314,13 +314,17 @@ const Login = () => {
 
             <div style={{ marginTop: 'var(--vapor-space-400)', textAlign: 'center' }}>
               <Text typography="body2" style={{ display: 'block', marginBottom: 'var(--vapor-space-200)' }}>계정이 없으신가요?</Text>
-              <Button
-                type="button"
-                onClick={() => router.push('/register')}
-                disabled={loading || !serverStatus.connected}
-              >
-                회원가입
-              </Button>
+              <nav role="navigation">
+                <Button
+                  type="button"
+                  role="button"
+                  aria-label="회원가입"
+                  onClick={() => router.push('/register')}
+                  disabled={loading || !serverStatus.connected}
+                >
+                  회원가입
+                </Button>
+              </nav>
             </div>
           </form>
         </Card.Body>
