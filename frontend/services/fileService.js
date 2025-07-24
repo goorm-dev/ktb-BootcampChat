@@ -220,9 +220,8 @@ class FileService {
       console.log(presignedUrl)
 
       // 2. S3 업로드
-      await axios.put(presignedUrl, {
+      await axios.put(presignedUrl, file, {
         headers: { "Content-Type": file.type },
-        body: file,
         cancelToken: source.token,
       });
 
