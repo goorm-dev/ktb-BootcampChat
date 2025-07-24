@@ -39,6 +39,47 @@ const MessageSchema = new mongoose.Schema({
       return this.type === 'ai'; 
     }
   },
+  // Detective game fields
+  gameType: {
+    type: String,
+    enum: ['detective'],
+    sparse: true
+  },
+  subType: {
+    type: String,
+    enum: ['game_start', 'investigation_areas', 'evidence_found', 'no_evidence', 'hints', 'evidence_list', 'rules', 'game_complete'],
+    required: function() {
+      return this.gameType && this.type === 'system';
+    }
+  },
+  character: {
+    type: String,
+    enum: ['steve'],
+    required: function() {
+      return this.gameType === 'detective' && this.type === 'ai';
+    }
+  },
+  mood: {
+    type: String,
+    enum: ['confident', 'nervous', 'angry', 'defensive', 'confused', 'defeated'],
+    required: function() {
+      return this.gameType === 'detective' && this.type === 'ai' && this.character === 'steve';
+    }
+  },
+  pressure: {
+    type: Number,
+    min: 0,
+    max: 100,
+    required: function() {
+      return this.gameType === 'detective' && this.type === 'ai' && this.character === 'steve';
+    }
+  },
+  data: {
+    type: mongoose.Schema.Types.Mixed,
+    required: function() {
+      return this.gameType === 'detective' && ['evidence_found', 'evidence_list', 'game_complete'].includes(this.subType);
+    }
+  },
   mentions: [{ 
     type: String,
     trim: true
@@ -140,6 +181,16 @@ MessageSchema.index({
   sparse: true,
   name: 'ai_messages_idx'
 }); // AI 메시지 타입별 조회
+
+// Detective game 메시지 조회 인덱스
+MessageSchema.index({
+  gameType: 1,
+  room: 1,
+  timestamp: -1
+}, {
+  sparse: true,
+  name: 'detective_game_idx'
+}); // 탐정 게임 메시지 조회
 
 // 읽음 상태 최적화 인덱스
 MessageSchema.index({

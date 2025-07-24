@@ -146,6 +146,13 @@ export const useChatRoom = () => {
         socketRef.current.off('messageReactionUpdate');
         socketRef.current.off('session_ended');
         socketRef.current.off('error');
+        // Detective game listeners
+        socketRef.current.off('detectiveGameStarted');
+        socketRef.current.off('detectiveMessage');
+        socketRef.current.off('detectiveGameComplete');
+        socketRef.current.off('detectiveGameEnded');
+        socketRef.current.off('detectiveGameError');
+        socketRef.current.off('detectiveStatus');
       }
 
       // Clear timeouts
@@ -376,6 +383,64 @@ export const useChatRoom = () => {
     socketRef.current.on('messageReactionUpdate', (data) => {
       if (!mountedRef.current) return;
       handleReactionUpdate(data);
+    });
+
+    // Detective Game Events
+    socketRef.current.on('detectiveGameStarted', (data) => {
+      if (!mountedRef.current) return;
+      console.log('Detective game started:', data);
+      Toast.success('탐정 게임이 시작되었습니다!');
+    });
+
+    socketRef.current.on('detectiveMessage', (data) => {
+      if (!mountedRef.current) return;
+      console.log('Detective message received:', data);
+      
+      // Create a detective message object
+      const detectiveMessage = {
+        _id: `detective-${Date.now()}`,
+        type: data.character === '스모군' ? 'ai' : 'system',
+        content: data.message,
+        character: data.character,
+        mood: data.mood,
+        timestamp: data.timestamp || new Date(),
+        gameType: 'detective',
+        isSystemMessage: data.isSystemMessage,
+        isConfession: data.isConfession
+      };
+
+      setMessages(prev => [...prev, detectiveMessage]);
+      
+      if (isNearBottom) {
+        scrollToBottom();
+      }
+
+      if (data.isConfession) {
+        Toast.success('축하합니다! 자백을 받아냈습니다!');
+      }
+    });
+
+    socketRef.current.on('detectiveGameComplete', (data) => {
+      if (!mountedRef.current) return;
+      console.log('Detective game completed:', data);
+      Toast.success(data.finalMessage || '탐정 게임이 완료되었습니다!');
+    });
+
+    socketRef.current.on('detectiveGameEnded', (data) => {
+      if (!mountedRef.current) return;
+      console.log('Detective game ended:', data);
+      Toast.info('탐정 게임이 종료되었습니다.');
+    });
+
+    socketRef.current.on('detectiveGameError', (data) => {
+      if (!mountedRef.current) return;
+      console.error('Detective game error:', data);
+      Toast.error(data.message || '탐정 게임 오류가 발생했습니다.');
+    });
+
+    socketRef.current.on('detectiveStatus', (data) => {
+      if (!mountedRef.current) return;
+      console.log('Detective status:', data);
     });
 
     // 세션 이벤트

@@ -1,334 +1,405 @@
-import React, { useState } from 'react';
-import { Badge, Button, Card, Text } from '@vapor-ui/core';
-import { Flex, Box } from '../ui/Layout';
-import { 
-  Search, 
-  FileText, 
-  HelpCircle, 
-  Eye, 
-  AlertTriangle, 
-  CheckCircle,
-  Target,
-  Zap,
-  Clock,
-  User
-} from 'lucide-react';
+// Enhanced DetectiveMessage.js components
+import React, { forwardRef } from 'react';
+import { Badge } from '@vapor-ui/core';
+import { Clock, Shield, AlertTriangle } from 'lucide-react';
 
-const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
-  const [currentArea, setCurrentArea] = useState(null);
-  const [isInvestigating, setIsInvestigating] = useState(false);
-
-  const investigationAreas = [
-    { id: 'git_logs', name: 'Git 로그', icon: FileText, description: '커밋 히스토리와 변경 사항' },
-    { id: 'server_logs', name: '서버 로그', icon: AlertTriangle, description: '시스템 로그와 에러 기록' },
-    { id: 'jenkins', name: 'Jenkins', icon: Target, description: 'CI/CD 파이프라인 기록' },
-    { id: 'system_logs', name: '시스템 로그', icon: Eye, description: '운영체제 로그' },
-    { id: 'elasticsearch', name: 'Elasticsearch', icon: Search, description: '검색 및 분석 로그' },
-    { id: 'config_files', name: '설정 파일', icon: FileText, description: '시스템 설정 파일' }
-  ];
-
-  const handleInvestigate = async (areaId) => {
-    if (isInvestigating) return;
-    
-    setIsInvestigating(true);
-    setCurrentArea(areaId);
-    
-    if (socketRef.current) {
-      socketRef.current.emit('detectiveInvestigate', {
-        roomId: room._id,
-        area: areaId
-      });
-    }
-    
-    setTimeout(() => setIsInvestigating(false), 2000);
-  };
-
-  const handleGetHints = () => {
-    if (socketRef.current) {
-      socketRef.current.emit('detectiveGetHints', {
-        roomId: room._id
-      });
-    }
-  };
-
-  const handleGetEvidence = () => {
-    if (socketRef.current) {
-      socketRef.current.emit('detectiveGetEvidence', {
-        roomId: room._id
-      });
-    }
-  };
-
-  const handleGetRules = () => {
-    if (socketRef.current) {
-      socketRef.current.emit('detectiveGetRules', {
-        roomId: room._id
-      });
-    }
-  };
-
-  if (msg.subType === 'game_start') {
-    return (
-      <div className="message-bubble system-message detective-start">
-        <Box style={{ padding: 'var(--vapor-space-300)' }}>
-          <Flex align="center" gap="200" className="mb-3">
-            <Target size={24} style={{ color: '#dc2626' }} />
-            <Text typography="heading5" style={{ color: '#dc2626', fontWeight: 'bold' }}>
-              🕵️ 탐정 수사 시작
-            </Text>
-          </Flex>
-          
-          <Text typography="body1" className="mb-3">
-            <strong>사건:</strong> 2030년 사이버 보안 침해 사건<br/>
-            <strong>용의자:</strong> 스티브 (개발자)<br/>
-            <strong>혐의:</strong> 시스템 무단 조작 및 증거 인멸
-          </Text>
-
-          <Card.Root style={{ backgroundColor: '#f8f9fa', marginBottom: 'var(--vapor-space-300)' }}>
-            <Card.Body style={{ padding: 'var(--vapor-space-200)' }}>
-              <Text typography="body2" style={{ fontWeight: 'bold', marginBottom: 'var(--vapor-space-100)' }}>
-                🎯 수사 목표
-              </Text>
-              <Text typography="body2">
-                스티브로부터 자백을 받아내세요. 결정적 증거 2개가 모두 필요합니다:
-                <br/>• <strong>Force Push 증거</strong> (Git 로그에서 발견)
-                <br/>• <strong>로그 삭제 증거</strong> (서버/시스템 로그에서 발견)
-              </Text>
-            </Card.Body>
-          </Card.Root>
-
-          <Flex gap="200" wrap="wrap">
-            <Button size="sm" variant="outline" onClick={handleGetRules}>
-              <HelpCircle size={16} className="me-1" />
-              게임 규칙
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleGetHints}>
-              <Zap size={16} className="me-1" />
-              수사 힌트
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleGetEvidence}>
-              <FileText size={16} className="me-1" />
-              증거 현황
-            </Button>
-          </Flex>
-
-          <Text typography="body2" style={{ marginTop: 'var(--vapor-space-300)', fontStyle: 'italic', color: '#6b7280' }}>
-            📝 아래 수사 구역을 클릭하여 증거를 수집하세요.
-          </Text>
-        </Box>
-      </div>
-    );
-  }
-
-  if (msg.subType === 'investigation_areas') {
-    return (
-      <div className="message-bubble system-message detective-areas">
-        <Box style={{ padding: 'var(--vapor-space-300)' }}>
-          <Flex align="center" gap="200" className="mb-3">
-            <Search size={20} style={{ color: '#2563eb' }} />
-            <Text typography="heading6" style={{ fontWeight: 'bold' }}>
-              🔍 수사 구역
-            </Text>
-          </Flex>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--vapor-space-200)' }}>
-            {investigationAreas.map((area) => {
-              const Icon = area.icon;
-              const isActive = currentArea === area.id;
-              
-              return (
-                <Card.Root 
-                  key={area.id}
-                  style={{ 
-                    cursor: 'pointer',
-                    border: isActive ? '2px solid #2563eb' : '1px solid #e5e7eb',
-                    backgroundColor: isActive ? '#eff6ff' : 'white',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onClick={() => handleInvestigate(area.id)}
-                >
-                  <Card.Body style={{ padding: 'var(--vapor-space-200)' }}>
-                    <Flex align="center" gap="200" className="mb-2">
-                      <Icon size={18} style={{ color: isActive ? '#2563eb' : '#6b7280' }} />
-                      <Text typography="body2" style={{ fontWeight: 'bold', color: isActive ? '#2563eb' : undefined }}>
-                        {area.name}
-                      </Text>
-                      {isInvestigating && isActive && (
-                        <div className="spinner-border spinner-border-sm text-primary" role="status">
-                          <span className="visually-hidden">수사 중...</span>
-                        </div>
-                      )}
-                    </Flex>
-                    <Text typography="body3" style={{ color: '#6b7280' }}>
-                      {area.description}
-                    </Text>
-                  </Card.Body>
-                </Card.Root>
-              );
-            })}
-          </div>
-        </Box>
-      </div>
-    );
-  }
-
-  if (msg.subType === 'evidence_found') {
-    const evidence = msg.data;
-    return (
-      <div className="message-bubble system-message detective-evidence">
-        <Box style={{ padding: 'var(--vapor-space-300)' }}>
-          <Flex align="center" gap="200" className="mb-3">
-            <CheckCircle size={20} style={{ color: '#059669' }} />
-            <Text typography="heading6" style={{ color: '#059669', fontWeight: 'bold' }}>
-              🔍 증거 발견!
-            </Text>
-          </Flex>
-
-          <Card.Root style={{ backgroundColor: evidence.critical ? '#fef2f2' : '#f0f9ff', border: evidence.critical ? '1px solid #fca5a5' : '1px solid #93c5fd' }}>
-            <Card.Body style={{ padding: 'var(--vapor-space-300)' }}>
-              <Flex justify="space-between" align="center" className="mb-2">
-                <Text typography="body1" style={{ fontWeight: 'bold' }}>
-                  {evidence.name}
-                </Text>
-                {evidence.critical && (
-                  <Badge color="danger" size="sm">
-                    결정적 증거
-                  </Badge>
-                )}
-              </Flex>
-              
-              <Text typography="body2" className="mb-2">
-                <strong>발견 위치:</strong> {evidence.area}
-              </Text>
-              
-              <Text typography="body2" className="mb-3">
-                {evidence.description}
-              </Text>
-
-              {evidence.content && (
-                <Card.Root style={{ backgroundColor: '#f8f9fa' }}>
-                  <Card.Body style={{ padding: 'var(--vapor-space-200)' }}>
-                    <Text typography="body3" style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                      {evidence.content}
-                    </Text>
-                  </Card.Body>
-                </Card.Root>
-              )}
-            </Card.Body>
-          </Card.Root>
-
-          <Text typography="body3" style={{ marginTop: 'var(--vapor-space-200)', fontStyle: 'italic', color: '#6b7280' }}>
-            💡 이 증거를 스티브와의 심문에서 활용하세요!
-          </Text>
-        </Box>
-      </div>
-    );
-  }
-
-  // Default system message
+// Detective System Message Component
+export const DetectiveSystemMessage = forwardRef(({ msg, ...props }, ref) => {
+  const isRulesMessage = msg.isDetectiveRules || msg.content.includes('탐정 게임이 시작되었습니다');
+  
   return (
-    <div className="message-bubble system-message detective-info">
-      <Box style={{ padding: 'var(--vapor-space-300)' }}>
-        <Text typography="body2" style={{ whiteSpace: 'pre-wrap' }}>
-          {msg.content}
-        </Text>
-      </Box>
+    <div ref={ref} className="detective-system-message" style={{
+      padding: '16px',
+      margin: '12px 0',
+      backgroundColor: isRulesMessage ? '#fef3c7' : '#f3f4f6',
+      border: `1px solid ${isRulesMessage ? '#f59e0b' : '#d1d5db'}`,
+      borderRadius: '12px',
+      borderLeft: `4px solid ${isRulesMessage ? '#f59e0b' : '#6b7280'}`
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: isRulesMessage ? '12px' : '8px'
+      }}>
+        <span style={{ fontSize: '18px' }}>
+          {isRulesMessage ? '🕵️' : 'ℹ️'}
+        </span>
+        <strong style={{ 
+          color: isRulesMessage ? '#92400e' : '#374151',
+          fontSize: '14px'
+        }}>
+          {isRulesMessage ? '탐정 게임 시작' : '시스템'}
+        </strong>
+        <Badge 
+          color={isRulesMessage ? 'warning' : 'secondary'}
+          style={{ fontSize: '11px' }}
+        >
+          {new Date(msg.timestamp).toLocaleTimeString()}
+        </Badge>
+      </div>
+      
+      <div style={{
+        color: isRulesMessage ? '#92400e' : '#4b5563',
+        lineHeight: '1.6',
+        fontSize: '14px',
+        whiteSpace: 'pre-wrap'
+      }}>
+        {msg.content.split('\n').map((line, index) => {
+          // Handle markdown-style formatting
+          if (line.startsWith('**') && line.endsWith('**')) {
+            return (
+              <div key={index} style={{ 
+                fontWeight: 'bold', 
+                marginTop: index > 0 ? '8px' : '0',
+                marginBottom: '4px'
+              }}>
+                {line.slice(2, -2)}
+              </div>
+            );
+          }
+          
+          if (line.match(/^\d+[️⃣]/)) {
+            return (
+              <div key={index} style={{ 
+                marginLeft: '16px', 
+                marginTop: '4px',
+                fontWeight: '500'
+              }}>
+                {line}
+              </div>
+            );
+          }
+          
+          if (line.startsWith('**💡')) {
+            return (
+              <div key={index} style={{ 
+                fontWeight: 'bold', 
+                marginTop: '12px',
+                marginBottom: '8px',
+                color: isRulesMessage ? '#d97706' : '#374151'
+              }}>
+                {line.replace(/\*\*/g, '')}
+              </div>
+            );
+          }
+          
+          if (line.startsWith('- ')) {
+            return (
+              <div key={index} style={{ 
+                marginLeft: '16px', 
+                marginTop: '2px'
+              }}>
+                • {line.slice(2)}
+              </div>
+            );
+          }
+          
+          return line ? (
+            <div key={index} style={{ marginTop: index > 0 ? '4px' : '0' }}>
+              {line}
+            </div>
+          ) : (
+            <div key={index} style={{ height: '8px' }} />
+          );
+        })}
+      </div>
     </div>
   );
-};
+});
 
-const DetectiveSteveMessage = ({ msg }) => {
-  const getMoodIcon = (mood) => {
-    switch (mood) {
-      case 'confident': return '😏';
-      case 'nervous': return '😰';
-      case 'angry': return '😠';
-      case 'defensive': return '🛡️';
-      case 'confused': return '🤔';
-      case 'defeated': return '😔';
-      default: return '💭';
-    }
-  };
+DetectiveSystemMessage.displayName = 'DetectiveSystemMessage';
 
+// Detective Steve/Smokinggun Message Component
+export const DetectiveSteveMessage = forwardRef(({ msg, currentUser, onReactionAdd, onReactionRemove, ...props }, ref) => {
   const getMoodColor = (mood) => {
     switch (mood) {
-      case 'confident': return '#10b981';
-      case 'nervous': return '#f59e0b';
-      case 'angry': return '#ef4444';
-      case 'defensive': return '#6366f1';
-      case 'confused': return '#8b5cf6';
-      case 'defeated': return '#6b7280';
-      default: return '#374151';
+      case 'arrogant_introduction':
+      case 'arrogant_evasion':
+        return '#f59e0b';
+      case 'defensive_technical':
+      case 'technical_evasion':
+        return '#3b82f6';
+      case 'defeated_confession':
+        return '#10b981';
+      case 'blame_shifting':
+        return '#8b5cf6';
+      default:
+        return '#6b7280';
     }
   };
 
+  const getMoodIcon = (mood) => {
+    switch (mood) {
+      case 'arrogant_introduction':
+      case 'arrogant_evasion':
+        return '😏';
+      case 'defensive_technical':
+        return '🤓';
+      case 'technical_evasion':
+        return '💻';
+      case 'defeated_confession':
+        return '😰';
+      case 'blame_shifting':
+        return '👉';
+      default:
+        return '🤖';
+    }
+  };
+
+  const isConfession = msg.metadata?.isConfession || msg.isConfession;
+  const mood = msg.metadata?.mood || msg.mood;
+
   return (
-    <div className="message-bubble ai-message detective-steve">
-      <Box style={{ padding: 'var(--vapor-space-300)' }}>
-        <Flex align="center" gap="200" className="mb-2">
-          <User size={20} style={{ color: '#374151' }} />
-          <Text typography="body2" style={{ fontWeight: 'bold' }}>
-            스티브 (용의자)
-          </Text>
-          {msg.mood && (
-            <Flex align="center" gap="100">
-              <span style={{ fontSize: '16px' }}>{getMoodIcon(msg.mood)}</span>
-              <Badge 
-                size="sm" 
-                style={{ 
-                  backgroundColor: getMoodColor(msg.mood), 
-                  color: 'white',
-                  fontSize: '10px'
-                }}
-              >
-                {msg.mood}
-              </Badge>
-            </Flex>
+    <div ref={ref} className="detective-steve-message" style={{
+      padding: '16px',
+      margin: '12px 0',
+      backgroundColor: isConfession ? '#dcfce7' : '#f1f5f9',
+      border: `1px solid ${isConfession ? '#10b981' : '#cbd5e1'}`,
+      borderRadius: '12px',
+      borderLeft: `4px solid ${isConfession ? '#10b981' : getMoodColor(mood)}`,
+      position: 'relative'
+    }}>
+      {/* Character Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '20px' }}>🔫</span>
+          <strong style={{ color: '#1f2937', fontSize: '15px' }}>
+            @smokinggun
+          </strong>
+          {mood && (
+            <Badge 
+              style={{ 
+                backgroundColor: getMoodColor(mood),
+                color: 'white',
+                fontSize: '11px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {getMoodIcon(mood)}
+              {mood.replace(/_/g, ' ')}
+            </Badge>
           )}
-        </Flex>
+          {isConfession && (
+            <Badge 
+              color="success"
+              style={{ fontSize: '11px' }}
+            >
+              🎯 자백!
+            </Badge>
+          )}
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Clock size={12} color="#6b7280" />
+          <span style={{ fontSize: '11px', color: '#6b7280' }}>
+            {new Date(msg.timestamp).toLocaleTimeString()}
+          </span>
+        </div>
+      </div>
 
-        <Card.Root style={{ backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
-          <Card.Body style={{ padding: 'var(--vapor-space-300)' }}>
-            <Text typography="body2" style={{ whiteSpace: 'pre-wrap' }}>
-              {msg.content}
-            </Text>
-          </Card.Body>
-        </Card.Root>
+      {/* Message Content */}
+      <div style={{
+        color: isConfession ? '#065f46' : '#374151',
+        lineHeight: '1.6',
+        fontSize: '14px',
+        whiteSpace: 'pre-wrap',
+        backgroundColor: isConfession ? '#f0fdf4' : 'white',
+        padding: '12px',
+        borderRadius: '8px',
+        border: `1px solid ${isConfession ? '#bbf7d0' : '#e5e7eb'}`
+      }}>
+        {msg.content.split('\n').map((line, index) => {
+          // Handle code blocks
+          if (line.startsWith('```') && line.endsWith('```')) {
+            const code = line.slice(3, -3);
+            return (
+              <div key={index} style={{
+                backgroundColor: '#1f2937',
+                color: '#f9fafb',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                fontFamily: 'Monaco, Consolas, monospace',
+                fontSize: '12px',
+                margin: '8px 0',
+                overflow: 'auto'
+              }}>
+                {code}
+              </div>
+            );
+          }
+          
+          // Handle inline code
+          if (line.includes('`')) {
+            const parts = line.split('`');
+            return (
+              <div key={index} style={{ marginTop: index > 0 ? '4px' : '0' }}>
+                {parts.map((part, partIndex) => 
+                  partIndex % 2 === 0 ? (
+                    <span key={partIndex}>{part}</span>
+                  ) : (
+                    <code key={partIndex} style={{
+                      backgroundColor: '#f3f4f6',
+                      padding: '2px 4px',
+                      borderRadius: '3px',
+                      fontSize: '13px',
+                      fontFamily: 'Monaco, Consolas, monospace'
+                    }}>
+                      {part}
+                    </code>
+                  )
+                )}
+              </div>
+            );
+          }
+          
+          return line ? (
+            <div key={index} style={{ marginTop: index > 0 ? '4px' : '0' }}>
+              {line}
+            </div>
+          ) : (
+            <div key={index} style={{ height: '8px' }} />
+          );
+        })}
+      </div>
 
-        {msg.pressure && (
-          <Text typography="body3" style={{ marginTop: 'var(--vapor-space-200)', color: '#6b7280', fontStyle: 'italic' }}>
-            압박 수준: {msg.pressure}/100
-          </Text>
-        )}
-      </Box>
+      {/* Confession Special Effects */}
+      {isConfession && (
+        <div style={{
+          position: 'absolute',
+          top: '-8px',
+          right: '-8px',
+          background: 'linear-gradient(45deg, #10b981, #059669)',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '12px',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+          animation: 'pulse 2s infinite'
+        }}>
+          🎉 SUCCESS!
+        </div>
+      )}
+
+      {/* Evidence Analysis Indicator */}
+      {msg.metadata?.evidenceAnalysis && (
+        <div style={{
+          marginTop: '12px',
+          padding: '8px 12px',
+          backgroundColor: '#fef3c7',
+          border: '1px solid #f59e0b',
+          borderRadius: '6px',
+          fontSize: '12px',
+          color: '#92400e'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={14} />
+            <span>증거 압박 수준: {msg.metadata.evidenceAnalysis.totalImpact || 0}%</span>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+});
 
-const DetectiveUserMessage = ({ msg, currentUser }) => {
+DetectiveSteveMessage.displayName = 'DetectiveSteveMessage';
+
+// Detective User Message Component
+export const DetectiveUserMessage = forwardRef(({ msg, currentUser, ...props }, ref) => {
+  const isMine = msg.sender?._id === currentUser?.id || msg.sender?.id === currentUser?.id;
+  
   return (
-    <div className="message-bubble user-message detective-user">
-      <Box style={{ padding: 'var(--vapor-space-300)' }}>
-        <Flex align="center" gap="200" className="mb-2">
-          <User size={20} style={{ color: '#2563eb' }} />
-          <Text typography="body2" style={{ fontWeight: 'bold', color: '#2563eb' }}>
-            {currentUser?.name || '탐정'} (수사관)
-          </Text>
-          <Badge color="primary" size="sm">
-            심문
-          </Badge>
-        </Flex>
+    <div ref={ref} className="detective-user-message" style={{
+      padding: '12px 16px',
+      margin: '8px 0',
+      backgroundColor: isMine ? '#dbeafe' : '#f8fafc',
+      border: `1px solid ${isMine ? '#3b82f6' : '#cbd5e1'}`,
+      borderRadius: '12px',
+      marginLeft: isMine ? '20%' : '0',
+      marginRight: isMine ? '0' : '20%',
+      borderBottomRightRadius: isMine ? '4px' : '12px',
+      borderBottomLeftRadius: isMine ? '12px' : '4px'
+    }}>
+      {/* User Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '8px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '16px' }}>
+            {isMine ? '🕵️' : '👤'}
+          </span>
+          <strong style={{ 
+            color: isMine ? '#1e40af' : '#374151',
+            fontSize: '14px'
+          }}>
+            {msg.sender?.name || '알 수 없음'}
+            {isMine && ' (탐정)'}
+          </strong>
+        </div>
+        
+        <span style={{ fontSize: '11px', color: '#6b7280' }}>
+          {new Date(msg.timestamp).toLocaleTimeString()}
+        </span>
+      </div>
 
-        <Card.Root style={{ backgroundColor: '#eff6ff', border: '1px solid #93c5fd' }}>
-          <Card.Body style={{ padding: 'var(--vapor-space-300)' }}>
-            <Text typography="body2" style={{ whiteSpace: 'pre-wrap' }}>
-              {msg.content}
-            </Text>
-          </Card.Body>
-        </Card.Root>
-      </Box>
+      {/* Message Content */}
+      <div style={{
+        color: isMine ? '#1e40af' : '#374151',
+        lineHeight: '1.5',
+        fontSize: '14px',
+        whiteSpace: 'pre-wrap'
+      }}>
+        {msg.content}
+      </div>
+
+      {/* Evidence Display */}
+      {msg.evidence && msg.evidence.length > 0 && (
+        <div style={{
+          marginTop: '12px',
+          padding: '8px 12px',
+          backgroundColor: '#fef3c7',
+          border: '1px solid #f59e0b',
+          borderRadius: '6px'
+        }}>
+          <div style={{
+            fontSize: '12px',
+            fontWeight: 'bold',
+            color: '#92400e',
+            marginBottom: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            <Shield size={12} />
+            제시된 증거:
+          </div>
+          <ul style={{
+            margin: '0',
+            paddingLeft: '16px',
+            fontSize: '12px',
+            color: '#92400e'
+          }}>
+            {msg.evidence.map((evidence, index) => (
+              <li key={index} style={{ marginTop: '2px' }}>
+                {evidence}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
-};
+});
 
-export { DetectiveSystemMessage, DetectiveSteveMessage, DetectiveUserMessage };
+DetectiveUserMessage.displayName = 'DetectiveUserMessage';
