@@ -87,7 +87,7 @@ jobs:
         working-directory: backend
         run: |
           echo "${{ secrets.ENV_BE }}" > .env
-          
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -138,8 +138,10 @@ jobs:
           for HOST in ${{ secrets.EC2_HOSTS }}; do
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$HOST "
               docker login ghcr.io -u ${{ env.GHCR_USERNAME }} -p ${{ secrets.GHCR_PAT }} && \
+              cd /home/ubuntu/loadtest && \
               docker compose pull && \
-              docker rm backend || true && \
-              docker compose up -d
+              docker rm -f backend || true && \
+              docker compose up -d && \
+              docker image prune -a -f || true
             "
           done
