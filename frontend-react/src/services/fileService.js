@@ -10,6 +10,28 @@ class FileService {
     this.baseUrl = process.env.REACT_APP_API_URL;
   }
 
+  getFileUrl(filename, isPreview = false) {
+    if (!filename) return '';
+    const type = isPreview ? 'view' : 'download';
+    return `${this.baseUrl}/api/files/${type}/${encodeURIComponent(filename)}`;
+  }
+
+  // 👇 [추가된 부분 2] 인증 정보를 포함한 완전한 미리보기 URL을 생성하는 함수
+  getPreviewUrl(file, isPreview = false) {
+    if (!file || !file.filename) return '';
+
+    const user = authService.getCurrentUser();
+    // 인증 정보가 없으면 URL을 생성하지 않습니다.
+    if (!user?.token || !user?.sessionId) {
+      console.warn("User not authenticated, cannot create preview URL.");
+      return '';
+    }
+
+    const baseUrl = this.getFileUrl(file.filename, isPreview);
+    // 다른 함수들처럼 토큰과 세션 ID를 쿼리 파라미터로 추가합니다.
+    return `${baseUrl}?token=${encodeURIComponent(user.token)}&sessionId=${encodeURIComponent(user.sessionId)}`;
+  }
+
   
   async validateFile(file) {
     if (!file) {
@@ -50,7 +72,7 @@ class FileService {
 
     try {
       // --- 1단계: Presigned URL 생성 요청 ---
-      console.log('[File Upload] Step 1: Requesting Presigned URL...');
+      console.log('Requesting Presigned URL...');
       const presignedUrlResponse = await axiosInstance.post('/api/files/presigned-url', {
         fileName: file.name,
         fileType: file.type,
@@ -62,16 +84,16 @@ class FileService {
       if (!presignedUrl || !fileId) {
         throw new Error('Presigned URL을 받아오지 못했습니다.');
       }
-      console.log('[File Upload] Step 1 Success:', { fileId });
+      console.log('Get Presigned URL Success:', { fileId });
 
       // --- 2단계: S3로 실제 파일 업로드 ---
       // 중요: S3 업로드 시에는 인증 헤더(Bearer Token)가 필요 없으므로,
-      // 기본 axios 인스턴스가 아닌 일반 axios를 사용합니다.
-      console.log('[File Upload] Step 2: Uploading file to S3...');
+      console.log('Uploading file to S3...');
       await axios.put(presignedUrl, file, {
         headers: {
           'Content-Type': file.type,
         },
+        timeout: 300000,
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round(
@@ -81,30 +103,17 @@ class FileService {
           }
         },
       });
-      console.log('[File Upload] Step 2 Success');
 
-      // --- 3단계: 업로드 완료 처리 ---
-      console.log('[File Upload] Step 3: Notifying server of completion...');
-      const completeResponse = await axiosInstance.patch(`/api/files/${fileId}/complete`);
-      
-      console.log('[File Upload] Step 3 Success:', completeResponse.data);
-
+      //업로드 완료
+      console.log('S3 File Upload Success');
       // 최종적으로 백엔드에서 받은 완료된 파일 객체를 반환합니다.
-      return {
-        success: true,
-        data: {
-            file: completeResponse.data
-        },
-      };
+      return { success: true, data: { fileId } };
 
     } catch (error) {
       console.error('[File Upload] Error:', error);
       const errorMessage = error.response?.data?.message || error.message || '파일 업로드 중 오류가 발생했습니다.';
       Toast.error(errorMessage);
-      return {
-        success: false,
-        message: errorMessage
-      };
+      return { success: false, message: errorMessage };
     }
   }
 

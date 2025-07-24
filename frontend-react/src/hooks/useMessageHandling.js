@@ -115,25 +115,32 @@ export const useMessageHandling = (socketRef, currentUser, roomId, handleSession
          (progress) => setUploadProgress(progress)
        );
 
-       if (!uploadResponse.success || !uploadResponse.data?.file) {
+       if (!uploadResponse.success || !uploadResponse.data?.fileId) {
          throw new Error(uploadResponse.message || '파일 업로드에 실패했습니다.');
        }
 
-       const finalFile = uploadResponse.data.file;
+       const { fileId } = uploadResponse.data;
+        socketRef.current.emit('fileUploadComplete', {
+          fileId: fileId,
+          roomId: roomId,
+          content: messageData.content || '' // 파일과 함께 보낸 텍스트
+        });
 
-       socketRef.current.emit('chatMessage', {
-         room: roomId,
-         type: 'file',
-         content: messageData.content || '',
-         fileData: {
-           _id: uploadResponse.data.file._id,
-           filename: uploadResponse.data.file.filename,
-           originalname: uploadResponse.data.file.originalname,
-           mimetype: uploadResponse.data.file.mimetype,
-           size: uploadResponse.data.file.size,
-           url: finalFile.url
-         }
-       });
+      //  const finalFile = uploadResponse.data.file;
+
+      //  socketRef.current.emit('chatMessage', {
+      //    room: roomId,
+      //    type: 'file',
+      //    content: messageData.content || '',
+      //    fileData: {
+      //      _id: uploadResponse.data.file._id,
+      //      filename: uploadResponse.data.file.filename,
+      //      originalname: uploadResponse.data.file.originalname,
+      //      mimetype: uploadResponse.data.file.mimetype,
+      //      size: uploadResponse.data.file.size,
+      //      url: finalFile.url
+      //    }
+      //  });
 
        setFilePreview(null);
        setMessage('');
