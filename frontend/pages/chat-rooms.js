@@ -215,11 +215,20 @@ function ChatRoomsComponent() {
   }, [router]);
 
   const handleFetchError = useCallback((error, isLoadingMore) => {
+    console.error('Fetch error details:', {
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      response: error?.response,
+      isNetworkError: error?.isNetworkError
+    });
+
     let errorMessage = '채팅방 목록을 불러오는데 실패했습니다.';
     let errorType = 'danger';
     let showRetry = !isRetrying;
 
-    if (error.message === 'SERVER_UNREACHABLE') {
+    // 네트워크 오류 처리
+    if (error?.isNetworkError || error?.message === 'SERVER_UNREACHABLE' || !error?.response) {
       errorMessage = '서버와 연결할 수 없습니다. 잠시 후 자동으로 재시도합니다.';
       errorType = 'warning';
       showRetry = true;
@@ -232,6 +241,26 @@ function ChatRoomsComponent() {
           fetchRooms(isLoadingMore);
         }, delay);
       }
+    } else if (error?.status) {
+      // HTTP 에러 상태별 처리
+      switch (error.status) {
+        case 401:
+          errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
+          break;
+        case 403:
+          errorMessage = '접근 권한이 없습니다.';
+          break;
+        case 404:
+          errorMessage = '요청한 리소스를 찾을 수 없습니다.';
+          break;
+        case 500:
+          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+          break;
+        default:
+          errorMessage = error.message || `HTTP ${error.status} 오류가 발생했습니다.`;
+      }
+    } else if (error?.message) {
+      errorMessage = error.message;
     }
 
     if (!isLoadingMore) {

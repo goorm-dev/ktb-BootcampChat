@@ -114,6 +114,16 @@ axiosInstance.interceptors.response.use(
     const config = error.config || {};
     config.retryCount = config.retryCount || 0;
     
+    // 전체 에러 정보 로깅 (디버깅용)
+    console.error('Axios interceptor error:', {
+      message: error?.message,
+      status: error?.response?.status,
+      code: error?.code,
+      hasResponse: !!error?.response,
+      configUrl: config?.url,
+      retryCount: config.retryCount
+    });
+    
     // 요청이 취소된 경우
     if (axios.isCancel(error)) {
       console.log('Request canceled:', error.message);
@@ -146,12 +156,20 @@ axiosInstance.interceptors.response.use(
     // 에러 유형별 처리
     if (!error.response) {
       // 네트워크 오류
-      const customError = new Error();
-      customError.message = [
-        '서버와 통신할 수 없습니다.',
-        '네트워크 연결을 확인하고 잠시 후 다시 시도해주세요.',
-        error.code ? `(Error: ${error.code})` : ''
-      ].filter(Boolean).join(' ');
+      let customError;
+      try {
+        customError = new Error();
+        const errorDetails = [
+          '서버와 통신할 수 없습니다.',
+          '네트워크 연결을 확인하고 잠시 후 다시 시도해주세요.',
+          error.code ? `(Error: ${error.code})` : ''
+        ].filter(Boolean).join(' ');
+        
+        customError.message = errorDetails || '네트워크 연결 오류가 발생했습니다.';
+      } catch (createError) {
+        console.error('Error creating network error object:', createError);
+        customError = new Error('네트워크 연결 오류가 발생했습니다.');
+      }
       
       customError.isNetworkError = true;
       customError.originalError = error;
@@ -174,6 +192,14 @@ axiosInstance.interceptors.response.use(
     // HTTP 상태 코드별 처리
     const status = error.response.status;
     const errorData = error.response.data;
+    
+    // 디버깅을 위한 로깅
+    console.log('Error response details:', {
+      status,
+      errorData,
+      hasMessage: !!errorData?.message,
+      messageType: typeof errorData?.message
+    });
     
     let errorMessage;
     let shouldLogout = false;
@@ -218,8 +244,20 @@ axiosInstance.interceptors.response.use(
         errorMessage = errorData?.message || '예기치 않은 오류가 발생했습니다.';
     }
 
+    // errorMessage 유효성 검증
+    if (!errorMessage || typeof errorMessage !== 'string') {
+      errorMessage = `HTTP ${status} 오류가 발생했습니다.`;
+    }
+
     // 에러 객체 생성 및 메타데이터 추가
-    const enhancedError = new Error(errorMessage);
+    let enhancedError;
+    try {
+      enhancedError = new Error(errorMessage);
+    } catch (createError) {
+      console.error('Error creating Error object:', createError);
+      enhancedError = new Error('알 수 없는 오류가 발생했습니다.');
+    }
+    
     enhancedError.status = status;
     enhancedError.code = errorData?.code;
     enhancedError.data = errorData;

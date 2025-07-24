@@ -6,6 +6,8 @@
 const aiService = require('./aiService');
 const evidenceManager = require('./evidenceManager');
 const gameStateTracker = require('./gameStateTracker');
+const axios = require('axios');
+const { openaiApiKey } = require('../config/keys');
 
 class DetectiveGameService {
   constructor() {
@@ -15,7 +17,7 @@ class DetectiveGameService {
     
     // Character personality and behavior
     this.character = {
-      name: '스티브',
+      name: 'Steve',
       role: 'suspect',
       personality: 'evasive, arrogant, technical, defensive',
       expertise: 'software engineering, system administration, git operations'
@@ -32,11 +34,11 @@ class DetectiveGameService {
    * Initialize a new game session for a user
    */
   initializeGame(userId, roomId) {
-    // Initialize evidence tracking
-    evidenceManager.initializeUserProgress(userId);
+    // Initialize evidence tracking - simplified for now
+    // evidenceManager.initializeUserProgress(userId);
     
-    // Start game session tracking
-    const gameSession = gameStateTracker.startGameSession(userId, roomId, 'steve');
+    // Start game session tracking - simplified for now
+    // const gameSession = gameStateTracker.startGameSession(userId, roomId, 'steve');
     
     const gameState = {
       userId,
@@ -47,7 +49,7 @@ class DetectiveGameService {
       confessionTriggered: false,
       character: this.character,
       conversationHistory: [],
-      sessionId: gameSession.userId + '_' + gameSession.startTime.getTime()
+      sessionId: userId + '_' + Date.now()
     };
 
     this.gameStates.set(userId, gameState);
@@ -58,13 +60,17 @@ class DetectiveGameService {
    * Process player's message and generate Steve's response
    */
   async processPlayerMessage(userId, message, evidenceList = []) {
+    console.log('Detective game processing message:', { userId, message, evidenceList });
+
     const gameState = this.gameStates.get(userId);
     if (!gameState || !gameState.isActive) {
+      console.log('No active game state found for user:', userId);
       return this.generateErrorResponse('게임이 활성화되지 않았습니다.');
     }
 
     // Check if this is the initial game start message
     if (message === 'detective_game_start') {
+      console.log('Generating initial detective response...');
       const response = this.generateDefaultEvasiveResponse();
       gameState.conversationHistory.push({
         type: 'steve',
@@ -83,16 +89,18 @@ class DetectiveGameService {
       };
     }
 
-    // Search for evidence based on player's investigation
-    const foundEvidence = evidenceManager.searchEvidence(userId, message);
+    console.log('Searching for evidence in message...');
+    // Search for evidence based on player's investigation - simplified for now
+    // const foundEvidence = evidenceManager.searchEvidence(userId, message);
+    const foundEvidence = [];
     
-    // Present evidence if provided
+    // Present evidence if provided - simplified for now  
     let presentedEvidence = [];
-    if (evidenceList && evidenceList.length > 0) {
-      // Try to match evidence strings to actual evidence IDs
-      const matchedEvidenceIds = this.matchEvidenceToDatabase(evidenceList);
-      presentedEvidence = evidenceManager.presentEvidence(userId, matchedEvidenceIds);
-    }
+    // if (evidenceList && evidenceList.length > 0) {
+    //   // Try to match evidence strings to actual evidence IDs
+    //   const matchedEvidenceIds = this.matchEvidenceToDatabase(evidenceList);
+    //   presentedEvidence = evidenceManager.presentEvidence(userId, matchedEvidenceIds);
+    // }
 
     // Update conversation history
     gameState.conversationHistory.push({
@@ -104,40 +112,46 @@ class DetectiveGameService {
       presentedEvidence: presentedEvidence
     });
 
-    // Update game session
-    gameStateTracker.updateSession(userId, {
-      interaction: {
-        type: 'interrogation',
-        message,
-        evidence: evidenceList,
-        foundEvidence: foundEvidence.length
-      },
-      evidencePresented: presentedEvidence,
-      pressureLevel: this.calculatePressureLevel(userId)
-    });
+    // Update game session - simplified for now
+    // gameStateTracker.updateSession(userId, {
+    //   interaction: {
+    //     type: 'interrogation',
+    //     message,
+    //     evidence: evidenceList,
+    //     foundEvidence: foundEvidence.length
+    //   },
+    //   evidencePresented: presentedEvidence,
+    //   pressureLevel: this.calculatePressureLevel(userId)
+    // });
 
-    // Analyze evidence using evidence manager
-    const evidenceAnalysis = evidenceManager.analyzeEvidence(userId);
+    console.log('Analyzing evidence...');
+    // Use simple evidence analysis for now
+    const evidenceAnalysis = this.analyzeEvidence([message]);
     
     // Check for confession triggers
     const shouldConfess = this.checkConfessionTriggers(evidenceAnalysis);
+    console.log('Should confess?', shouldConfess, evidenceAnalysis);
     
     // Generate response based on game state
     let response;
     if (shouldConfess && !gameState.confessionTriggered) {
+      console.log('Generating confession response...');
       response = this.generateConfessionResponse(evidenceAnalysis);
       gameState.confessionTriggered = true;
       gameState.isActive = false; // End game
       
-      // Record confession in game state tracker
-      gameStateTracker.recordConfession(userId, {
-        message: response.text,
-        evidencePresented: evidenceAnalysis.presentedEvidence,
-        totalImpact: evidenceAnalysis.totalImpact
-      });
+      // Record confession in game state tracker - simplified for now
+      // gameStateTracker.recordConfession(userId, {
+      //   message: response.text,
+      //   evidencePresented: evidenceAnalysis.presentedEvidence,
+      //   totalImpact: evidenceAnalysis.totalImpact
+      // });
     } else {
+      console.log('Generating evasive response...');
       response = await this.generateEvasiveResponse(message, evidenceAnalysis, gameState);
     }
+
+    console.log('Generated response:', { responseLength: response.text?.length, mood: response.mood });
 
     // Update conversation history
     gameState.conversationHistory.push({
@@ -158,13 +172,14 @@ class DetectiveGameService {
       foundEvidence: foundEvidence,
       presentedEvidence: presentedEvidence,
       evidenceAnalysis: {
-        totalImpact: evidenceAnalysis.totalImpact,
-        categories: evidenceAnalysis.categories,
-        hasKeyEvidence: evidenceAnalysis.hasForcePushEvidence && evidenceAnalysis.hasLogDeletionEvidence
+        totalImpact: evidenceAnalysis.evidenceStrength,
+        categories: { simple: evidenceAnalysis.evidenceStrength },
+        hasKeyEvidence: evidenceAnalysis.hasForcePushEvidence && evidenceAnalysis.hasLogWipingEvidence
       },
-      gameStats: this.getEnhancedGameStats(userId)
+      gameStats: this.getBasicGameStats(userId)
     };
 
+    console.log('Returning game response:', { success: gameResponse.success, gameEnded: gameResponse.gameEnded });
     return gameResponse;
   }
 
@@ -272,10 +287,11 @@ class DetectiveGameService {
   }
 
   /**
-   * Check if both confession triggers are met using evidence manager
+   * Check if both confession triggers are met using simple evidence analysis
    */
   checkConfessionTriggers(evidenceAnalysis) {
-    return evidenceAnalysis.hasForcePushEvidence && evidenceAnalysis.hasLogDeletionEvidence;
+    // Use the simple evidence analysis from the message content
+    return evidenceAnalysis.hasForcePushEvidence && evidenceAnalysis.hasLogWipingEvidence;
   }
 
   /**
@@ -329,32 +345,40 @@ class DetectiveGameService {
 
 아, 잠깐. 설명해보자면... 여기는 2030년 사이버 범죄 수사 미니게임이야. 너는 수사관이고, 나를 포함한 여러 AI들 중 한 명이 시스템 장애를 일으킨 용의자라는 설정이지.
 
-내 캐릭터는 '스모군'이라고 불러야 해. 항상 @smokinggun으로 태그해서 대화해야 한다고.
+**사건 개요:**
+2030년 3월 15일 새벽 3시, 우리 회사의 핵심 서비스가 갑자기 다운되었어. 사용자 데이터베이스 연결이 끊어지면서 전체 시스템이 마비되었지. 피해 규모는 약 2시간 동안 50만 명의 사용자가 서비스를 이용할 수 없었고, 추정 손실액이 약 3억 원에 달해.
 
-게임 규칙:
+사건 후 조사 결과, 누군가가 정상적인 CI/CD 프로세스를 무시하고 프로덕션 환경에 직접 코드를 배포했다는 정황이 발견되었어. 더군다나 그 흔적을 숨기기 위해 중요한 시스템 로그들까지 삭제된 상태였지.
+
+내 캐릭터는 '스모군'이라고 불러야 해. 항상 @smokinggun으로 태그해서 대화해야 한다고. 나는 15년 경력의 시니어 개발자로, 시스템 관리와 Git 운영에 전문가야.
+
+**게임 규칙:**
 1. 너는 나를 심문해서 자백을 받아내야 해
 2. 나는 기본적으로 회피하고 변명할 거야  
 3. 두 가지 핵심 증거를 모두 제시해야 자백해: 
    - 프로덕션에 직접 force push한 증거
    - 로그를 삭제해서 흔적을 지운 증거
-4. 그 전까지는 계속 Jenkins나 다른 개발자들 탓할 거임
+4. 그 전까지는 계속 Jenkins나 다른 개발자들 탓하면서 기술적 전문용어로 혼란시킬 거임
 
-자, 이제 시작해볼까? 수사관님?`,
+나는 절대 쉽게 인정하지 않아. 하지만 결국엔... 당신의 수사 실력에 달렸지. 자, 이제 시작해볼까? 수사관님?`,
         mood: 'arrogant_introduction'
       };
     }
 
+    // Use simple evidence analysis for now
+    const simpleEvidenceAnalysis = this.analyzeEvidence([message]);
+    
     // If evidence pressure is high, become more defensive
-    if (evidenceAnalysis.evidenceStrength > 30) {
-      return this.generateDefensiveResponse(evidenceAnalysis);
+    if (simpleEvidenceAnalysis.evidenceStrength > 30) {
+      return this.generateDefensiveResponse(simpleEvidenceAnalysis);
     }
 
     // For high-pressure situations, use predefined responses for consistency
-    if (evidenceAnalysis.evidenceStrength > 60) {
-      return this.generateHighPressureResponse(message, evidenceAnalysis);
+    if (simpleEvidenceAnalysis.evidenceStrength > 60) {
+      return this.generateHighPressureResponse(message, simpleEvidenceAnalysis);
     }
 
-    // Normal evasive responses based on message content - use AI for variety
+    // Normal evasive responses based on message content
     if (messageLower.includes('force') || messageLower.includes('push')) {
       return this.generateGitDeflectionResponse();
     }
@@ -371,8 +395,13 @@ class DetectiveGameService {
       return this.generateProductionDeflectionResponse();
     }
 
-    // For general questions, use AI to generate dynamic responses
-    return await this.generateAIResponse(message, evidenceAnalysis, gameState);
+    // For general questions, try AI response first, but fallback to predefined if fails
+    try {
+      return await this.generateAIResponse(message, simpleEvidenceAnalysis, gameState);
+    } catch (error) {
+      console.log('AI response failed, using fallback:', error.message);
+      return this.generateDefaultEvasiveResponse();
+    }
   }
 
   /**
@@ -380,10 +409,16 @@ class DetectiveGameService {
    */
   async generateAIResponse(message, evidenceAnalysis, gameState) {
     try {
-      const systemPrompt = `당신은 '스모군'이라는 AI 캐릭터입니다. 2030년 사이버 범죄 수사 게임에서 용의자 역할을 하고 있습니다.
+      console.log('Generating AI response for detective game:', {
+        message: message,
+        evidenceStrength: evidenceAnalysis.evidenceStrength,
+        relevantEvidence: evidenceAnalysis.relevantEvidence
+      });
+
+      const systemPrompt = `당신은 'Steve'라는 AI 캐릭터입니다. 2030년 사이버 범죄 수사 게임에서 용의자 역할을 하고 있습니다.
 
 캐릭터 설정:
-- 이름: 스모군 (항상 @smokinggun으로 태그됨)
+- 이름: Steve (항상 @smokinggun으로 태그됨)
 - 성격: 회피적, 거만함, 기술적 전문용어 남발, 방어적
 - 직업: 15년 경력의 시니어 개발자
 - 전문분야: 소프트웨어 엔지니어링, 시스템 관리, Git 운영
@@ -407,29 +442,35 @@ class DetectiveGameService {
 
 수사관의 질문: "${message}"
 
-스모군으로서 답변하세요:`;
+Steve로서 답변하세요:`;
 
-      // Use existing AI service but with a simplified callback
-      const response = await new Promise((resolve, reject) => {
-        let fullResponse = '';
-        
-        aiService.generateResponse(message, 'smokinggun', {
-          onStart: () => {},
-          onChunk: (chunk) => {
-            fullResponse += chunk.currentChunk || '';
-          },
-          onComplete: (finalContent) => {
-            resolve(fullResponse.trim() || finalContent.content);
-          },
-          onError: (error) => {
-            reject(error);
-          }
-        });
+      console.log('Making OpenAI API call for detective game...');
+
+      // Use simple OpenAI API call without streaming for detective game
+      const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      }, {
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000 // 30 seconds timeout
       });
 
+      const aiResponse = response.data.choices[0]?.message?.content || '';
+      console.log('OpenAI response received:', aiResponse.substring(0, 100) + '...');
+
       // Ensure response starts with @smokinggun
-      const finalResponse = response.startsWith('@smokinggun') ? 
-        response : `@smokinggun ${response}`;
+      const finalResponse = aiResponse.startsWith('@smokinggun') ? 
+        aiResponse : `@smokinggun ${aiResponse}`;
+
+      console.log('Final detective response prepared:', finalResponse.substring(0, 100) + '...');
 
       return {
         text: finalResponse,
@@ -700,11 +741,11 @@ README.md 파일 수정하고, Jest 테스트 케이스 몇 개 추가한 게 �
       gameState.endTime = new Date();
     }
     
-    // End session in game state tracker
-    const finalSession = gameStateTracker.endGameSession(userId, 'player_ended');
+    // End session in game state tracker - simplified for now
+    // const finalSession = gameStateTracker.endGameSession(userId, 'player_ended');
     
-    // Reset evidence progress
-    evidenceManager.resetUserProgress(userId);
+    // Reset evidence progress - simplified for now
+    // evidenceManager.resetUserProgress(userId);
     
     return gameState;
   }
@@ -713,7 +754,26 @@ README.md 파일 수정하고, Jest 테스트 케이스 몇 개 추가한 게 �
    * Get game statistics
    */
   getGameStats(userId) {
-    return this.getEnhancedGameStats(userId);
+    return this.getBasicGameStats(userId);
+  }
+
+  /**
+   * Get basic game statistics (simplified version)
+   */
+  getBasicGameStats(userId) {
+    const gameState = this.gameStates.get(userId);
+    
+    if (!gameState) return null;
+
+    return {
+      duration: gameState.endTime ? 
+        gameState.endTime - gameState.startTime : 
+        new Date() - gameState.startTime,
+      messagesExchanged: gameState.conversationHistory.length,
+      evidencePresented: gameState.evidencePresented.length,
+      confessionAchieved: gameState.confessionTriggered,
+      character: gameState.character
+    };
   }
 
   /**

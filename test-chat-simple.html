@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Chat Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Simple Chat Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type a message..." style="width: 300px;">
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="testAI()">Test @wayneAI</button>
+    <button onclick="testSmokingGun()">Test @smokinggun</button>
+
+    <script>
+        const socket = io('http://localhost:8080', {
+            auth: {
+                token: 'test-token', // You'll need to get a real token
+                sessionId: 'test-session'
+            }
+        });
+
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+
+        socket.on('connect', () => {
+            statusDiv.textContent = 'Connected!';
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            statusDiv.textContent = 'Disconnected';
+            console.log('Disconnected from server');
+        });
+
+        socket.on('connect_error', (error) => {
+            statusDiv.textContent = 'Connection Error: ' + error.message;
+            console.error('Connection error:', error);
+        });
+
+        socket.on('message', (message) => {
+            console.log('Received message:', message);
+            const msgDiv = document.createElement('div');
+            msgDiv.innerHTML = `<strong>${message.sender?.name || 'System'}:</strong> ${message.content}`;
+            messagesDiv.appendChild(msgDiv);
+        });
+
+        socket.on('aiMessageComplete', (data) => {
+            console.log('AI response:', data);
+            const msgDiv = document.createElement('div');
+            msgDiv.innerHTML = `<strong style="color: blue;">${data.aiType}:</strong> ${data.content}`;
+            messagesDiv.appendChild(msgDiv);
+        });
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            console.log('Sending message:', message);
+            socket.emit('chatMessage', {
+                room: 'test-room', // You'll need a real room ID
+                type: 'text',
+                content: message
+            });
+
+            messageInput.value = '';
+        }
+
+        function testAI() {
+            socket.emit('chatMessage', {
+                room: 'test-room',
+                type: 'text',
+                content: '@wayneAI Hello, how are you?'
+            });
+        }
+
+        function testSmokingGun() {
+            socket.emit('chatMessage', {
+                room: 'test-room',
+                type: 'text',
+                content: '@smokinggun Tell me about the force push'
+            });
+        }
+
+        // Allow Enter key to send message
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        console.log('Chat test loaded. Check console for connection status.');
+    </script>
+</body>
+</html>

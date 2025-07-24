@@ -80,7 +80,18 @@ app.use('/api', routes);
 console.log('API routes mounted successfully');
 
 // Socket.IO 설정
-const io = socketIO(server, { cors: corsOptions });
+const io = socketIO(server, { 
+  cors: {
+    origin: corsOptions.origin,
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: corsOptions.allowedHeaders
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
 require('./sockets/chat')(io);
 
 // Socket.IO 객체 전달

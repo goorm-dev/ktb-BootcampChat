@@ -56,27 +56,31 @@ const ChatPage = () => {
   } = useChatRoom();
 
   const handleDetectiveToggle = () => {
-    if (!detectiveMode) {
-      // Starting detective game - send initial system message
-      if (socketRef.current) {
-        socketRef.current.emit('startDetectiveGame', { roomId: room._id });
-      }
-    }
+    console.log('🔄 Detective toggle called', { currentDetectiveMode: detectiveMode, room: room?._id });
+    
+    // Just toggle the detective mode - don't start the game automatically
+    // The game will start when user sends their first @smokinggun message
     setDetectiveMode(!detectiveMode);
+    
+    if (!detectiveMode) {
+      console.log('🎮 Detective mode enabled - user can now start interacting with @smokinggun');
+    } else {
+      console.log('🎮 Detective mode disabled');
+    }
   };
 
-  const handleDetectiveMessageSubmit = (e) => {
-    if (detectiveMode && socketRef.current && message.trim()) {
-      // Send detective interrogation message
-      socketRef.current.emit('detectiveInterrogate', {
-        roomId: room._id,
-        message: message.trim()
-      });
-      setMessage('');
-      e.preventDefault();
-    } else {
-      handleMessageSubmit(e);
-    }
+  const handleDetectiveMessageSubmit = (messageData) => {
+    console.log('🕵️ Detective message submit called', { 
+      detectiveMode, 
+      hasSocket: !!socketRef.current, 
+      messageData,
+      roomId: room?._id 
+    });
+    
+    // Always use the regular message submit for now
+    // The backend will handle whether to route to detective game or regular AI
+    console.log('📤 Using regular message submit for @smokinggun');
+    handleMessageSubmit(messageData);
   };
 
   const renderParticipants = () => {
@@ -278,15 +282,6 @@ const ChatPage = () => {
                 {renderParticipants()}
               </Flex>
               <Flex align="center" gap="200">
-                <Button
-                  variant={detectiveMode ? "solid" : "outline"}
-                  size="sm"
-                  onClick={handleDetectiveToggle}
-                  style={detectiveMode ? { backgroundColor: '#dc2626', borderColor: '#dc2626' } : {}}
-                >
-                  <Gamepad2 size={16} className="me-1" />
-                  {detectiveMode ? '탐정 모드 종료' : '탐정 게임 시작'}
-                </Button>
                 <Badge color={status.color === 'success' ? 'success' : status.color === 'warning' ? 'warning' : 'danger'}>
                   {status.label}
                 </Badge>
@@ -301,8 +296,8 @@ const ChatPage = () => {
           </div>
         </Card.Body>
 
-        <Card.Footer className="chat-room-footer">
-          <Flex direction="column" gap="100">
+        <Card.Footer className="chat-room-footer" style={{ padding: 0 }}>
+          <div style={{ width: '100%' }}>
             <ChatInput
               message={message}
               onMessageChange={handleMessageChange}
@@ -329,9 +324,13 @@ const ChatPage = () => {
               }}
               onFileRemove={removeFilePreview}
               detectiveMode={detectiveMode}
-              placeholder={detectiveMode ? "스티브에게 질문하세요..." : "메시지를 입력하세요..."}
+              onDetectiveToggle={handleDetectiveToggle}
+              detectiveGameActive={detectiveMode}
+              canStartDetectiveGame={true}
+              detectiveGameStarting={false}
+              placeholder={detectiveMode ? "@smokinggun에게 질문하세요..." : "메시지를 입력하세요..."}
             />
-          </Flex>
+          </div>
         </Card.Footer>
       </Card.Root>
     </div>

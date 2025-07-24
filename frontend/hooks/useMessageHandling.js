@@ -138,10 +138,23 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
        setUploadProgress(0);
 
      } else if (messageData.content?.trim()) {
+       console.log('[Chat] Emitting chatMessage event with content:', messageData.content);
+       
        socketRef.current.emit('chatMessage', {
          room: roomId,
          type: 'text',
          content: messageData.content.trim()
+       });
+
+       setMessage('');
+     } else if (messageData.message?.trim()) {
+       // Handle both content and message properties
+       console.log('[Chat] Emitting chatMessage event with message:', messageData.message);
+       
+       socketRef.current.emit('chatMessage', {
+         room: roomId,
+         type: 'text',
+         content: messageData.message.trim()
        });
 
        setMessage('');
@@ -166,7 +179,7 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
        setUploading(false);
      }
    }
- }, [currentUser, router, handleSessionError, socketRef]);
+ }, [currentUser, router, handleSessionError, socketRef, setMessage, setFilePreview, setUploading, setUploadProgress, setUploadError, setShowEmojiPicker, setShowMentionList]);
 
  const handleEmojiToggle = useCallback(() => {
    setShowEmojiPicker(prev => !prev);
@@ -186,6 +199,12 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
        _id: 'consultingAI',
        name: 'consultingAI',
        email: 'ai@consulting.ai',
+       isAI: true
+     },
+     {
+       _id: 'smokinggun',
+       name: 'smokinggun',
+       email: 'ai@smokinggun.ai',
        isAI: true
      },
      ...room.participants

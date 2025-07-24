@@ -62,132 +62,52 @@ const ChatInput = forwardRef(({
 
   // Handle detective game start
   const handleDetectiveStart = useCallback(() => {
+    console.log('🎮 Detective game start clicked', { canStartDetectiveGame, detectiveGameActive });
+    
     if (!canStartDetectiveGame) {
       // Show message if someone else is already playing
       setMessage(prev => prev + ' (다른 사용자가 이미 탐정 게임을 플레이 중입니다.)');
       return;
     }
 
+    console.log('🎮 Toggling detective mode...');
     onDetectiveToggle();
 
-    // Show game rules automatically when starting
-    if (!detectiveGameActive) {
-      setShowGameRules(true);
-
-      // Add initial prompt message
+    // Send game instructions as system message when turning ON detective mode
+    if (!detectiveGameActive && !detectiveMode) {
+      console.log('🕵️ Sending detective instructions...');
       setTimeout(() => {
-        if (!message.trim()) {
-          setMessage('시작하려면 아무 메시지나 보내주세요.');
-        }
-      }, 500);
+        onSubmit({
+          type: 'system',
+          subType: 'detective_instructions',
+          content: `🕵️ **2030년 사이버 범죄 수사 게임**
+
+**사건 개요:**
+2030년 3월 15일 새벽 3시, 회사의 핵심 서비스가 갑자기 다운되었습니다. 사용자 데이터베이스 연결이 끊어지면서 전체 시스템이 마비되었고, 약 2시간 동안 50만 명의 사용자가 서비스를 이용할 수 없었습니다. 추정 손실액은 약 3억 원에 달합니다.
+
+사건 후 조사 결과, 누군가가 정상적인 CI/CD 프로세스를 무시하고 프로덕션 환경에 직접 코드를 배포했다는 정황이 발견되었습니다. 더군다나 그 흔적을 숨기기 위해 중요한 시스템 로그들까지 삭제된 상태였습니다.
+
+**당신의 역할: 🔍 수사관**
+- 용의자 **Steve**를 심문하여 자백을 받아내야 합니다
+- Steve는 15년 경력의 시니어 개발자로 시스템 관리와 Git 운영 전문가입니다
+- 항상 **@smokinggun**으로 태그하여 대화하세요
+
+**승리 조건:**
+다음 두 가지 핵심 증거를 **모두** 제시해야 Steve가 자백합니다:
+1. **프로덕션에 직접 force push한 증거**
+2. **로그를 삭제하여 흔적을 지운 증거**
+
+**수사 팁:**
+- Steve는 회피적이고 변명을 많이 할 것입니다
+- Jenkins나 다른 개발자들을 탓하며 책임을 회피할 것입니다
+- 기술적 전문용어로 혼란시키려 할 것입니다
+- "force push", "git push --force", "로그 삭제" 등의 키워드가 중요합니다
+
+**게임 시작!** Steve에게 질문을 시작해보세요. 🎯`
+        });
+      }, 100);
     }
-  }, [canStartDetectiveGame, onDetectiveToggle, detectiveGameActive, message, setMessage]);
-
-  // Enhanced Detective Game Rules Modal (inline component)
-  const DetectiveGameRules = ({show, onHide}) => {
-    if (!show) return null;
-
-    return (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          zIndex: 10000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '32px',
-            maxWidth: '700px',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-          }}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
-              <h2 style={{margin: 0, color: '#1a1a1a', fontSize: '24px'}}>🕵️ 탐정 게임 규칙</h2>
-              <button
-                  onClick={onHide}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: '#666',
-                    padding: '4px'
-                  }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={{color: '#333', lineHeight: '1.6'}}>
-              <div style={{backgroundColor: '#f8f9fa', padding: '16px', borderRadius: '8px', marginBottom: '20px'}}>
-                <h3 style={{margin: '0 0 8px 0', color: '#dc2626'}}>🎯 목표</h3>
-                <p style={{margin: 0}}>
-                  AI 용의자 <strong>@smokinggun</strong>을 심문하여 자백을 받아내세요!
-                </p>
-              </div>
-
-              <div style={{marginBottom: '20px'}}>
-                <h3 style={{margin: '0 0 12px 0', color: '#1f2937'}}>📋 자백 조건</h3>
-                <p style={{margin: '0 0 8px 0'}}>두 가지 핵심 증거를 <strong>모두</strong> 제시해야 합니다:</p>
-                <ol style={{margin: '0 0 0 20px', padding: 0}}>
-                  <li><strong>프로덕션에 직접 force push한 증거</strong></li>
-                  <li><strong>로그를 삭제하여 흔적을 지운 증거</strong></li>
-                </ol>
-              </div>
-
-              <div style={{marginBottom: '20px'}}>
-                <h3 style={{margin: '0 0 12px 0', color: '#1f2937'}}>💡 공략 팁</h3>
-                <ul style={{margin: 0, paddingLeft: '20px'}}>
-                  <li>항상 <code>@smokinggun</code> 태그로 대화하세요</li>
-                  <li>기술적 전문용어로 회피하려 할 때 끈질기게 파고드세요</li>
-                  <li>"force push", "git push --force", "로그 삭제" 등의 키워드가 중요합니다</li>
-                  <li>Jenkins나 다른 개발자를 탓하며 책임을 회피할 것입니다</li>
-                </ul>
-              </div>
-
-              <div style={{
-                backgroundColor: '#fef3c7',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #f59e0b'
-              }}>
-                <h4 style={{margin: '0 0 8px 0', color: '#92400e'}}>⚠️ 주의사항</h4>
-                <p style={{margin: 0, fontSize: '14px'}}>
-                  탐정 모드가 활성화되면 시스템 로그 메시지들이 숨겨져서 게임에 집중할 수 있습니다.
-                  게임 중에는 일반 채팅 기능이 제한됩니다.
-                </p>
-              </div>
-            </div>
-
-            <div style={{marginTop: '24px', textAlign: 'center'}}>
-              <Button
-                  onClick={onHide}
-                  style={{
-                    backgroundColor: '#dc2626',
-                    color: 'white',
-                    padding: '12px 24px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '16px'
-                  }}
-              >
-                게임 시작하기!
-              </Button>
-            </div>
-          </div>
-        </div>
-    );
-  };
+  }, [canStartDetectiveGame, onDetectiveToggle, detectiveGameActive, detectiveMode, onSubmit]);
 
   // Handle voice transcription
   const handleVoiceTranscription = useCallback((transcription, isPartial = false) => {
@@ -278,7 +198,26 @@ const ChatInput = forwardRef(({
     if (isDisabled || (!message.trim() && files.length === 0) || isRateLimited) return;
 
     try {
-      await onSubmit({message, files});
+      let messageContent = message.trim();
+      
+      // Auto-insert @smokinggun if detective mode is on and not already present
+      if (detectiveMode && messageContent && !messageContent.includes('@smokinggun')) {
+        messageContent = `@smokinggun ${messageContent}`;
+        console.log('🔍 Auto-inserted @smokinggun in detective mode:', messageContent);
+      }
+
+      if (files.length > 0) {
+        await onSubmit({
+          type: 'file',
+          content: messageContent,
+          fileData: { file: files[0].file }
+        });
+      } else {
+        await onSubmit({
+          type: 'text',
+          content: messageContent
+        });
+      }
       setMessage('');
       setFiles([]);
     } catch (error) {
@@ -293,15 +232,72 @@ const ChatInput = forwardRef(({
     }
   }, 500);
 
-  useEffect(() => {
-    if (detectiveMode && !hasSentDetectiveIntro) {
-      setHasSentDetectiveIntro(true);
-      onSubmit({message: "@smokinggun 규칙을 알려줘", files: []});
-    }
-  }, [detectiveMode]);
+  // Remove the automatic intro message effect
+  // useEffect(() => {
+  //   if (detectiveMode && !hasSentDetectiveIntro && detectiveGameActive) {
+  //     setHasSentDetectiveIntro(true);
+  //     console.log('🕵️ Detective mode activated, sending intro message');
+  //     console.log('🕵️ Detective mode state:', { detectiveMode, detectiveGameActive, room: room?._id });
+  //     onSubmit({
+  //       type: 'text',
+  //       content: "@smokinggun 규칙을 알려줘"
+  //     });
+  //   }
+  // }, [detectiveMode, hasSentDetectiveIntro, onSubmit, detectiveGameActive, room]);
 
-  // Rest of the component logic remains the same...
-  // (handleInputChange, handleMentionSelect, handleKeyDown, etc.)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Close emoji picker if clicking outside
+      if (
+        showEmojiPicker &&
+        !emojiPickerRef.current?.contains(event.target) &&
+        !emojiButtonRef.current?.contains(event.target)
+      ) {
+        setShowEmojiPicker(false);
+      }
+      
+      // Close mention list if clicking outside
+      if (showMentionList && !event.target.closest('.mention-dropdown')) {
+        setShowMentionList(false);
+      }
+    };
+
+    const handlePaste = async (event) => {
+      if (!messageInputRef?.current?.contains(event.target)) return;
+
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      const fileItem = Array.from(items).find(
+        item => item.kind === 'file' &&
+          (item.type.startsWith('image/') ||
+            item.type.startsWith('video/') ||
+            item.type.startsWith('audio/') ||
+            item.type === 'application/pdf')
+      );
+
+      if (!fileItem) return;
+
+      const file = fileItem.getAsFile();
+      if (!file) return;
+
+      try {
+        await handleFileValidationAndPreview(file);
+        event.preventDefault();
+      } catch (error) {
+        console.error('File paste error:', error);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('paste', handlePaste);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('paste', handlePaste);
+      files.forEach(file => URL.revokeObjectURL(file.url));
+    };
+  }, [showEmojiPicker, showMentionList, setShowEmojiPicker, files, messageInputRef, handleFileValidationAndPreview]);
 
   const calculateMentionPosition = useCallback((textarea, atIndex) => {
     const textBeforeAt = textarea.value.slice(0, atIndex);
@@ -383,6 +379,11 @@ const ChatInput = forwardRef(({
       const hasSpaceAfterAt = textAfterAt.includes(' ');
 
       if (!hasSpaceAfterAt) {
+        // Close emoji picker if it's open to avoid overlap
+        if (showEmojiPicker) {
+          setShowEmojiPicker(false);
+        }
+        
         setMentionFilter(textAfterAt.toLowerCase());
         setShowMentionList(true);
         setMentionIndex(0);
@@ -397,7 +398,7 @@ const ChatInput = forwardRef(({
   }, [onMessageChange, setMentionFilter, setShowMentionList, setMentionIndex, calculateMentionPosition]);
 
   const handleMentionSelect = useCallback((user) => {
-    if (!messageInputRef?.current) return;
+    if (!messageInputRef?.current || !user || !user.name) return;
 
     const cursorPosition = messageInputRef.current.selectionStart;
     const textBeforeCursor = message.slice(0, cursorPosition);
@@ -450,7 +451,7 @@ const ChatInput = forwardRef(({
         case 'Tab':
         case 'Enter':
           e.preventDefault();
-          if (participantsCount > 0) {
+          if (participantsCount > 0 && participants[mentionIndex]) {
             handleMentionSelect(participants[mentionIndex]);
           }
           break;
@@ -567,18 +568,22 @@ const ChatInput = forwardRef(({
   }, [message, setMessage, setShowEmojiPicker, messageInputRef]);
 
   const toggleEmojiPicker = useCallback(() => {
+    // Close mention list if it's open to avoid overlap
+    if (showMentionList) {
+      setShowMentionList(false);
+    }
     setShowEmojiPicker(prev => !prev);
-  }, [setShowEmojiPicker]);
+  }, [setShowEmojiPicker, showMentionList, setShowMentionList]);
 
   const isDisabled = disabled || uploading || externalUploading;
 
   // Get detective placeholder
   const getPlaceholder = () => {
     if (detectiveMode && detectiveGameActive) {
-      return "@smokinggun에게 질문하세요...";
+      return "질문을 입력하세요 (@smokinggun 자동 추가됨)...";
     }
     if (detectiveMode && !detectiveGameActive) {
-      return "시작하려면 아무 메시지나 보내주세요...";
+      return "질문을 입력하세요 (@smokinggun 자동 추가됨)...";
     }
     return placeholder;
   };
@@ -604,8 +609,20 @@ const ChatInput = forwardRef(({
               setIsDragging(true);
             }}
             onDrop={handleFileDrop}
+            style={{
+              width: '100%',
+              padding: 0,
+              margin: 0
+            }}
         >
-          <div className="chat-input">
+          <div className="chat-input" style={{
+            width: '100%',
+            padding: 0,
+            margin: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0
+          }}>
             {files.length > 0 && (
                 <FilePreview
                     files={files}
@@ -620,7 +637,11 @@ const ChatInput = forwardRef(({
                 />
             )}
 
-            <div className="chat-input-toolbar">
+            <div className="chat-input-toolbar" style={{
+              width: '100%',
+              padding: '8px 0 0 0',
+              margin: 0
+            }}>
               <MarkdownToolbar
                   onAction={handleMarkdownAction}
                   size="md"
@@ -632,10 +653,13 @@ const ChatInput = forwardRef(({
               display: 'flex',
               alignItems: 'stretch',
               gap: '8px',
-              minHeight: '60px'
+              minHeight: '60px',
+              width: '100%',
+              padding: 0,
+              margin: 0
             }}>
               {/* Voice Recorder - positioned on the left */}
-              <div style={{display: 'flex', alignItems: 'center'}}>
+              <div style={{display: 'flex', alignItems: 'flex-start', paddingTop: '8px'}}>
                 <VoiceRecorder
                     onTranscription={handleVoiceTranscription}
                     onError={handleVoiceError}
@@ -645,9 +669,9 @@ const ChatInput = forwardRef(({
                 />
               </div>
 
-              {/* Text input area */}
-              <div style={{position: 'relative', flex: 1}}>
-              <textarea
+              {/* Text input area - takes full available width */}
+              <div style={{position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0}}>
+                <textarea
                   ref={messageInputRef}
                   value={message}
                   onChange={handleInputChange}
@@ -663,95 +687,280 @@ const ChatInput = forwardRef(({
                     maxHeight: `${parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.5 * 10}px`,
                     resize: 'none',
                     width: '100%',
-                    border: '1px solid var(--vapor-color-border)',
+                    border: detectiveMode ? '2px solid #dc2626' : '1px solid var(--vapor-color-border)',
                     borderRadius: 'var(--vapor-radius-md)',
-                    padding: 'var(--vapor-space-150)',
-                    paddingRight: detectiveMode ? '200px' : '120px', // Extra space for detective button
-                    backgroundColor: 'var(--vapor-color-normal)',
-                    color: 'var(--vapor-color-text-primary)',
+                    padding: '12px',
+                    paddingRight: '180px', // Space for buttons on the right
+                    backgroundColor: detectiveMode ? '#fef2f2' : 'var(--vapor-color-normal)',
+                    color: detectiveMode ? '#000000' : 'var(--vapor-color-text-primary)',
                     fontSize: 'var(--vapor-font-size-100)',
                     lineHeight: '1.5',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    boxSizing: 'border-box',
+                    margin: 0,
+                    outline: 'none'
                   }}
-              />
-
-                {/* Right side buttons container */}
+                />
+                
+                {/* Button row inside textarea */}
                 <div style={{
                   position: 'absolute',
-                  bottom: '8px',
+                  top: '50%',
                   right: '8px',
+                  transform: 'translateY(-50%)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '8px',
+                  zIndex: 2
                 }}>
-                  {/* Detective Mode Button - positioned next to Send button */}
+                  {/* Detective Game Button */}
                   <Button
-                      variant={detectiveMode ? "solid" : "outline"}
-                      size="sm"
-                      onClick={handleDetectiveStart}
-                      disabled={isDisabled || (!canStartDetectiveGame && !detectiveGameActive)}
-                      style={detectiveMode ?
-                          {
-                            backgroundColor: '#dc2626',
-                            borderColor: '#dc2626',
-                            color: 'white',
-                            padding: '8px 12px'
-                          } :
-                          {
-                            borderColor: '#dc2626',
-                            color: '#dc2626',
-                            padding: '8px 12px'
-                          }
+                    variant={detectiveMode ? "solid" : "outline"}
+                    size="sm"
+                    onClick={handleDetectiveStart}
+                    disabled={isDisabled || (!canStartDetectiveGame && !detectiveGameActive)}
+                    style={detectiveMode ?
+                      {
+                        backgroundColor: '#dc2626',
+                        borderColor: '#dc2626',
+                        color: 'white',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        minWidth: 'auto'
+                      } :
+                      {
+                        borderColor: '#dc2626',
+                        color: '#dc2626',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        minWidth: 'auto'
                       }
-                      title={!canStartDetectiveGame ? "다른 사용자가 게임 중입니다" : "탐정 게임 시작"}
+                    }
+                    title={!canStartDetectiveGame ? "다른 사용자가 게임 중입니다" : "탐정 게임 시작"}
                   >
-                    <Gamepad2 size={16}/>
+                    <Gamepad2 size={14}/>
                     <span style={{marginLeft: '4px'}}>
-                    {detectiveGameStarting ? '시작 중...' :
-                        detectiveMode ? '탐정 모드' : '탐정 게임'}
-                  </span>
+                      {detectiveGameStarting ? '시작 중...' :
+                        detectiveMode ? '🕵️ ON' : '탐정 게임'}
+                    </span>
                   </Button>
-
+                  
                   {/* Send Button */}
                   <Button
-                      color="primary"
-                      size="md"
-                      onClick={handleSubmit}
-                      disabled={isDisabled || (!message.trim() && files.length === 0)}
-                      aria-label="메시지 보내기"
-                      style={{
-                        padding: '8px 16px'
-                      }}
+                    color="primary"
+                    size="sm"
+                    onClick={handleSubmit}
+                    disabled={isDisabled || (!message.trim() && files.length === 0)}
+                    aria-label="메시지 보내기"
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px'
+                    }}
                   >
-                    <SendIcon size={16}/>
-                    <span style={{marginLeft: '8px'}}>보내기</span>
+                    <SendIcon size={14}/>
+                    <span style={{marginLeft: '4px'}}>보내기</span>
                   </Button>
                 </div>
               </div>
             </div>
+
+            {/* Actions row with emoji and file buttons */}
+            <div className="chat-input-actions" style={{
+              width: '100%',
+              padding: '8px 0 0 0',
+              margin: 0
+            }}>
+              <HStack gap="100">
+                <IconButton
+                  ref={emojiButtonRef}
+                  variant="ghost"
+                  size="md"
+                  onClick={toggleEmojiPicker}
+                  disabled={isDisabled}
+                  aria-label="이모티콘"
+                  style={{ transition: 'all 0.2s ease' }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <LikeIcon size={20} />
+                </IconButton>
+                <IconButton
+                  variant="ghost"
+                  size="md"
+                  onClick={() => fileInputRef?.current?.click()}
+                  disabled={isDisabled}
+                  aria-label="파일 첨부"
+                  style={{ transition: 'all 0.2s ease' }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <AttachFileOutlineIcon size={20} />
+                </IconButton>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => handleFileValidationAndPreview(e.target.files?.[0])}
+                  style={{ display: 'none' }}
+                  accept="image/*,video/*,audio/*,application/pdf"
+                />
+              </HStack>
+            </div>
           </div>
+          
           {/* Emoji Picker */}
-          <EmojiPicker
-              show={showEmojiPicker}
-              onSelect={handleEmojiSelect}
-              onClose={() => setShowEmojiPicker(false)}
-              anchorRef={emojiButtonRef}
+          {showEmojiPicker && (
+            <div
+              style={{
+                position: 'fixed',
+                bottom: '80px',
+                left: '20px',
+                zIndex: 9999,
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                border: '1px solid var(--vapor-color-border)'
+              }}
               ref={emojiPickerRef}
-          />
+              onClick={(e) => e.stopPropagation()}
+            >
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+                emojiSize={20}
+                emojiButtonSize={36}
+                perLine={8}
+                maxFrequentRows={4}
+              />
+            </div>
+          )}
+          
           {/* Mention Dropdown */}
-          <MentionDropdown
-              show={showMentionList}
-              filter={mentionFilter}
-              index={mentionIndex}
-              participants={getFilteredParticipants(room)}
-              onSelect={handleMentionSelect}
-              position={mentionPosition}
-          />
+          {showMentionList && (
+            <div
+              style={{
+                position: 'fixed',
+                top: `${mentionPosition.top}px`,
+                left: `${mentionPosition.left}px`,
+                zIndex: 9998,
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                border: '1px solid var(--vapor-color-border)',
+                maxHeight: '200px',
+                overflow: 'auto'
+              }}
+            >
+              <MentionDropdown
+                participants={getFilteredParticipants(room)}
+                activeIndex={mentionIndex}
+                onSelect={handleMentionSelect}
+                onMouseEnter={(index) => setMentionIndex(index)}
+              />
+            </div>
+          )}
+          
           {/* Detective Game Rules Modal */}
-          <DetectiveGameRules
-              show={showGameRules}
-              onHide={() => setShowGameRules(false)}
-          />
+          {showGameRules && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              zIndex: 10000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '32px',
+                maxWidth: '700px',
+                maxHeight: '80vh',
+                overflow: 'auto',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+              }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
+                  <h2 style={{margin: 0, color: '#1a1a1a', fontSize: '24px'}}>🕵️ 탐정 게임 규칙</h2>
+                  <button
+                      onClick={() => setShowGameRules(false)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '24px',
+                        cursor: 'pointer',
+                        color: '#666',
+                        padding: '4px'
+                      }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div style={{color: '#333', lineHeight: '1.6'}}>
+                  <div style={{backgroundColor: '#f8f9fa', padding: '16px', borderRadius: '8px', marginBottom: '20px'}}>
+                    <h3 style={{margin: '0 0 8px 0', color: '#dc2626'}}>🎯 목표</h3>
+                    <p style={{margin: 0}}>
+                      AI 용의자 <strong>@smokinggun</strong>을 심문하여 자백을 받아내세요!
+                    </p>
+                  </div>
+
+                  <div style={{marginBottom: '20px'}}>
+                    <h3 style={{margin: '0 0 12px 0', color: '#1f2937'}}>📋 자백 조건</h3>
+                    <p style={{margin: '0 0 8px 0'}}>두 가지 핵심 증거를 <strong>모두</strong> 제시해야 합니다:</p>
+                    <ol style={{margin: '0 0 0 20px', padding: 0}}>
+                      <li><strong>프로덕션에 직접 force push한 증거</strong></li>
+                      <li><strong>로그를 삭제하여 흔적을 지운 증거</strong></li>
+                    </ol>
+                  </div>
+
+                  <div style={{marginBottom: '20px'}}>
+                    <h3 style={{margin: '0 0 12px 0', color: '#1f2937'}}>💡 공략 팁</h3>
+                    <ul style={{margin: 0, paddingLeft: '20px'}}>
+                      <li>항상 <code>@smokinggun</code> 태그로 대화하세요</li>
+                      <li>기술적 전문용어로 회피하려 할 때 끈질기게 파고드세요</li>
+                      <li>"force push", "git push --force", "로그 삭제" 등의 키워드가 중요합니다</li>
+                      <li>Jenkins나 다른 개발자를 탓하며 책임을 회피할 것입니다</li>
+                    </ul>
+                  </div>
+
+                  <div style={{
+                    backgroundColor: '#fef3c7',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #f59e0b'
+                  }}>
+                    <h4 style={{margin: '0 0 8px 0', color: '#92400e'}}>⚠️ 주의사항</h4>
+                    <p style={{margin: 0, fontSize: '14px'}}>
+                      탐정 모드가 활성화되면 시스템 로그 메시지들이 숨겨져서 게임에 집중할 수 있습니다.
+                      게임 중에는 일반 채팅 기능이 제한됩니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{marginTop: '24px', textAlign: 'center'}}>
+                  <Button
+                      onClick={() => setShowGameRules(false)}
+                      style={{
+                        backgroundColor: '#dc2626',
+                        color: 'white',
+                        padding: '12px 24px',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '16px'
+                      }}
+                  >
+                    게임 시작하기!
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Voice Error */}
           {voiceError && (
               <div className="voice-error" style={{
@@ -771,6 +980,7 @@ const ChatInput = forwardRef(({
                 {voiceError}
               </div>
           )}
+          
           {/* Rate Limit Error */}
           {isRateLimited && (
               <div className="rate-limit-error" style={{
@@ -796,4 +1006,3 @@ const ChatInput = forwardRef(({
 });
 
 export default ChatInput;
-

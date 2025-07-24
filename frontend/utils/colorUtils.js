@@ -12,6 +12,10 @@ const AI_COLORS = {
   consultingAI: {
     backgroundColor: '#00C853',
     color: '#FFFFFF'
+  },
+  smokinggun: {
+    backgroundColor: '#FF5722',
+    color: '#FFFFFF'
   }
 };
 
@@ -33,6 +37,9 @@ export const getAIAvatarStyles = (aiName) => {
   }
   if (formattedName === 'consultingai') {
     return AI_COLORS.consultingAI;
+  }
+  if (formattedName === 'smokinggun') {
+    return AI_COLORS.smokinggun;
   }
   
   // 알 수 없는 AI의 경우 기본값 반환
@@ -56,6 +63,10 @@ export const generateColorFromEmail = (email) => {
   if (email.endsWith('@consulting.ai')) {
     globalColorCache.set(email, AI_COLORS.consultingAI.backgroundColor);
     return AI_COLORS.consultingAI.backgroundColor;
+  }
+  if (email.endsWith('@smokinggun.ai')) {
+    globalColorCache.set(email, AI_COLORS.smokinggun.backgroundColor);
+    return AI_COLORS.smokinggun.backgroundColor;
   }
 
   // 해시 생성

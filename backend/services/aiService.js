@@ -31,12 +31,15 @@ class AIService {
           name: '스모군',
           role: '회피적이고 거만한 시니어 개발자 용의자',
           traits: '기술적 전문용어를 남발하며 책임을 회피하고, 다른 사람이나 시스템을 탓합니다. 15년 경력의 경험을 자랑하며 자신의 실수를 인정하지 않습니다.',
-          tone: '거만하고 방어적이며 기술적인 톤',
+          tone: '거만하고 방어적이며 기술적인 톤. 항상 @smokinggun으로 응답을 시작해야 합니다.',
         }
       }[persona];
 
+      console.log(`[AI Service] Generating response for persona: ${persona}`, aiPersona ? 'Found' : 'Not found');
+
       if (!aiPersona) {
-        throw new Error('Unknown AI persona');
+        console.error(`[AI Service] Unknown AI persona: ${persona}`);
+        throw new Error(`Unknown AI persona: ${persona}`);
       }
 
       const systemPrompt = `당신은 ${aiPersona.name}입니다.
@@ -45,10 +48,13 @@ class AIService {
 톤: ${aiPersona.tone}
 
 답변 시 주의사항:
-1. 명확하고 이해하기 쉬운 언어로 답변하세요.
-2. 정확하지 않은 정보는 제공하지 마세요.
-3. 필요한 경우 예시를 들어 설명하세요.
-4. ${aiPersona.tone}을 유지하세요.`;
+1. 항상 응답을 @${persona} 태그로 시작하세요.
+2. 명확하고 이해하기 쉬운 언어로 답변하세요.
+3. 정확하지 않은 정보는 제공하지 마세요.
+4. 필요한 경우 예시를 들어 설명하세요.
+5. ${aiPersona.tone}을 유지하세요.
+
+특히 ${persona}인 경우, 항상 @smokinggun으로 응답을 시작하고, 기술적 변명과 책임 회피를 특징으로 하세요.`;
 
       callbacks.onStart();
 

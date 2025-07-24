@@ -34,7 +34,7 @@ const MessageSchema = new mongoose.Schema({
   },
   aiType: {
     type: String,
-    enum: ['wayneAI', 'consultingAI'],
+    enum: ['wayneAI', 'consultingAI', 'smokinggun'],
     required: function() { 
       return this.type === 'ai'; 
     }

@@ -77,7 +77,9 @@ const MentionDropdown = ({
 
   const getAvatarContent = useCallback((user) => {
     if (user.isAI) {
-      return user.name === 'wayneAI' ? 'W' : 'C';
+      if (user.name === 'wayneAI') return 'W';
+      if (user.name === 'consultingAI') return 'C';
+      if (user.name === 'smokinggun') return 'S';
     }
     return user.name.charAt(0).toUpperCase();
   }, []);
@@ -126,7 +128,11 @@ const MentionDropdown = ({
             
             <div className="mention-info">
               <span className="mention-name">
-                {user.isAI ? (user.name === 'wayneAI' ? 'Wayne AI' : 'Consulting AI') : user.name}
+                {user.isAI ? 
+                  (user.name === 'wayneAI' ? 'Wayne AI' : 
+                   user.name === 'consultingAI' ? 'Consulting AI' :
+                   user.name === 'smokinggun' ? 'Smoking Gun' : user.name) 
+                  : user.name}
               </span>
               {renderUserBadge(user)}
             </div>

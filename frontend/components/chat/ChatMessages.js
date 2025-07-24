@@ -595,7 +595,10 @@ const ChatMessages = ({
         overflowY: 'auto',
         overflowX: 'hidden',
         padding: '8px',
-        scrollBehavior: 'smooth'
+        scrollBehavior: 'smooth',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
       }}
     >
       {/* Loading indicator at top */}
@@ -610,7 +613,13 @@ const ChatMessages = ({
       {allMessages.length === 0 ? (
         <EmptyMessages />
       ) : (
-        <div className="messages-container">
+        <div className="messages-container" style={{
+          width: '100%',
+          maxWidth: '800px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
           {allMessages.map((msg, idx) => renderMessage(msg, idx))}
         </div>
       )}

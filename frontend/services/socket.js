@@ -82,6 +82,12 @@ class SocketService {
 
         const socketUrl = process.env.NEXT_PUBLIC_API_URL;
         console.log('[Socket] Connecting to:', socketUrl);
+        console.log('[Socket] Connection options:', options);
+
+        // Add authentication information to the options
+        const authData = options.auth || {};
+        console.log('[Socket] Auth data (token length):', authData.token?.length || 'no token');
+        console.log('[Socket] Auth data (sessionId):', authData.sessionId || 'no sessionId');
 
         this.socket = io(socketUrl, {
           ...options,
@@ -134,6 +140,12 @@ class SocketService {
 
     this.socket.on('connect_error', (error) => {
       console.error('[Socket] Connection error:', error);
+      console.error('[Socket] Error details:', {
+        message: error.message,
+        description: error.description,
+        context: error.context,
+        type: error.type
+      });
       
       if (error.message === 'Invalid session') {
         authService.refreshToken()

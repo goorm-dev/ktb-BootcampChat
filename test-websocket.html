@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        
+        function log(message) {
+            console.log(message);
+            messagesDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+        
+        // Test connection without authentication first
+        const socket = io('http://localhost:8080', {
+            transports: ['websocket', 'polling'],
+            auth: {
+                token: 'test-token',
+                sessionId: 'test-session'
+            }
+        });
+        
+        socket.on('connect', () => {
+            statusDiv.innerHTML = '✅ Connected: ' + socket.id;
+            log('Successfully connected to WebSocket server');
+        });
+        
+        socket.on('connect_error', (error) => {
+            statusDiv.innerHTML = '❌ Connection Error';
+            log('Connection error: ' + error.message);
+            log('Error details: ' + JSON.stringify(error));
+        });
+        
+        socket.on('disconnect', (reason) => {
+            statusDiv.innerHTML = '🔌 Disconnected';
+            log('Disconnected: ' + reason);
+        });
+        
+        socket.on('error', (error) => {
+            log('Socket error: ' + error);
+        });
+        
+        // Test after 2 seconds
+        setTimeout(() => {
+            if (socket.connected) {
+                log('Testing message emission...');
+                socket.emit('test', 'Hello from test client');
+            } else {
+                log('Socket not connected after 2 seconds');
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
