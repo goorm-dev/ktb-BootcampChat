@@ -323,21 +323,33 @@ class FileService {
     return `${baseUrl}/api/files/${endpoint}/${filename}`;
   }
 
-  getPreviewUrl(file, withAuth = true) {
+  async getPreviewUrl(file) {
     if (!file?._id) return '';
-  
-    const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/files/${file._id}/view`;
-    
-    if (!withAuth) return baseUrl;
-  
+
     const user = authService.getCurrentUser();
-    if (!user?.token || !user?.sessionId) return baseUrl;
-  
-    const url = new URL(baseUrl);
-    url.searchParams.append('token', encodeURIComponent(user.token));
-    url.searchParams.append('sessionId', encodeURIComponent(user.sessionId));
-  
-    return url.toString();
+    if (!user?.token || !user?.sessionId) return '';
+
+    try {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/files/${file._id}/view`,
+        {
+          headers: {
+            'x-auth-token': user.token,
+            'x-session-id': user.sessionId
+          },
+          withCredentials: true
+        }
+      );
+
+      if (res.data?.success && res.data?.viewUrl) {
+        return res.data.viewUrl; // Presigned S3 URL
+      }
+
+      return '';
+    } catch (error) {
+      console.error('Failed to get preview URL:', error);
+      return '';
+    }
   }
 
   getFileType(filename) {

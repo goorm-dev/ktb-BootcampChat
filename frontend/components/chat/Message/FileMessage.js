@@ -30,15 +30,15 @@ const FileMessage = ({
   const [previewUrl, setPreviewUrl] = useState('');
 
   useEffect(() => {
-    if (msg?.file) {
-      const url = fileService.getPreviewUrl(msg.file, true);
-      setPreviewUrl(url);
-      console.debug('Preview URL generated:', {
-        filename: msg.file.filename,
-        url
-      });
-    }
-  }, [msg?.file]);
+  const loadPreviewUrl = async () => {
+    const url = await fileService.getPreviewUrl(msg.file);
+    setPreviewUrl(url);
+  };
+
+  if (msg?.file) {
+    loadPreviewUrl();
+  }
+}, [msg?.file]);
 
   if (!msg?.file) {
     console.error('File data is missing:', msg);
@@ -175,29 +175,27 @@ const FileMessage = ({
       const [previewUrl, setPreviewUrl] = useState('');
     
       useEffect(() => {
-        if (msg?.file) {
-          const url = fileService.getPreviewUrl(msg.file, true);
-          setPreviewUrl(url);
-          console.debug('Preview URL generated:', {
-            filename: msg.file.filename,
-            url
-          });
-        }
-        console.log(previewUrl)
-      }, [msg?.file]);
+  const loadPreviewUrl = async () => {
+    const url = await fileService.getPreviewUrl(msg.file);
+    setPreviewUrl(url);
+  };
+
+  if (msg?.file) {
+    loadPreviewUrl();
+  }
+}, [msg?.file]);
     
       if (!msg?.file) {
         console.error('File data is missing:', msg);
         return null;
       }
-      // const previewUrl = fileService.getPreviewUrl(msg.file, true);
       
       return (
-        <div className="bg-transparent-pattern">
-          {previewUrl ? (<img 
+        <div className="bg-transparent-pattern flex">
+          <img 
             src={previewUrl}
             alt={originalname}
-            className="object-cover rounded-sm"
+            className="object-cover rounded-sm h-full w-full"
             onLoad={() => {
               console.debug('Image loaded successfully:', originalname);
             }}
@@ -211,7 +209,7 @@ const FileMessage = ({
               setError('이미지를 불러올 수 없습니다.');
             }}
             loading="lazy"
-          />) : (<p>이미지 불러오는 중</p>)}
+          />
         </div>
       );
     } catch (error) {
