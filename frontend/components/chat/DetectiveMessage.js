@@ -27,17 +27,6 @@ const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
     { id: 'config_files', name: '설정 파일', icon: FileText, description: '시스템 설정 파일' }
   ];
 
-  const evidenceTypes = [
-    { id: 'forced_push_log', name: 'Force Push 로그', critical: true },
-    { id: 'deleted_commit_log', name: '삭제된 커밋 로그', critical: true },
-    { id: 'jenkins_failure_log', name: 'Jenkins 빌드 실패 로그', critical: false },
-    { id: 'server_access_log', name: '서버 접근 로그', critical: false },
-    { id: 'error_suppression_log', name: '에러 억제 로그', critical: false },
-    { id: 'system_manipulation_log', name: '시스템 조작 로그', critical: false },
-    { id: 'elasticsearch_deletion_log', name: 'Elasticsearch 삭제 로그', critical: false },
-    { id: 'config_tampering_log', name: '설정 변조 로그', critical: false }
-  ];
-
   const handleInvestigate = async (areaId) => {
     if (isInvestigating) return;
     
@@ -85,7 +74,7 @@ const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
           <Flex align="center" gap="200" className="mb-3">
             <Target size={24} style={{ color: '#dc2626' }} />
             <Text typography="heading5" style={{ color: '#dc2626', fontWeight: 'bold' }}>
-              ️ 탐정 수사 시작
+              🕵️ 탐정 수사 시작
             </Text>
           </Flex>
           
@@ -98,7 +87,7 @@ const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
           <Card.Root style={{ backgroundColor: '#f8f9fa', marginBottom: 'var(--vapor-space-300)' }}>
             <Card.Body style={{ padding: 'var(--vapor-space-200)' }}>
               <Text typography="body2" style={{ fontWeight: 'bold', marginBottom: 'var(--vapor-space-100)' }}>
-                 수사 목표
+                🎯 수사 목표
               </Text>
               <Text typography="body2">
                 스티브로부터 자백을 받아내세요. 결정적 증거 2개가 모두 필요합니다:
@@ -124,7 +113,7 @@ const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
           </Flex>
 
           <Text typography="body2" style={{ marginTop: 'var(--vapor-space-300)', fontStyle: 'italic', color: '#6b7280' }}>
-             아래 수사 구역을 클릭하여 증거를 수집하세요.
+            📝 아래 수사 구역을 클릭하여 증거를 수집하세요.
           </Text>
         </Box>
       </div>
@@ -138,7 +127,7 @@ const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
           <Flex align="center" gap="200" className="mb-3">
             <Search size={20} style={{ color: '#2563eb' }} />
             <Text typography="heading6" style={{ fontWeight: 'bold' }}>
-               수사 구역
+              🔍 수사 구역
             </Text>
           </Flex>
 
@@ -191,7 +180,7 @@ const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
           <Flex align="center" gap="200" className="mb-3">
             <CheckCircle size={20} style={{ color: '#059669' }} />
             <Text typography="heading6" style={{ color: '#059669', fontWeight: 'bold' }}>
-               증거 발견!
+              🔍 증거 발견!
             </Text>
           </Flex>
 
@@ -229,14 +218,14 @@ const DetectiveSystemMessage = ({ msg, socketRef, room }) => {
           </Card.Root>
 
           <Text typography="body3" style={{ marginTop: 'var(--vapor-space-200)', fontStyle: 'italic', color: '#6b7280' }}>
-             이 증거를 스티브와의 심문에서 활용하세요!
+            💡 이 증거를 스티브와의 심문에서 활용하세요!
           </Text>
         </Box>
       </div>
     );
   }
 
-  // Default system message - handles all other subtypes like hints, evidence_list, rules, game_complete
+  // Default system message
   return (
     <div className="message-bubble system-message detective-info">
       <Box style={{ padding: 'var(--vapor-space-300)' }}>
@@ -252,12 +241,12 @@ const DetectiveSteveMessage = ({ msg }) => {
   const getMoodIcon = (mood) => {
     switch (mood) {
       case 'confident': return '😏';
-      case 'nervous': return '😟';
+      case 'nervous': return '😰';
       case 'angry': return '😠';
       case 'defensive': return '🛡️';
       case 'confused': return '🤔';
-      case 'defeated': return '😰';
-      default: return '😐';
+      case 'defeated': return '😔';
+      default: return '💭';
     }
   };
 
@@ -325,22 +314,18 @@ const DetectiveUserMessage = ({ msg, currentUser }) => {
           <Text typography="body2" style={{ fontWeight: 'bold', color: '#2563eb' }}>
             {currentUser?.name || '탐정'} (수사관)
           </Text>
+          <Badge color="primary" size="sm">
+            심문
+          </Badge>
         </Flex>
-        <Text as="p" style={{ whiteSpace: 'pre-wrap' }}>
-            {msg.content}
-        </Text>
-        {msg.evidence && msg.evidence.length > 0 && (
-            <Box mt="200" style={{ marginTop: 'var(--vapor-space-200)' }}>
-                <Text typography="body3" weight="bold" style={{ fontWeight: 'bold' }}>제출한 증거:</Text>
-                <ul style={{ paddingLeft: '20px', margin: 'var(--vapor-space-100) 0 0 0', listStyle: 'disc' }}>
-                    {msg.evidence.map((e, i) => (
-                        <li key={i}>
-                            <Text typography="body3">{e}</Text>
-                        </li>
-                    ))}
-                </ul>
-            </Box>
-        )}
+
+        <Card.Root style={{ backgroundColor: '#eff6ff', border: '1px solid #93c5fd' }}>
+          <Card.Body style={{ padding: 'var(--vapor-space-300)' }}>
+            <Text typography="body2" style={{ whiteSpace: 'pre-wrap' }}>
+              {msg.content}
+            </Text>
+          </Card.Body>
+        </Card.Root>
       </Box>
     </div>
   );

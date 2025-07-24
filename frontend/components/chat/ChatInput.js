@@ -33,7 +33,9 @@ const ChatInput = forwardRef(({
   setMentionFilter = () => { },
   setMentionIndex = () => { },
   room = null, // room prop 추가
-  socketRef = null // socket reference for voice features
+  socketRef = null, // socket reference for voice features
+  detectiveMode = false,
+  placeholder = "메시지를 입력하거나 🎤 버튼으로 음성 입력... (@를 입력하여 멘션, Shift + Enter로 줄바꿈)"
 }, ref) => {
   const emojiPickerRef = useRef(null);
   const emojiButtonRef = useRef(null);
@@ -564,7 +566,7 @@ const ChatInput = forwardRef(({
                 value={message}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder={isDragging ? "파일을 여기에 놓아주세요." : "메시지를 입력하거나 🎤 버튼으로 음성 입력... (@를 입력하여 멘션, Shift + Enter로 줄바꿈)"}
+                placeholder={isDragging ? "파일을 여기에 놓아주세요." : placeholder}
                 disabled={isDisabled}
                 rows={1}
                 autoComplete="off"

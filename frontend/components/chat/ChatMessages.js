@@ -271,8 +271,7 @@ const ChatMessages = ({
   messagesEndRef,
   socketRef,
   scrollToBottomOnNewMessage = true,
-  onScrollPositionChange = () => {},
-  detectiveMode = false
+  onScrollPositionChange = () => {}
 }) => {
   const containerRef = useRef(null);
   const lastMessageRef = useRef(null);
@@ -398,49 +397,71 @@ const ChatMessages = ({
   }, [messages, streamingMessages]);
 
   const renderMessage = useCallback((msg, idx) => {
-    if (!msg) return null;
+    if (!msg || !SystemMessage || !FileMessage || !UserMessage || !AIMessage) {
+      console.error('Message component undefined:', {
+        msgType: msg?.type,
+        hasSystemMessage: !!SystemMessage,
+        hasFileMessage: !!FileMessage,
+        hasUserMessage: !!UserMessage,
+        hasAIMessage: !!AIMessage
+      });
+      return null;
+    }
 
     const isLast = idx === allMessages.length - 1;
     const commonProps = {
-      key: msg._id || `msg-${idx}`,
-      ref: isLast ? lastMessageRef : null,
-      msg: msg,
       currentUser,
       room,
       onReactionAdd,
       onReactionRemove,
-      socketRef,
+      socketRef
     };
 
-    if (detectiveMode && msg.type === 'detective') {
-        switch (msg.subType) {
-            case 'game_start':
-            case 'investigation_areas':
-            case 'evidence_found':
-            case 'info':
-                return <DetectiveSystemMessage {...commonProps} />;
-            case 'steve_response':
-                return <DetectiveSteveMessage {...commonProps} />;
-            case 'user_interrogation':
-                return <DetectiveUserMessage {...commonProps} />;
-            default:
-                return <DetectiveSystemMessage {...commonProps} />;
-        }
+    // Handle detective game messages
+    if (msg.gameType === 'detective') {
+      if (msg.type === 'system') {
+        return (
+          <DetectiveSystemMessage
+            key={msg._id || `msg-${idx}`}
+            ref={isLast ? lastMessageRef : null}
+            msg={msg}
+            {...commonProps}
+          />
+        );
+      } else if (msg.type === 'ai' && msg.character === 'steve') {
+        return (
+          <DetectiveSteveMessage
+            key={msg._id || `msg-${idx}`}
+            ref={isLast ? lastMessageRef : null}
+            msg={msg}
+            {...commonProps}
+          />
+        );
+      } else if (msg.type === 'user' && detectiveMode) {
+        return (
+          <DetectiveUserMessage
+            key={msg._id || `msg-${idx}`}
+            ref={isLast ? lastMessageRef : null}
+            msg={msg}
+            {...commonProps}
+          />
+        );
+      }
     }
 
+    // Handle regular messages
     const MessageComponent = {
       system: SystemMessage,
       file: FileMessage,
-      ai: AIMessage,
+      ai: AIMessage
     }[msg.type] || UserMessage;
-
-    if (!MessageComponent) {
-        return null;
-    }
 
     return (
       <MessageComponent
+        key={msg._id || `msg-${idx}`}
+        ref={isLast ? lastMessageRef : null}
         {...commonProps}
+        msg={msg}
         content={msg.content}
         isMine={msg.type !== 'system' ? isMine(msg) : undefined}
         isStreaming={msg.type === 'ai' ? (msg.isStreaming || false) : undefined}
