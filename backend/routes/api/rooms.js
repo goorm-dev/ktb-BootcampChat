@@ -157,14 +157,14 @@ router.get('/', [limiter, auth], async (req, res) => {
         name: room.name || '제목 없음',
         hasPassword: !!room.password,
         creator: {
-          _id: creator._id,
+          id: creator.id,
           name: creator.name,
           email: creator.email
         },
         participants,
         participantsCount: participants.length,
         createdAt: room.createdAt,
-        isCreator: creator._id == req.user.id
+        isCreator: creator.email === req.user.email
       };
     });
 
@@ -215,7 +215,6 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: '방 이름은 필수입니다.' });
     }
     const roomId = nanoid();
-    const creatorId = req.user.id;
     const creatorEmail = req.user.email;
     const participants = [creatorEmail];
 

@@ -310,7 +310,7 @@ function setSocketIO(io) {
         const participants = Array.isArray(room.participants)
             ? room.participants
             : JSON.parse(room.participants || '[]');
-        if (!participants.includes(socket.user.id)) {
+        if (!participants.includes(socket.user.email)) {
           throw new Error('채팅방 접근 권한이 없습니다.');
         }
 
@@ -436,8 +436,8 @@ function setSocketIO(io) {
         let participants = Array.isArray(room.participants)
             ? room.participants
             : JSON.parse(room.participants || '[]');
-        if (!participants.includes(socket.user.id)) {
-          participants.push(socket.user.id);
+        if (!participants.includes(socket.user.email)) {
+          participants.push(socket.user.email);
           await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
         }
 
@@ -529,7 +529,7 @@ function setSocketIO(io) {
         const participants = Array.isArray(chatRoom.participants)
             ? chatRoom.participants
             : JSON.parse(chatRoom.participants || '[]');
-        if (!participants.includes(socket.user.id)) {
+        if (!participants.includes(socket.user.email)) {
           throw new Error('채팅방 접근 권한이 없습니다.');
         }
 
@@ -677,7 +677,7 @@ function setSocketIO(io) {
             ? room.participants
             : JSON.parse(room.participants || '[]');
 
-        if (!participants.includes(socket.user.id)) {
+        if (!participants.includes(socket.user.email)) {
           console.log(`User ${socket.user.id} has no access to room ${roomId}`);
           return;
         }
@@ -695,7 +695,7 @@ function setSocketIO(io) {
         await redis.rPush(`chat:messages:${roomId}`, JSON.stringify(leaveMessage));
 
         // 참가자 목록에서 유저 제거
-        participants = participants.filter(id => id !== socket.user.id);
+        participants = participants.filter(email => email !== socket.user.email);
         await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
 
         const participantArr = await Promise.all(
@@ -771,7 +771,7 @@ function setSocketIO(io) {
               let participants = Array.isArray(room.participants)
                   ? room.participants
                   : JSON.parse(room.participants || '[]');
-              participants = participants.filter(id => id !== socket.user.id);
+              participants = participants.filter(email => email !== socket.user.email);
               await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
 
               // 2. 퇴장 메시지 생성 및 Redis에 저장
