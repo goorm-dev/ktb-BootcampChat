@@ -17,7 +17,7 @@ on:
 # 환경 변수 설정
 env:
   AWS_REGION: ap-northeast-2
-  BASE_AMI_ID: ami-0f5e205427609c732  # Amazon Linux 2023 최신 AMI ID
+  BASE_AMI_ID: ami-0f5e205427609c732  # Amazon Linux 2023 최신 AMI ID 
   INSTANCE_TYPE: t3.small
   # 네트워크 설정
   VPC_ID: vpc-0cbb28aa7ecfee012
