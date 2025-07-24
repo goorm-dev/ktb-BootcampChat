@@ -130,12 +130,15 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name } = req.body;
+    const { newPassword } = req.body;
 
-    if (!name || name.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: '이름을 입력해주세요.'
-      });
+    if (name) {
+      if (name.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: '이름을 입력해주세요.'
+        });
+      }
     }
 
     const user = await User.findById(req.user.id);
@@ -146,7 +149,11 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    user.name = name.trim();
+    user.name = name ? name.trim() : user.name;
+    if (newPassword) {
+      user.password = newPassword;
+    }
+
     await user.save();
 
     res.json({
