@@ -31,4 +31,16 @@ router.delete('/:id',
   fileController.deleteFile
 );
 
+// presigned 발급
+router.post("/presigned-url",
+  auth,
+  fileController.getPresignedUrl
+);
+
+// s3 업로드 후 메타데이터 받기
+router.post('/complete-upload',
+    auth,
+    fileController.uploadFile
+)
+
 module.exports = router;

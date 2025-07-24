@@ -1,6 +1,8 @@
 import axios, { isCancel, CancelToken } from 'axios';
 import authService from './authService';
 import { Toast } from '../components/Toast';
+import axiosInstance from "./axios";
+import process from "next/dist/build/webpack/loaders/resolve-url-loader/lib/postcss";
 
 class FileService {
   constructor() {
@@ -101,73 +103,164 @@ class FileService {
     return { success: true };
   }
 
-  async uploadFile(file, onProgress) {
+  // async uploadFile(file, onProgress) {
+  //   const validationResult = await this.validateFile(file);
+  //   if (!validationResult.success) {
+  //     return validationResult;
+  //   }
+  //
+  //   try {
+  //     const user = authService.getCurrentUser();
+  //     if (!user?.token || !user?.sessionId) {
+  //       return {
+  //         success: false,
+  //         message: '인증 정보가 없습니다.'
+  //       };
+  //     }
+  //
+  //     const formData = new FormData();
+  //     formData.append('file', file);
+  //
+  //     const source = CancelToken.source();
+  //     this.activeUploads.set(file.name, source);
+  //
+  //     const uploadUrl = this.baseUrl ?
+  //       `${this.baseUrl}/api/files/upload` :
+  //       '/api/files/upload';
+  //
+  //     const response = await axios.post(uploadUrl, formData, {
+  //       headers: {
+  //         'Content-Type': 'multipart/form-data',
+  //         'x-auth-token': user.token,
+  //         'x-session-id': user.sessionId
+  //       },
+  //       cancelToken: source.token,
+  //       withCredentials: true,
+  //       onUploadProgress: (progressEvent) => {
+  //         if (onProgress) {
+  //           const percentCompleted = Math.round(
+  //             (progressEvent.loaded * 100) / progressEvent.total
+  //           );
+  //           onProgress(percentCompleted);
+  //         }
+  //       }
+  //     });
+  //
+  //     this.activeUploads.delete(file.name);
+  //
+  //     if (!response.data || !response.data.success) {
+  //       return {
+  //         success: false,
+  //         message: response.data?.message || '파일 업로드에 실패했습니다.'
+  //       };
+  //     }
+  //
+  //     const fileData = response.data.file;
+  //     return {
+  //       success: true,
+  //       data: {
+  //         ...response.data,
+  //         file: {
+  //           ...fileData,
+  //           url: this.getFileUrl(fileData.filename, true)
+  //         }
+  //       }
+  //     };
+  //
+  //   } catch (error) {
+  //     this.activeUploads.delete(file.name);
+  //
+  //     if (isCancel(error)) {
+  //       return {
+  //         success: false,
+  //         message: '업로드가 취소되었습니다.'
+  //       };
+  //     }
+  //
+  //     if (error.response?.status === 401) {
+  //       try {
+  //         const refreshed = await authService.refreshToken();
+  //         if (refreshed) {
+  //           return this.uploadFile(file, onProgress);
+  //         }
+  //         return {
+  //           success: false,
+  //           message: '인증이 만료되었습니다. 다시 로그인해주세요.'
+  //         };
+  //       } catch (refreshError) {
+  //         return {
+  //           success: false,
+  //           message: '인증이 만료되었습니다. 다시 로그인해주세요.'
+  //         };
+  //       }
+  //     }
+  //
+  //     return this.handleUploadError(error);
+  //   }
+  // }
+
+  async uploadFileWithS3PresignedUrl(file, onProgress = null) {
     const validationResult = await this.validateFile(file);
     if (!validationResult.success) {
       return validationResult;
     }
 
     try {
-      const user = authService.getCurrentUser();
-      if (!user?.token || !user?.sessionId) {
-        return { 
-          success: false, 
-          message: '인증 정보가 없습니다.' 
-        };
-      }
-
-      const formData = new FormData();
-      formData.append('file', file);
-
       const source = CancelToken.source();
       this.activeUploads.set(file.name, source);
 
-      const uploadUrl = this.baseUrl ? 
-        `${this.baseUrl}/api/files/upload` : 
-        '/api/files/upload';
+      // 1. presigned url 발금
+      const res = await axiosInstance.post('/api/files/presigned-url', {
+        filename: file.name,
+        mimetype: file.type,
+      })
 
-      const response = await axios.post(uploadUrl, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'x-auth-token': user.token,
-          'x-session-id': user.sessionId
-        },
+      const { presignedUrl, key, cloudFrontUrl } = res.data
+
+      console.log(presignedUrl)
+
+      // 2. S3 업로드
+      await axios.put(presignedUrl, {
+        headers: { "Content-Type": file.type },
+        body: file,
         cancelToken: source.token,
-        withCredentials: true,
-        onUploadProgress: (progressEvent) => {
-          if (onProgress) {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            onProgress(percentCompleted);
-          }
-        }
       });
+
+      // 3. 업로드 성공 후 s3Url 및 metadata 서버에 저장
+      const completeUploadRes = await axiosInstance.post("/api/files/complete-upload", {
+        filename: key,
+        originalname: file.name,
+        mimetype: file.type,
+        size: file.size,
+        cloudFrontUrl
+      })
 
       this.activeUploads.delete(file.name);
 
-      if (!response.data || !response.data.success) {
+      const newFile = completeUploadRes.data.file;
+
+      if (completeUploadRes.status !== 200 && !newFile) {
         return {
           success: false,
-          message: response.data?.message || '파일 업로드에 실패했습니다.'
+          message: completeUploadRes.data?.message || '파일 업로드에 실패했습니다.'
         };
       }
 
-      const fileData = response.data.file;
       return {
         success: true,
         data: {
-          ...response.data,
+          fileId: key,
+          ...newFile,
           file: {
-            ...fileData,
-            url: this.getFileUrl(fileData.filename, true)
+            file,
+            url: cloudFrontUrl
           }
         }
       };
 
     } catch (error) {
       this.activeUploads.delete(file.name);
-      
+
       if (isCancel(error)) {
         return {
           success: false,
@@ -175,27 +268,10 @@ class FileService {
         };
       }
 
-      if (error.response?.status === 401) {
-        try {
-          const refreshed = await authService.refreshToken();
-          if (refreshed) {
-            return this.uploadFile(file, onProgress);
-          }
-          return {
-            success: false,
-            message: '인증이 만료되었습니다. 다시 로그인해주세요.'
-          };
-        } catch (refreshError) {
-          return {
-            success: false,
-            message: '인증이 만료되었습니다. 다시 로그인해주세요.'
-          };
-        }
-      }
-
       return this.handleUploadError(error);
     }
   }
+
   async downloadFile(filename, originalname) {
     try {
       const user = authService.getCurrentUser();
@@ -315,7 +391,7 @@ class FileService {
     if (!file?.filename) return '';
 
     const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/files/view/${file.filename}`;
-    
+
     if (!withAuth) return baseUrl;
 
     const user = authService.getCurrentUser();
@@ -492,7 +568,7 @@ class FileService {
       this.activeUploads.delete(filename);
       canceledCount++;
     }
-    
+
     return {
       success: true,
       message: `${canceledCount}개의 업로드가 취소되었습니다.`,
