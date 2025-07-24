@@ -30,7 +30,7 @@ function setSocketIO(io) {
   const BATCH_SIZE = 30;  // 한 번에 로드할 메시지 수
   const LOAD_DELAY = 300; // 메시지 로드 딜레이 (ms)
   const MAX_RETRIES = 3;  // 최대 재시도 횟수
-  const MESSAGE_LOAD_TIMEOUT = 10000; // 메시지 로드 타임아웃 (10초)
+  const MESSAGE_LOAD_TIMEOUT = 20000; // 메시지 로드 타임아웃 (20초)
   const RETRY_DELAY = 2000; // 재시도 간격 (2초)
   const DUPLICATE_LOGIN_TIMEOUT = 10000; // 중복 로그인 타임아웃 (10초)
 
@@ -230,6 +230,8 @@ function setSocketIO(io) {
       if (!user || Object.keys(user).length === 0) {
         return next(new Error('User not found'));
       }
+      console.log("[decoded]: ", decoded.user.id);
+      console.log("[user]: ", user.id);
 
       socket.user = {
         id: user.id.toString(),
@@ -455,6 +457,7 @@ function setSocketIO(io) {
 
         // 5. 입장 메시지 Redis에 저장
         const joinMessage = {
+          _id: roomId,
           room: roomId,
           content: `${socket.user.name}님이 입장하였습니다.`,
           type: 'system',
@@ -488,7 +491,7 @@ function setSocketIO(io) {
 
         // 8. 이벤트 발송
         socket.emit('joinRoomSuccess', {
-          roomId,
+          _id: roomId,
           participants: participantArr,
           messages,
           hasMore,
@@ -505,6 +508,7 @@ function setSocketIO(io) {
           messageCount: messages.length,
           hasMore
         });
+        logDebug('user join message', joinMessage);
 
       } catch (error) {
         console.error('Join room error:', error);
@@ -538,6 +542,7 @@ function setSocketIO(io) {
             socket.user.id,
             socket.user.sessionId
         );
+
         if (!sessionValidation.isValid) {
           throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
         }
@@ -588,6 +593,7 @@ function setSocketIO(io) {
                 email: socket.user.email,
                 profileImage: socket.user.profileImage
               },
+              _id: room,
               type: 'file',
               file: fileMeta,
               content: content || '',
@@ -603,13 +609,9 @@ function setSocketIO(io) {
             if (!messageContent) return;
 
             messageObj = {
-              room,
-              sender: {
-                _id: socket.user.id,
-                name: socket.user.name,
-                email: socket.user.email,
-                profileImage: socket.user.profileImage
-              },
+              _id: room,
+              room: room,
+              sender: socket.user.id,
               content: messageContent,
               type: 'text',
               timestamp: Date.now(),
@@ -687,6 +689,7 @@ function setSocketIO(io) {
 
         // 퇴장 메시지 생성 및 Redis 저장
         const leaveMessage = {
+          _id: roomId,
           room: roomId,
           content: `${socket.user.name}님이 퇴장하였습니다.`,
           type: 'system',
@@ -776,6 +779,7 @@ function setSocketIO(io) {
 
               // 2. 퇴장 메시지 생성 및 Redis에 저장
               const leaveMessage = {
+                _id: roomId,
                 room: roomId,
                 content: `${socket.user.name}님이 연결이 끊어졌습니다.`,
                 type: 'system',
