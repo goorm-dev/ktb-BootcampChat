@@ -7,6 +7,7 @@ const socketIO = require('socket.io');
 const path = require('path');
 const { router: roomsRouter, initializeSocket } = require('./routes/api/rooms');
 const routes = require('./routes');
+const promBundle = require('express-prom-bundle');
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +61,14 @@ if (process.env.NODE_ENV === 'development') {
     next();
   });
 }
+
+// Prometheus 메트릭
+const metricsMiddleware = promBundle({
+  includeMethod: true,
+  includePath: true,
+  metricsPath: '/metrics'
+});
+app.use(metricsMiddleware);
 
 // 기본 상태 체크
 app.get('/health', (req, res) => {
