@@ -26,7 +26,7 @@ env:
   GITHUB_REPO: https://github.com/100-hours-a-week/8-ktb-chat.git
   GITHUB_BRANCH: jacky
   # ASG 관련 설정 - 사용자 요청에 따라 변경
-  LAUNCH_TEMPLATE_NAME: pumati-load-test-backend-20250724073402992900000003
+  LAUNCH_TEMPLATE_NAME: pumati-load-test-backend-20250724114952269200000003
   ASG_NAME: pumati-load-test-backend-asg
 
 jobs:
@@ -90,14 +90,14 @@ jobs:
         echo "PM2 설치 중..."
         npm install -g pm2
         
-        # 애플리케이션 사용자 생성
-        echo "애플리케이션 사용자 생성..."
-        useradd -m -s /bin/bash appuser
+        # ec2-user 사용 (Amazon Linux 기본 사용자)
+        echo "기본 사용자 ec2-user 사용..."
+        # useradd 필요 없음 - ec2-user는 이미 존재
         
         # 애플리케이션 디렉토리 생성
         echo "애플리케이션 디렉토리 설정..."
         mkdir -p /opt/ktb-chat-backend
-        chown appuser:appuser /opt/ktb-chat-backend
+        chown ec2-user:ec2-user /opt/ktb-chat-backend
         
         # GitHub에서 코드 클론
         echo "GitHub에서 백엔드 코드 클론 중..."
@@ -122,7 +122,7 @@ jobs:
             delaycompress
             missingok
             notifempty
-            create 644 appuser appuser
+            create 644 ec2-user ec2-user
             postrotate
                 /usr/bin/pm2 reloadLogs
             endscript
@@ -146,25 +146,33 @@ jobs:
         wait  # npm ci 완료 대기
         
         # 소유권 변경 및 PM2 디렉토리 설정
-        chown -R appuser:appuser /opt/ktb-chat-backend
+        chown -R ec2-user:ec2-user /opt/ktb-chat-backend
         
         # PM2 홈 디렉토리 생성 및 권한 설정
         mkdir -p /opt/ktb-chat-backend/.pm2
-        chown -R appuser:appuser /opt/ktb-chat-backend/.pm2
+        chown -R ec2-user:ec2-user /opt/ktb-chat-backend/.pm2
         
         # 로그 디렉토리 권한 설정
         mkdir -p /var/log
         touch /var/log/ktb-chat-backend.log
         touch /var/log/ktb-chat-backend-out.log  
         touch /var/log/ktb-chat-backend-error.log
-        chown appuser:appuser /var/log/ktb-chat-backend*.log
+        chown ec2-user:ec2-user /var/log/ktb-chat-backend*.log
         
-        # GitHub Secrets에서 환경 변수 파일 생성
+        # GitHub Secrets에서 환경 변수 파일 생성 (.env 파일 위치 확실히 지정)
+        echo "환경변수 파일 생성 중..."
         cat > .env << 'EOFENV'
         ${{ secrets.ENV_BACKEND_DEV }}
         EOFENV
         
-        # PM2 ecosystem 파일 생성 (user/uid/gid 설정 제거)
+        # .env 파일 권한 설정 및 내용 확인
+        chown ec2-user:ec2-user .env
+        chmod 600 .env
+        echo "환경변수 파일 생성 완료. 내용 확인:"
+        echo "MONGO_URI가 설정되었는지 확인..."
+        grep -q "MONGO_URI" .env && echo "✅ MONGO_URI 설정됨" || echo "❌ MONGO_URI 누락"
+        
+        # PM2 ecosystem 파일 생성 (.env 파일 자동 로드)
         cat > ecosystem.config.js << 'EOFPM2'
         module.exports = {
           apps: [{
@@ -175,6 +183,7 @@ jobs:
             exec_mode: 'fork',
             watch: false,
             max_memory_restart: '1G',
+            env_file: '/opt/ktb-chat-backend/backend/.env',  // .env 파일 자동 로드
             env: {
               NODE_ENV: 'production',
               PORT: 5001
@@ -183,13 +192,13 @@ jobs:
             out_file: '/var/log/ktb-chat-backend-out.log',
             error_file: '/var/log/ktb-chat-backend-error.log',
             merge_logs: true,
-            time: true,
-            // user, uid, gid 설정 제거 - PM2가 이미 appuser로 실행됨
+            time: true
+            // user, uid, gid 설정 제거 - PM2가 이미 ec2-user로 실행됨
           }]
         };
         EOFPM2
         
-        # systemd 서비스 파일 생성 (PM2 ecosystem 파일 사용)
+        # systemd 서비스 파일 생성 (.env 파일 사용)
         cat > /etc/systemd/system/ktb-chat-backend.service << 'EOFSYSTEMD'
         [Unit]
         Description=KTB Chat Backend Application
@@ -197,8 +206,8 @@ jobs:
         
         [Service]
         Type=simple
-        User=appuser
-        Group=appuser
+        User=ec2-user
+        Group=ec2-user
         WorkingDirectory=/opt/ktb-chat-backend/backend
         # ecosystem.config.js 파일 사용으로 user 권한 문제 해결
         ExecStart=/usr/bin/pm2 start ecosystem.config.js --no-daemon
@@ -209,9 +218,10 @@ jobs:
         StandardOutput=syslog
         StandardError=syslog
         SyslogIdentifier=ktb-chat-backend
-        # 환경 변수 설정
+        # 환경 변수 설정 (.env 파일에서 로드)
         Environment=NODE_ENV=production
         Environment=PM2_HOME=/opt/ktb-chat-backend/.pm2
+        EnvironmentFile=/opt/ktb-chat-backend/backend/.env
         
         [Install]
         WantedBy=multi-user.target
