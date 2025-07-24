@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  PdfIcon as FileText, 
-  ImageIcon as Image, 
-  MovieIcon as Film, 
-  CorrectOutlineIcon as CheckCheck, 
-  CorrectOutlineIcon as Check, 
-  SoundOnIcon as Music, 
-  LinkOutlineIcon as ExternalLink, 
+import React, { useState } from 'react';
+import {
+  PdfIcon as FileText,
+  ImageIcon as Image,
+  MovieIcon as Film,
+  SoundOnIcon as Music,
+  LinkOutlineIcon as ExternalLink,
   DownloadIcon as Download,
-  ErrorCircleIcon as AlertCircle 
+  ErrorCircleIcon as AlertCircle,
+  FileIcon
 } from '@vapor-ui/icons';
 import { Button, Text, Callout } from '@vapor-ui/core';
 import PersistentAvatar from '../../common/PersistentAvatar';
@@ -16,11 +15,10 @@ import MessageContent from './MessageContent';
 import MessageActions from './MessageActions';
 import ReadStatus from '../ReadStatus';
 import fileService from '../../../services/fileService';
-import authService from '../../../services/authService';
 
-const FileMessage = ({ 
-  msg = {}, 
-  isMine = false, 
+const FileMessage = ({
+  msg = {},
+  isMine = false,
   currentUser = null,
   onReactionAdd,
   onReactionRemove,
@@ -29,18 +27,9 @@ const FileMessage = ({
   socketRef
 }) => {
   const [error, setError] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
 
-  useEffect(() => {
-    if (msg?.file) {
-      const url = fileService.getPreviewUrl(msg.file, true);
-      setPreviewUrl(url);
-      console.debug('Preview URL generated:', {
-        filename: msg.file.filename,
-        url
-      });
-    }
-  }, [msg?.file]);
+  // 서버가 소켓 메시지로 보내준 최종 CloudFront URL을 그대로 사용합니다.
+  const previewUrl = msg.file?.url;
 
   if (!msg?.file) {
     console.error('File data is missing:', msg);
@@ -48,13 +37,8 @@ const FileMessage = ({
   }
 
   const formattedTime = new Date(msg.timestamp).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
   }).replace(/\./g, '년').replace(/\s/g, ' ').replace('일 ', '일 ');
 
   const getFileIcon = () => {
@@ -64,191 +48,99 @@ const FileMessage = ({
     if (mimetype.startsWith('image/')) return <Image {...iconProps} color="#00C853" />;
     if (mimetype.startsWith('video/')) return <Film {...iconProps} color="#2196F3" />;
     if (mimetype.startsWith('audio/')) return <Music {...iconProps} color="#9C27B0" />;
-    return <FileText {...iconProps} color="#ffffff" />;
+    if (mimetype === 'application/pdf') return <FileText {...iconProps} color="#F44336" />;
+    return <FileIcon {...iconProps} color="#ffffff" />;
   };
 
   const getDecodedFilename = (encodedFilename) => {
     try {
-      if (!encodedFilename) return 'Unknown File';
-      
-      const base64 = encodedFilename
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
-      
-      const pad = base64.length % 4;
-      const paddedBase64 = pad ? base64 + '='.repeat(4 - pad) : base64;
-      
-      if (paddedBase64.match(/^[A-Za-z0-9+/=]+$/)) {
-        return Buffer.from(paddedBase64, 'base64').toString('utf8');
-      }
-
-      return decodeURIComponent(encodedFilename);
-    } catch (error) {
-      console.error('Filename decoding error:', error);
-      return encodedFilename;
+      return decodeURIComponent(encodedFilename || '');
+    } catch (e) {
+      return encodedFilename || '';
     }
   };
 
   const renderAvatar = () => (
-    <PersistentAvatar 
+    <PersistentAvatar
       user={isMine ? currentUser : msg.sender}
       size="md"
       className="flex-shrink-0"
       showInitials={true}
     />
   );
-
-  const handleFileDownload = async (e) => {
+  
+  const handleFileDownload = (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    setError(null);
-    
-    try {
-      if (!msg.file?.filename) {
-        throw new Error('파일 정보가 없습니다.');
-      }
-
-      const user = authService.getCurrentUser();
-      if (!user?.token || !user?.sessionId) {
-        throw new Error('인증 정보가 없습니다.');
-      }
-
-      const baseUrl = fileService.getFileUrl(msg.file.filename, false);
-      const authenticatedUrl = `${baseUrl}?token=${encodeURIComponent(user.token)}&sessionId=${encodeURIComponent(user.sessionId)}&download=true`;
-
-      const link = document.createElement('a');
-      link.href = authenticatedUrl;
-      link.download = getDecodedFilename(msg.file.originalname);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-    } catch (error) {
-      console.error('File download error:', error);
-      setError(error.message || '파일 다운로드 중 오류가 발생했습니다.');
+    if (!previewUrl) {
+      setError('파일 URL이 유효하지 않습니다.');
+      return;
     }
+    const link = document.createElement('a');
+    link.href = previewUrl;
+    link.download = getDecodedFilename(msg.file.originalname);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleViewInNewTab = (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    setError(null);
-
-    try {
-      if (!msg.file?.filename) {
-        throw new Error('파일 정보가 없습니다.');
-      }
-
-      const user = authService.getCurrentUser();
-      if (!user?.token || !user?.sessionId) {
-        throw new Error('인증 정보가 없습니다.');
-      }
-
-      const baseUrl = fileService.getFileUrl(msg.file.filename, true);
-      const authenticatedUrl = `${baseUrl}?token=${encodeURIComponent(user.token)}&sessionId=${encodeURIComponent(user.sessionId)}`;
-
-      const newWindow = window.open(authenticatedUrl, '_blank');
-      if (!newWindow) {
-        throw new Error('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.');
-      }
-      newWindow.opener = null;
-    } catch (error) {
-      console.error('File view error:', error);
-      setError(error.message || '파일 보기 중 오류가 발생했습니다.');
+    if (!previewUrl) {
+      setError('파일 URL이 유효하지 않습니다.');
+      return;
     }
+    window.open(previewUrl, '_blank', 'noopener,noreferrer');
   };
 
   const renderImagePreview = (originalname) => {
-    try {
-      if (!msg?.file?.filename) {
-        return (
-          <div className="flex items-center justify-center h-full bg-gray-100">
-            <Image className="w-8 h-8 text-gray-400" />
+    // [핵심 수정]
+    // previewUrl이 없는 경우(파일 처리 중) 로딩 상태를 보여줍니다.
+    if (!previewUrl) {
+      return (
+        <div className="flex items-center justify-center h-40 bg-gray-800 rounded-sm">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
           </div>
-        );
-      }
-
-      const user = authService.getCurrentUser();
-      if (!user?.token || !user?.sessionId) {
-        throw new Error('인증 정보가 없습니다.');
-      }
-
-      const previewUrl = fileService.getPreviewUrl(msg.file, true);
-
-      return (
-        <div className="bg-transparent-pattern">
-          <img 
-            src={previewUrl}
-            alt={originalname}
-            className="object-cover rounded-sm"
-            onLoad={() => {
-              console.debug('Image loaded successfully:', originalname);
-            }}
-            onError={(e) => {
-              console.error('Image load error:', {
-                error: e.error,
-                originalname
-              });
-              e.target.onerror = null; 
-              e.target.src = '/images/placeholder-image.png';
-              setError('이미지를 불러올 수 없습니다.');
-            }}
-            loading="lazy"
-          />
-        </div>
-      );
-    } catch (error) {
-      console.error('Image preview error:', error);
-      setError(error.message || '이미지 미리보기를 불러올 수 없습니다.');
-      return (
-        <div className="flex items-center justify-center h-full bg-gray-100">
-          <Image className="w-8 h-8 text-gray-400" />
         </div>
       );
     }
+    return (
+      <div className="bg-transparent-pattern">
+        <img
+          src={previewUrl}
+          alt={originalname}
+          className="object-cover rounded-sm"
+          onError={() => setError('이미지를 불러올 수 없습니다.')}
+          loading="lazy"
+        />
+      </div>
+    );
   };
-
+  
   const renderFilePreview = () => {
     const mimetype = msg.file?.mimetype || '';
     const originalname = getDecodedFilename(msg.file?.originalname || 'Unknown File');
     const size = fileService.formatFileSize(msg.file?.size || 0);
-    
+
     const FileActions = () => (
-      <div className="file-actions mt-2 pt-2 border-t border-gray-200">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleViewInNewTab}
-          title="새 탭에서 보기"
-        >
-          <ExternalLink size={16} />
-          <span>새 탭에서 보기</span>
+      <div className="file-actions mt-2 pt-2 border-t border-gray-700">
+        <Button size="sm" variant="outline" onClick={handleViewInNewTab} title="새 탭에서 보기">
+          <ExternalLink size={16} /> <span>새 탭에서 보기</span>
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleFileDownload}
-          title="다운로드"
-        >
-          <Download size={16} />
-          <span>다운로드</span>
+        <Button size="sm" variant="outline" onClick={handleFileDownload} title="다운로드">
+          <Download size={16} /> <span>다운로드</span>
         </Button>
       </div>
     );
 
-    const previewWrapperClass = 
-      "overflow-hidden";
-    const fileInfoClass = 
-      "flex items-center gap-3 p-1 mt-2";
-
     if (mimetype.startsWith('image/')) {
       return (
-        <div className={previewWrapperClass}>
+        <div>
           {renderImagePreview(originalname)}
-          <div className={fileInfoClass}>
+          <div className="flex items-center gap-3 p-1 mt-2">
             <div className="flex-1 min-w-0">
-              <Text typography="body2" className="font-medium truncate">{getFileIcon()} {originalname}</Text>
-              <span className="text-sm text-muted">{size}</span>
+              <Text typography="body2" className="font-medium truncate flex items-center gap-2">{getFileIcon()} {originalname}</Text>
+              <span className="text-sm text-gray-400">{size}</span>
             </div>
           </div>
           <FileActions />
@@ -258,30 +150,21 @@ const FileMessage = ({
 
     if (mimetype.startsWith('video/')) {
       return (
-        <div className={previewWrapperClass}>
+        <div>
           <div>
             {previewUrl ? (
-              <video 
-                className="object-cover rounded-sm"
-                controls
-                preload="metadata"
-                aria-label={`${originalname} 비디오`}
-                crossOrigin="use-credentials"
-              >
+              <video className="object-cover rounded-sm" controls preload="metadata" aria-label={`${originalname} 비디오`}>
                 <source src={previewUrl} type={mimetype} />
-                <track kind="captions" />
                 비디오를 재생할 수 없습니다.
               </video>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <Film className="w-8 h-8 text-gray-400" />
-              </div>
+              <div className="flex items-center justify-center h-40 bg-gray-800 rounded-sm"><Film className="w-8 h-8 text-gray-400" /></div>
             )}
           </div>
-          <div className={fileInfoClass}>
+          <div className="flex items-center gap-3 p-1 mt-2">
             <div className="flex-1 min-w-0">
-              <Text typography="body2" className="font-medium truncate">{getFileIcon()} {originalname}</Text>
-              <span className="text-sm text-muted">{size}</span>
+              <Text typography="body2" className="font-medium truncate flex items-center gap-2">{getFileIcon()} {originalname}</Text>
+              <span className="text-sm text-gray-400">{size}</span>
             </div>
           </div>
           <FileActions />
@@ -290,39 +173,36 @@ const FileMessage = ({
     }
 
     if (mimetype.startsWith('audio/')) {
-      return (
-        <div className={previewWrapperClass}>
-          <div className={fileInfoClass}>
-            <div className="flex-1 min-w-0">
-              <Text typography="body2" className="font-medium truncate">{getFileIcon()} {originalname}</Text>
-              <span className="text-sm text-muted">{size}</span>
+        return (
+          <div>
+            <div className="flex items-center gap-3 p-1 mt-2">
+              <div className="flex-1 min-w-0">
+                <Text typography="body2" className="font-medium truncate flex items-center gap-2">{getFileIcon()} {originalname}</Text>
+                <span className="text-sm text-gray-400">{size}</span>
+              </div>
             </div>
+            <div className="px-3 pb-3">
+              {previewUrl ? (
+                <audio className="w-full" controls preload="metadata" aria-label={`${originalname} 오디오`}>
+                  <source src={previewUrl} type={mimetype} />
+                  오디오를 재생할 수 없습니다.
+                </audio>
+              ) : (
+                <div className="flex items-center justify-center h-20 bg-gray-800 rounded-sm"><Music className="w-8 h-8 text-gray-400" /></div>
+              )}
+            </div>
+            <FileActions />
           </div>
-          <div className="px-3 pb-3">
-            {previewUrl && (
-              <audio 
-                className="w-full"
-                controls
-                preload="metadata"
-                aria-label={`${originalname} 오디오`}
-                crossOrigin="use-credentials"
-              >
-                <source src={previewUrl} type={mimetype} />
-                오디오를 재생할 수 없습니다.
-              </audio>
-            )}
-          </div>
-          <FileActions />
-        </div>
-      );
-    }
+        );
+      }
 
     return (
-      <div className={previewWrapperClass}>
-        <div className={fileInfoClass}>
+      <div>
+        <div className="flex items-center gap-3 p-4 bg-gray-800 rounded-sm">
+          <div className="flex-shrink-0">{getFileIcon()}</div>
           <div className="flex-1 min-w-0">
-            <div className="font-medium truncate">{getFileIcon()} {originalname}</div>
-            <Text typography="body2" as="span">{size}</Text>
+            <div className="font-medium truncate">{originalname}</div>
+            <Text typography="body2" as="span" className="text-gray-400">{size}</Text>
           </div>
         </div>
         <FileActions />
@@ -342,18 +222,10 @@ const FileMessage = ({
         <div className={`message-bubble ${isMine ? 'message-mine' : 'message-other'} last file-message`}>
           <div className="message-content">
             {error && (
-              <Callout color="danger" className="mb-3 d-flex align-items-center">
-                <AlertCircle className="w-4 h-4 me-2" />
+              <Callout color="danger" className="mb-3 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
                 <span>{error}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ms-auto"
-                  aria-label="Close"
-                  onClick={() => setError(null)}
-                >
-                  ×
-                </Button>
+                <Button variant="ghost" size="sm" className="ml-auto" aria-label="Close" onClick={() => setError(null)}>×</Button>
               </Callout>
             )}
             {renderFilePreview()}
@@ -364,13 +236,10 @@ const FileMessage = ({
             )}
           </div>
           <div className="message-footer">
-            <div 
-              className="message-time mr-3" 
-              title={new Date(msg.timestamp).toLocaleString('ko-KR')}
-            >
+            <div className="message-time mr-3" title={new Date(msg.timestamp).toLocaleString('ko-KR')}>
               {formattedTime}
             </div>
-            <ReadStatus 
+            <ReadStatus
               messageType={msg.type}
               participants={room.participants}
               readers={msg.readers}
@@ -381,7 +250,7 @@ const FileMessage = ({
             />
           </div>
         </div>
-        <MessageActions 
+        <MessageActions
           messageId={msg._id}
           messageContent={msg.content}
           reactions={msg.reactions}
@@ -390,7 +259,7 @@ const FileMessage = ({
           onReactionRemove={onReactionRemove}
           isMine={isMine}
           room={room}
-        />        
+        />
       </div>
     </div>
   );
@@ -402,7 +271,8 @@ FileMessage.defaultProps = {
       mimetype: '',
       filename: '',
       originalname: '',
-      size: 0
+      size: 0,
+      url: ''
     }
   },
   isMine: false,

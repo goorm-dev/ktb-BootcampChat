@@ -28,6 +28,7 @@ export const useFileHandling = (socketRef, currentUser, roomId, handleSessionErr
 
       const uploadResponse = await fileService.uploadFile(
         file,
+        roomId, // 직접 파일 객체 전달
         (progress) => setUploadProgress(progress)
       );
 

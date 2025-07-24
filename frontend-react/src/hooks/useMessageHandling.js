@@ -104,32 +104,43 @@ export const useMessageHandling = (socketRef, currentUser, roomId, handleSession
    try {
      console.log('[Chat] Sending message:', messageData);
 
-     if (messageData.type === 'file') {
+     if (messageData.type === 'file' && messageData.fileData?.file) {
        setUploading(true);
        setUploadError(null);
        setUploadProgress(0);
 
        const uploadResponse = await fileService.uploadFile(
          messageData.fileData.file,
+         roomId,
          (progress) => setUploadProgress(progress)
        );
 
-       if (!uploadResponse.success) {
+       if (!uploadResponse.success || !uploadResponse.data?.fileId) {
          throw new Error(uploadResponse.message || '파일 업로드에 실패했습니다.');
        }
 
-       socketRef.current.emit('chatMessage', {
-         room: roomId,
-         type: 'file',
-         content: messageData.content || '',
-         fileData: {
-           _id: uploadResponse.data.file._id,
-           filename: uploadResponse.data.file.filename,
-           originalname: uploadResponse.data.file.originalname,
-           mimetype: uploadResponse.data.file.mimetype,
-           size: uploadResponse.data.file.size
-         }
-       });
+       const { fileId } = uploadResponse.data;
+        socketRef.current.emit('fileUploadComplete', {
+          fileId: fileId,
+          roomId: roomId,
+          content: messageData.content || '' // 파일과 함께 보낸 텍스트
+        });
+
+      //  const finalFile = uploadResponse.data.file;
+
+      //  socketRef.current.emit('chatMessage', {
+      //    room: roomId,
+      //    type: 'file',
+      //    content: messageData.content || '',
+      //    fileData: {
+      //      _id: uploadResponse.data.file._id,
+      //      filename: uploadResponse.data.file.filename,
+      //      originalname: uploadResponse.data.file.originalname,
+      //      mimetype: uploadResponse.data.file.mimetype,
+      //      size: uploadResponse.data.file.size,
+      //      url: finalFile.url
+      //    }
+      //  });
 
        setFilePreview(null);
        setMessage('');
@@ -148,6 +159,7 @@ export const useMessageHandling = (socketRef, currentUser, roomId, handleSession
 
      setShowEmojiPicker(false);
      setShowMentionList(false);
+    //  textAreaRef.current?.focus();
 
    } catch (error) {
      console.error('[Chat] Message submit error:', error);
