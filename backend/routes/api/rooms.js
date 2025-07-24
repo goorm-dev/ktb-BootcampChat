@@ -126,22 +126,22 @@ router.get('/', [limiter, auth], async (req, res) => {
     const totalCount = rooms.length;
     const pagedRooms = rooms.slice(skip, skip + pageSize);
 
-    // creator/participant 정보 Redis에서 가져오기
-    const allUserEmails = [
+    // creator/participant 정보 User DB에서 가져오기
+    const allUserIds = [
       ...new Set([
         ...pagedRooms.map(r => r.creator),
         ...pagedRooms.flatMap(r => r.participants)
       ])
     ];
     const userMap = {};
-    if (allUserEmails.length > 0) {
+    if (allUserIds.length > 0) {
       const users = await Promise.all(
-          allUserEmails.map(email => redis.hGetAll(`user:${email}`))
+          allUserIds.map(id => redis.hGetAll(`user:${id}`))
       );
-      allUserEmails.forEach((email, idx) => {
+        allUserIds.forEach((id, idx) => {
         const u = users[idx];
         if (u && Object.keys(u).length > 0) {
-          userMap[email] = u;
+          userMap[id] = u;
         }
       });
     }
@@ -157,14 +157,14 @@ router.get('/', [limiter, auth], async (req, res) => {
         name: room.name || '제목 없음',
         hasPassword: !!room.password,
         creator: {
-          id: creator.id,
+          _id: creator._id,
           name: creator.name,
           email: creator.email
         },
         participants,
         participantsCount: participants.length,
         createdAt: room.createdAt,
-        isCreator: creator.email === req.user.email
+        isCreator: creator._id === req.user.id
       };
     });
 
@@ -215,22 +215,22 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: '방 이름은 필수입니다.' });
     }
     const roomId = nanoid();
-    const creatorEmail = req.user.email;
-    const participants = [creatorEmail];
+    const creatorId = req.user.id;
+    const participants = [creatorId];
 
     // Redis에 방 정보 저장
     await redis.hSet(`room:${roomId}`, {
       name: name.trim(),
-      creator: creatorEmail,
+      creator: creatorId,
       participants: JSON.stringify(participants),
       password: password || '',
       createdAt: Date.now()
     });
     await redis.sAdd('rooms', roomId);
 
-    const creator = await redis.hGetAll(`user:${creatorEmail}`);
+    const creator = await redis.hGetAll(`user:${creatorId}`);
     const participantUsers = await Promise.all(
-        participants.map(email => redis.hGetAll(`user:${email}`))
+        participants.map(id => redis.hGetAll(`user:${id}`))
     );
 
     if (io) {
@@ -238,10 +238,12 @@ router.post('/', auth, async (req, res) => {
         _id: roomId,
         name: name.trim(),
         creator: {
+          _id: creator._id,
           name: creator.name,
           email: creator.email
         },
         participants: participantUsers.map(u => ({
+          _id: u._id,
           name: u.name,
           email: u.email
         })),
@@ -256,10 +258,12 @@ router.post('/', auth, async (req, res) => {
         _id: roomId,
         name: name.trim(),
         creator: {
+          _id: creator._id,
           name: creator.name,
           email: creator.email
         },
         participants: participantUsers.map(u => ({
+          _id: u._id,
           name: u.name,
           email: u.email
         })),
@@ -293,7 +297,7 @@ router.get('/:roomId', auth, async (req, res) => {
         : JSON.parse(room.participants || '[]');
 
     const participants = await Promise.all(
-        participantKeys.map(email => redis.hGetAll(`user:${email}`))
+        participantKeys.map(id => redis.hGetAll(`user:${id}`))
     );
 
     res.json({
@@ -302,12 +306,14 @@ router.get('/:roomId', auth, async (req, res) => {
         _id: req.params.roomId,
         name: room.name,
         creator: {
-          email: creator.email,
-          name: creator.name
+          _id: creator._id,
+          name: creator.name,
+          email: creator.email
         },
         participants: participants
             .filter(u => u && Object.keys(u).length > 0)
             .map(u => ({
+                _id: u._id,
               email: u.email,
               name: u.name
             })),
@@ -337,23 +343,20 @@ router.post('/:roomId/join', auth, async (req, res) => {
     if (room.password && room.password !== password) {
       return res.status(401).json({ success: false, message: '비밀번호가 일치하지 않습니다.' });
     }
-
-    let participantEmails = Array.isArray(room.participants)
+    let participantIds = Array.isArray(room.participants)
         ? room.participants
         : JSON.parse(room.participants || '[]');
-
-    const myEmail = req.user.email;
-    if (!participantEmails.includes(myEmail)) {
-      participantEmails.push(myEmail);
+    if (!participantIds.includes(req.user.id)) {
+      participantIds.push(req.user.id);
       await redis.hSet(`room:${req.params.roomId}`, {
-        participants: JSON.stringify(participantEmails)
+        participants: JSON.stringify(participantIds)
       });
     }
 
     const creator = await redis.hGetAll(`user:${room.creator}`);
 
     const participants = await Promise.all(
-        participantEmails.map(email => redis.hGetAll(`user:${email}`))
+        participantIds.map(id => redis.hGetAll(`user:${id}`))
     );
 
     if (io) {
@@ -361,14 +364,14 @@ router.post('/:roomId/join', auth, async (req, res) => {
         _id: req.params.roomId,
         name: room.name,
         creator: {
-          id: creator.userId || creator.email,
+          _id: creator._id,
           name: creator.name,
           email: creator.email
         },
         participants: participants
             .filter(u => u && Object.keys(u).length > 0)
             .map(u => ({
-              id: u.userId || u.email,
+                _id: u._id,
               name: u.name,
               email: u.email
             })),
@@ -384,7 +387,7 @@ router.post('/:roomId/join', auth, async (req, res) => {
         _id: req.params.roomId,
         name: room.name,
         creator: {
-          id: creator.userId || creator.email,
+          _id: creator._id,
           name: creator.name,
           email: creator.email
         },
