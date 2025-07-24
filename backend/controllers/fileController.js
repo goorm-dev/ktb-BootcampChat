@@ -38,7 +38,7 @@ const generateSafeFilename = (originalFilename) => {
   const ext = path.extname(originalFilename || '').toLowerCase();
   const timestamp = Date.now();
   const randomBytes = crypto.randomBytes(8).toString('hex');
-  return `${timestamp}_${randomBytes}${ext}`;
+  return `static/${timestamp}_${randomBytes}${ext}`;
 };
 
 // 개선된 파일 정보 조회 함수
@@ -141,7 +141,7 @@ exports.getPresignedUrl = async (req, res) => {
       success: true,
       presignedUrl: presignedUrl,
       key: key, // 프론트가 업로드 후 다시 보내야 하는 값
-      cloudFrontUrl: `https://goorm-ktb-020.goorm.team/static/${key}` // 파일의 실제 S3 URL
+      cloudFrontUrl: `https://goorm-ktb-020.goorm.team/${key}` // 파일의 실제 S3 URL
     });
 
   } catch (error) {
