@@ -1,6 +1,6 @@
-# 백엔드 ASG용 커스텀 AMI 생성 파이프라인 (개발 환경)
-# 백엔드 코드를 GitHub에서 직접 clone하여 systemd로 실행하는 AMI 생성 및 ASG 업데이트
-name: Backend AMI Build (Dev)
+# 백엔드 API CI/CD 파이프라인 
+# AMI 빌드 및 Auto Scaling Group 자동 배포
+name: Backend API CI/CD
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
     paths:
       - 'backend/**'
       - 'scripts/**'
-      - '.github/workflows/backend-ami-build.yml'
+      - '.github/workflows/backend-api-cicd.yml'
   pull_request:
     branches: [ jacky ]
     paths:
@@ -30,8 +30,8 @@ env:
   ASG_NAME: pumati-load-test-backend-asg
 
 jobs:
-  # AMI 생성 및 백엔드 배포
-  build-ami:
+  # AMI 빌드 및 ASG 자동 배포
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -197,8 +197,8 @@ jobs:
         EOFHEALTH
         chmod +x /usr/local/bin/health-check.sh
         
-        # 개발 환경 설정 완료 표시
-        echo "=== 개발 환경 AMI 설정 완료: $(date) ==="
+        # API 서버 AMI 설정 완료 표시
+        echo "=== API 서버 AMI 설정 완료: $(date) ==="
         echo "GitHub 레포지토리: ${{ env.GITHUB_REPO }}"
         echo "브랜치: ${{ env.GITHUB_BRANCH }}"
         echo "커밋: ${{ github.sha }}"
@@ -280,7 +280,7 @@ jobs:
         AMI_ID=$(aws ec2 create-image \
           --instance-id ${{ steps.create-instance.outputs.instance_id }} \
           --name "${{ steps.meta.outputs.ami_name }}" \
-          --description "KTB Chat Backend AMI - jacky branch (Dev) - Built on $(date)" \
+          --description "KTB Chat Backend API AMI - jacky branch - Built on $(date)" \
           --no-reboot \
           --tag-specifications 'ResourceType=image,Tags=[{Key=Name,Value=${{ steps.meta.outputs.ami_name }}},{Key=Branch,Value=jacky},{Key=Application,Value=ktb-chat-backend},{Key=Environment,Value=development},{Key=BuildTimestamp,Value=${{ steps.meta.outputs.timestamp }}}]' \
           --query 'ImageId' \
@@ -444,7 +444,7 @@ jobs:
     - name: 배포 결과 요약
       if: success()
       run: |
-        echo "## 🎉 백엔드 AMI 빌드 완료 (개발 환경)" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎉 백엔드 API CI/CD 완료" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📋 AMI 정보" >> $GITHUB_STEP_SUMMARY
         echo "- **AMI ID**: \`${{ steps.create-ami.outputs.ami_id }}\`" >> $GITHUB_STEP_SUMMARY
