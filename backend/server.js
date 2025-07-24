@@ -7,9 +7,6 @@ const socketIO = require('socket.io');
 const path = require('path');
 const { router: roomsRouter, initializeSocket } = require('./routes/api/rooms');
 const routes = require('./routes');
-const { createClient } = require("redis");
-const { createAdapter } = require("@socket.io/redis-adapter");
-const { redisHost, redisPort } = require("./config/keys");
 
 const app = express();
 const server = http.createServer(app);
@@ -80,26 +77,8 @@ app.use('/api', routes);
 const io = socketIO(server, { cors: corsOptions });
 require('./sockets/chat')(io);
 
-// Redis Adapter 설정
-async function setupSocketIOWithRedis() {
-  const pubClient = createClient({ url: `redis://${redisHost}:${redisPort}` });
-  const subClient = pubClient.duplicate();
-
-  try {
-    await Promise.all([pubClient.connect(), subClient.connect()]);
-    io.adapter(createAdapter(pubClient, subClient));
-    console.log("Redis Pub/Sub 어댑터 연결 완료");
-
-    // Socket.IO 채팅 서버 로드
-    require("./sockets/chat")(io);
-    initializeSocket(io);
-  } catch (err) {
-    console.error("Redis 어댑터 연결 실패:", err);
-    process.exit(1);
-  }
-}
-
-setupSocketIOWithRedis();
+// Socket.IO 객체 전달
+initializeSocket(io);
 
 // 404 에러 핸들러
 app.use((req, res) => {
@@ -123,10 +102,9 @@ app.use((err, req, res, next) => {
 
 // 서버 시작
 mongoose.connect(process.env.MONGO_URI)
-  .then(async () => {
-    console.log("MongoDB Connected");
-    await setupSocketIOWithRedis();
-    server.listen(PORT, "0.0.0.0", () => {
+  .then(() => {
+    console.log('MongoDB Connected');
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log('Environment:', process.env.NODE_ENV);
       console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);

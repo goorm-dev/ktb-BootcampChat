@@ -7,7 +7,6 @@ const { jwtSecret } = require('../config/keys');
 const redisClient = require('../utils/redisClient');
 const SessionService = require('../services/sessionService');
 const aiService = require('../services/aiService');
-const CACHE_TTL_SECONDS = 30;
 
 module.exports = function(io) {
   const connectedUsers = new Map();
@@ -32,16 +31,6 @@ module.exports = function(io) {
 
   // 메시지 일괄 로드 함수 개선
   const loadMessages = async (socket, roomId, before, limit = BATCH_SIZE) => {
-    const cacheKey = `messages:${roomId}:${before || 'latest'}`;
-
-    // 캐시 조회
-    if (!before) {
-      const cached = await redisClient.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
-      }
-    }
-
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => {
         reject(new Error('Message loading timed out'));
@@ -75,18 +64,6 @@ module.exports = function(io) {
       const sortedMessages = resultMessages.sort((a, b) => 
         new Date(a.timestamp) - new Date(b.timestamp)
       );
-
-      if (!before && sortedMessages.length > 0) {
-        await redisClient.setEx(
-            cacheKey,
-            CACHE_TTL_SECONDS,
-            JSON.stringify({
-              messages: sortedMessages,
-              hasMore,
-              oldestTimestamp: sortedMessages[0]?.timestamp || null
-            }) // 문자열로 변환
-        );
-      }
 
       // 읽음 상태 비동기 업데이트
       if (sortedMessages.length > 0 && socket.user) {
