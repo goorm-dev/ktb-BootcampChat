@@ -20,6 +20,7 @@ const corsOptions = {
   origin: [
     'https://bootcampchat-fe.run.goorm.site',
     'https://bootcampchat-hgxbv.dev-k8s.arkain.io',
+    'https://chat.goorm-ktb-008.goorm.team', // 현재 도메인 추가
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
