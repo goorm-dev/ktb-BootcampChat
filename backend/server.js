@@ -146,8 +146,8 @@ aiService.consumeAITasks(async (taskResult) => {
   });
   // 채팅방에 AI 메시지 push (스트리밍 완료)
   io.to(room).emit('aiMessageComplete', {
-    messageId: messageId || aiMessage._id,
-    _id: aiMessage._id,
+    messageId: messageId || aiMessage.id,
+    id: aiMessage.id,
     content: result.content,
     aiType: aiName,
     timestamp: aiMessage.timestamp,

@@ -101,7 +101,7 @@ router.get('/', [limiter, auth], async (req, res) => {
       if (room) {
         rooms.push({
           ...room,
-          _id: id,
+          id: id,
           participants: Array.isArray(room.participants) ? room.participants : JSON.parse(room.participants || '[]'),
           createdAt: room.createdAt ? new Date(Number(room.createdAt)) : new Date()
         });
@@ -148,23 +148,23 @@ router.get('/', [limiter, auth], async (req, res) => {
 
     // 안전한 응답 데이터 구성
     const safeRooms = pagedRooms.map(room => {
-      const creator = userMap[room.creator] || { _id: 'unknown', name: '알 수 없음', email: '' };
+      const creator = userMap[room.creator] || { id: 'unknown', name: '알 수 없음', email: '' };
       const participants = Array.isArray(room.participants)
-          ? room.participants.map(pid => userMap[pid] || { _id: pid, name: '알 수 없음', email: '' })
+          ? room.participants.map(pid => userMap[pid] || { id: pid, name: '알 수 없음', email: '' })
           : [];
       return {
-        _id: room._id,
+        id: room.id,
         name: room.name || '제목 없음',
         hasPassword: !!room.password,
         creator: {
-          _id: creator._id,
+          id: creator.id,
           name: creator.name,
           email: creator.email
         },
         participants,
         participantsCount: participants.length,
         createdAt: room.createdAt,
-        isCreator: creator._id === req.user.id
+        isCreator: creator.id === req.user.id
       };
     });
 
@@ -235,15 +235,15 @@ router.post('/', auth, async (req, res) => {
 
     if (io) {
       io.to('room-list').emit('roomCreated', {
-        _id: roomId,
+        id: roomId,
         name: name.trim(),
         creator: {
-          _id: creator._id,
+          id: creator.id,
           name: creator.name,
           email: creator.email
         },
         participants: participantUsers.map(u => ({
-          _id: u._id,
+          id: u.id,
           name: u.name,
           email: u.email
         })),
@@ -255,15 +255,15 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json({
       success: true,
       data: {
-        _id: roomId,
+        id: roomId,
         name: name.trim(),
         creator: {
-          _id: creator._id,
+          id: creator.id,
           name: creator.name,
           email: creator.email
         },
         participants: participantUsers.map(u => ({
-          _id: u._id,
+          id: u.id,
           name: u.name,
           email: u.email
         })),
@@ -303,17 +303,17 @@ router.get('/:roomId', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        _id: req.params.roomId,
+        id: req.params.roomId,
         name: room.name,
         creator: {
-          _id: creator._id,
+          id: creator.id,
           name: creator.name,
           email: creator.email
         },
         participants: participants
             .filter(u => u && Object.keys(u).length > 0)
             .map(u => ({
-                _id: u._id,
+                id: u.id,
               email: u.email,
               name: u.name
             })),
@@ -369,17 +369,17 @@ router.post('/:roomId/join', auth, async (req, res) => {
 
     if (io) {
       io.to(req.params.roomId).emit('roomUpdate', {
-        _id: req.params.roomId,
+        id: req.params.roomId,
         name: room.name,
         creator: {
-          _id: creator._id,
+          id: creator.id,
           name: creator.name,
           email: creator.email
         },
         participants: participants
             .filter(u => u && Object.keys(u).length > 0)
             .map(u => ({
-                _id: u._id,
+                id: u.id,
               name: u.name,
               email: u.email
             })),
@@ -392,10 +392,10 @@ router.post('/:roomId/join', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        _id: req.params.roomId,
+        id: req.params.roomId,
         name: room.name,
         creator: {
-          _id: creator._id,
+          id: creator.id,
           name: creator.name,
           email: creator.email
         },

@@ -220,9 +220,9 @@ export const useChatRoom = () => {
       setMessages(prev => {
         // 중복 메시지 필터링 개선
         const newMessages = loadedMessages.filter(msg => {
-          if (!msg._id) return false;
-          if (processedMessageIds.current.has(msg._id)) return false;
-          processedMessageIds.current.add(msg._id);
+          if (!msg.id) return false;
+          if (processedMessageIds.current.has(msg.id)) return false;
+          processedMessageIds.current.add(msg.id);
           return true;
         });
 
@@ -233,7 +233,7 @@ export const useChatRoom = () => {
 
         // 중복 제거 (가장 최근 메시지 유지)
         const messageMap = new Map();
-        allMessages.forEach(msg => messageMap.set(msg._id, msg));
+        allMessages.forEach(msg => messageMap.set(msg.id, msg));
         return Array.from(messageMap.values());
       });
 
@@ -321,17 +321,17 @@ export const useChatRoom = () => {
 
     // 메시지 이벤트
     socketRef.current.on('message', message => {
-      if (!message || !mountedRef.current || messageProcessingRef.current || !message._id) return;
+      if (!message || !mountedRef.current || messageProcessingRef.current || !message.id) return;
       
-      if (processedMessageIds.current.has(message._id)) {
+      if (processedMessageIds.current.has(message.id)) {
         return;
       }
 
       console.log('Received message:', message);
-      processedMessageIds.current.add(message._id);
+      processedMessageIds.current.add(message.id);
 
       setMessages(prev => {
-        if (prev.some(msg => msg._id === message._id)) {
+        if (prev.some(msg => msg.id === message.id)) {
           return prev;
         }
         return [...prev, message];

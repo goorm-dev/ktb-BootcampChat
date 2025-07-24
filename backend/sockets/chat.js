@@ -80,10 +80,10 @@ function setSocketIO(io) {
 
       // 읽음 상태 비동기 업데이트
       if (sortedMessages.length > 0 && socket.user) {
-        const messageIds = sortedMessages.map(msg => msg._id);
+        const messageIds = sortedMessages.map(msg => msg.id);
         Message.updateMany(
           {
-            _id: { $in: messageIds },
+            id: { $in: messageIds },
             'readers.userId': { $ne: socket.user.id }
           },
           {
@@ -459,7 +459,7 @@ function setSocketIO(io) {
 
         // 5. 입장 메시지 Redis에 저장
         const joinMessage = {
-          _id: messageId,
+          id: messageId,
           room: roomId,
           content: `${socket.user.name}님이 입장하였습니다.`,
           type: 'system',
@@ -483,7 +483,7 @@ function setSocketIO(io) {
         const activeStreams = Array.from(streamingSessions.values())
             .filter(session => session.room === roomId)
             .map(session => ({
-              _id: messageId,
+              id: messageId,
               type: 'ai',
               aiType: session.aiType,
               content: session.content,
@@ -493,7 +493,7 @@ function setSocketIO(io) {
 
         // 8. 이벤트 발송
         socket.emit('joinRoomSuccess', {
-          _id: messageId,
+          id: messageId,
           participants: participantArr,
           messages,
           hasMore,
@@ -565,7 +565,7 @@ function setSocketIO(io) {
         let messageObj;
         switch (type) {
           case 'file': {
-            if (!fileData || !fileData._id) {
+            if (!fileData || !fileData.id) {
               throw new Error('파일 데이터가 올바르지 않습니다.');
             }
 
@@ -573,12 +573,12 @@ function setSocketIO(io) {
             let fileMeta = null;
             if (File && File.findOne) {
               const file = await File.findOne({
-                _id: fileData._id,
+                id: fileData.id,
                 user: socket.user.id
               });
               if (!file) throw new Error('파일을 찾을 수 없거나 접근 권한이 없습니다.');
               fileMeta = {
-                _id: file._id,
+                id: file.id,
                 filename: file.filename,
                 originalname: file.originalname,
                 mimetype: file.mimetype,
@@ -592,12 +592,12 @@ function setSocketIO(io) {
             messageObj = {
               room,
               sender: {
-                _id: socket.user.id,
+                id: socket.user.id,
                 name: socket.user.name,
                 email: socket.user.email,
                 profileImage: socket.user.profileImage
               },
-              _id: messageId,
+              id: messageId,
               type: 'file',
               file: fileMeta,
               content: content || '',
@@ -613,7 +613,7 @@ function setSocketIO(io) {
             if (!messageContent) return;
 
             messageObj = {
-              _id: messageId,
+              id: messageId,
               room: room,
               sender: socket.user.id,
               content: messageContent,
@@ -696,7 +696,7 @@ function setSocketIO(io) {
 
         // 퇴장 메시지 생성 및 Redis 저장
         const leaveMessage = {
-          _id: messageId,
+          id: messageId,
           room: roomId,
           content: `${socket.user.name}님이 퇴장하였습니다.`,
           type: 'system',
@@ -788,7 +788,7 @@ function setSocketIO(io) {
 
               // 2. 퇴장 메시지 생성 및 Redis에 저장
               const leaveMessage = {
-                _id: messageId,
+                id: messageId,
                 room: roomId,
                 content: `${socket.user.name}님이 연결이 끊어졌습니다.`,
                 type: 'system',
@@ -866,7 +866,7 @@ function setSocketIO(io) {
         // 읽음 상태 업데이트
         await Message.updateMany(
           {
-            _id: { $in: messageIds },
+            id: { $in: messageIds },
             room: roomId,
             'readers.userId': { $ne: socket.user.id }
           },
@@ -897,26 +897,54 @@ function setSocketIO(io) {
     // 리액션 처리
     socket.on('messageReaction', async ({ messageId, reaction, type }) => {
       try {
-        if (!socket.user) {
-          throw new Error('Unauthorized');
-        }
+        if (!socket.user) throw new Error('Unauthorized');
+        if (!messageId || !reaction) throw new Error('잘못된 요청입니다.');
 
-        const message = await Message.findById(messageId);
-        if (!message) {
-          throw new Error('메시지를 찾을 수 없습니다.');
+        // [1] 메시지 탐색 (리스트 전체/슬라이싱 → 고유 _id로 매칭)
+        let targetMsg = null;
+        let roomId = null;
+        let msgIndex = -1;
+        const allRooms = await redis.keys('chat:messages:*');
+        for (const roomKey of allRooms) {
+          const msgs = await redis.lRange(roomKey, 0, -1);
+          for (let i = 0; i < msgs.length; i++) {
+            try {
+              const msg = JSON.parse(msgs[i]);
+              if (msg.id && msg.id === messageId) {
+                targetMsg = msg;
+                roomId = roomKey.replace('chat:messages:', '');
+                msgIndex = i;
+                break;
+              }
+            } catch {}
+          }
+          if (targetMsg) break;
         }
+        if (!targetMsg) throw new Error('메시지를 찾을 수 없습니다.');
 
-        // 리액션 추가/제거
+        // [2] 리액션 조작
+        if (!targetMsg.reactions) targetMsg.reactions = {};
+        if (!targetMsg.reactions[reaction]) targetMsg.reactions[reaction] = [];
+
         if (type === 'add') {
-          await message.addReaction(reaction, socket.user.id);
+          if (!targetMsg.reactions[reaction].includes(socket.user.id)) {
+            targetMsg.reactions[reaction].push(socket.user.id);
+          }
         } else if (type === 'remove') {
-          await message.removeReaction(reaction, socket.user.id);
+          targetMsg.reactions[reaction] = targetMsg.reactions[reaction].filter(uid => uid !== socket.user.id);
+          // 비어있으면 필드 자체 제거(선택)
+          if (targetMsg.reactions[reaction].length === 0) delete targetMsg.reactions[reaction];
         }
 
-        // 업데이트된 리액션 정보 브로드캐스트
-        io.to(message.room).emit('messageReactionUpdate', {
+        // [3] 메시지 업데이트 (해당 인덱스 overwrite)
+        if (msgIndex !== -1 && roomId) {
+          await redis.lSet(`chat:messages:${roomId}`, msgIndex, JSON.stringify(targetMsg));
+        }
+
+        // [4] 브로드캐스트
+        io.to(roomId).emit('messageReactionUpdate', {
           messageId,
-          reactions: message.reactions
+          reactions: targetMsg.reactions
         });
 
       } catch (error) {
@@ -1028,7 +1056,7 @@ function setSocketIO(io) {
           // 완료 메시지 전송
           io.to(room).emit('aiMessageComplete', {
             messageId,
-            _id: aiMessage._id,
+            id: aiMessage.id,
             content: finalContent.content,
             aiType: aiName,
             timestamp: new Date(),

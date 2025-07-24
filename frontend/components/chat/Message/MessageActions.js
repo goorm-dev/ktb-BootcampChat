@@ -90,7 +90,7 @@ const MessageActions = ({
     // 사용자 ID들을 문자열로 변환하여 비교하기 위한 Map 생성
     const participantMap = new Map(
       room.participants.map(p => [
-        String(p._id || p.id), 
+        String(p.id || p.id), 
         p.name
       ])
     );

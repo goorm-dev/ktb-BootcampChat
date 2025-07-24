@@ -67,7 +67,7 @@ const ChatPage = () => {
 
             return (
               <Avatar.Root
-                key={participant._id}
+                key={participant.id}
                 size="md"
                 style={{
                   backgroundColor,

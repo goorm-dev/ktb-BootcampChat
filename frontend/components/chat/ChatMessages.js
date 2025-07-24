@@ -295,7 +295,7 @@ const ChatMessages = ({
   const isMine = useCallback((msg) => {
     if (!msg?.sender || !currentUser?.id) return false;
     return (
-      msg.sender._id === currentUser.id || 
+      msg.sender.id === currentUser.id || 
       msg.sender.id === currentUser.id ||
       msg.sender === currentUser.id
     );
@@ -423,7 +423,7 @@ const ChatMessages = ({
 
     return (
       <MessageComponent
-        key={msg._id || `msg-${idx}`}
+        key={msg.id || `msg-${idx}`}
         ref={isLast ? lastMessageRef : null}
         {...commonProps}
         msg={msg}

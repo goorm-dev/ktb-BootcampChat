@@ -4,7 +4,7 @@ const crypto = require('crypto');
 class SessionService {
   static SESSION_TTL = 24 * 60 * 60; // 24 hours
   static SESSION_PREFIX = 'session:';
-  static SESSION_ID_PREFIX = 'sessionId:';
+  static SESSIONid_PREFIX = 'sessionId:';
   static USER_SESSIONS_PREFIX = 'user_sessions:';
   static ACTIVE_SESSION_PREFIX = 'active_session:';
 
@@ -341,7 +341,7 @@ class SessionService {
   }
 
   static getSessionIdKey(sessionId) {
-    return `${this.SESSION_ID_PREFIX}${sessionId}`;
+    return `${this.SESSIONid_PREFIX}${sessionId}`;
   }
 
   static getUserSessionsKey(userId) {

@@ -329,8 +329,8 @@ function ChatRoomsComponent() {
 
       setRooms(prev => {
         if (isLoadingMore) {
-          const existingIds = new Set(prev.map(room => room._id));
-          const newRooms = data.filter(room => !existingIds.has(room._id));
+          const existingIds = new Set(prev.map(room => room.id));
+          const newRooms = data.filter(room => !existingIds.has(room.id));
           return [...prev, ...newRooms];
         }
         return data;
@@ -398,8 +398,8 @@ function ChatRoomsComponent() {
         });
 
         setRooms(prev => {
-          const existingIds = new Set(prev.map(room => room._id));
-          const uniqueNewRooms = newRooms.filter(room => !existingIds.has(room._id));
+          const existingIds = new Set(prev.map(room => room.id));
+          const uniqueNewRooms = newRooms.filter(room => !existingIds.has(room.id));
           console.log('Unique new rooms:', uniqueNewRooms.length);
           return [...prev, ...uniqueNewRooms];
         });
@@ -522,7 +522,7 @@ function ChatRoomsComponent() {
           },
           roomDeleted: (roomId) => {
             setRooms(prev => {
-              const updatedRooms = prev.filter(room => room._id !== roomId);
+              const updatedRooms = prev.filter(room => room.id !== roomId);
               previousRoomsRef.current = updatedRooms;
               return updatedRooms;
             });
@@ -530,7 +530,7 @@ function ChatRoomsComponent() {
           roomUpdated: (updatedRoom) => {
             setRooms(prev => {
               const updatedRooms = prev.map(room =>
-                room._id === updatedRoom._id ? updatedRoom : room
+                room.id === updatedRoom.id ? updatedRoom : room
               );
               previousRoomsRef.current = updatedRooms;
               return updatedRooms;
@@ -632,7 +632,7 @@ function ChatRoomsComponent() {
         </StyledTableHead>
         <StyledTableBody>
           {rooms.map((room) => (
-            <StyledTableRow key={room._id}>
+            <StyledTableRow key={room.id}>
               <StyledTableCell>
                 <Text typography="body1" style={{ fontWeight: 500, marginBottom: 'var(--vapor-space-050)' }}>{room.name}</Text>
                 {room.hasPassword && (
@@ -664,7 +664,7 @@ function ChatRoomsComponent() {
                   color="primary"
                   variant="outline"
                   size="md"
-                  onClick={() => handleJoinRoom(room._id, room.hasPassword)}
+                  onClick={() => handleJoinRoom(room.id, room.hasPassword)}
                   disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
                 >
                   입장
