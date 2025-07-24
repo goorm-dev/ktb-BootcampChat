@@ -592,7 +592,8 @@ function ChatRoomsComponent() {
           timeout: 5000
         });
         
-        if (response.data.success) {
+        
+        if (response?.data?.success) {
           router.push(`/chat?room=${roomId}`);
         }
       } catch (error) {
@@ -605,7 +606,12 @@ function ChatRoomsComponent() {
           errorMessage = '채팅방 입장 권한이 없습니다.';
         } else if (error.response?.status === 401) {
           errorMessage = '비밀번호가 틀립니다.';
-          
+      setError({
+        title: '비밀번호 오류',
+        message: errorMessage,
+        type: 'danger'
+      });
+      return;
         } 
         
         setError({
