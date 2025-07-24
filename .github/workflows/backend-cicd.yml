@@ -104,20 +104,67 @@ jobs:
         cd /opt/ktb-chat-backend
         git clone -b ${{ env.GITHUB_BRANCH }} ${{ env.GITHUB_REPO }} .
         
-        # 백엔드 디렉토리로 이동 및 의존성 설치
+        # 백엔드 디렉토리로 이동 및 의존성 설치 (최적화)
         cd backend
-        echo "백엔드 의존성 설치 중..."
-        npm ci --production
+        echo "백엔드 의존성 설치 중... (병렬 설치 및 캐시 활용)"
+        # 병렬 설치 및 캐시 최적화로 속도 향상
+        npm ci --production --silent --prefer-offline --no-audit &
         
-        # 소유권 변경
+        # 백그라운드에서 의존성 설치하는 동안 다른 설정 작업 진행
+        cd ..
+        
+        # 로그 로테이션 설정 (의존성 설치와 병렬 진행)
+        cat > /etc/logrotate.d/ktb-chat-backend << 'EOFLOGROTATE'
+        /var/log/ktb-chat-backend*.log {
+            daily
+            rotate 30
+            compress
+            delaycompress
+            missingok
+            notifempty
+            create 644 appuser appuser
+            postrotate
+                /usr/bin/pm2 reloadLogs
+            endscript
+        }
+        EOFLOGROTATE
+        
+        # CloudWatch 에이전트 설치 (병렬)
+        echo "CloudWatch 에이전트 설치..."
+        yum install -y amazon-cloudwatch-agent &
+        
+        # 헬스체크 엔드포인트 확인 스크립트 생성
+        cat > /usr/local/bin/health-check.sh << 'EOFHEALTH'
+        #!/bin/bash
+        # 백엔드 애플리케이션 헬스체크
+        curl -f http://localhost:5001/health || exit 1
+        EOFHEALTH
+        chmod +x /usr/local/bin/health-check.sh
+        
+        # 의존성 설치 완료 대기
+        cd backend
+        wait  # npm ci 완료 대기
+        
+        # 소유권 변경 및 PM2 디렉토리 설정
         chown -R appuser:appuser /opt/ktb-chat-backend
+        
+        # PM2 홈 디렉토리 생성 및 권한 설정
+        mkdir -p /opt/ktb-chat-backend/.pm2
+        chown -R appuser:appuser /opt/ktb-chat-backend/.pm2
+        
+        # 로그 디렉토리 권한 설정
+        mkdir -p /var/log
+        touch /var/log/ktb-chat-backend.log
+        touch /var/log/ktb-chat-backend-out.log  
+        touch /var/log/ktb-chat-backend-error.log
+        chown appuser:appuser /var/log/ktb-chat-backend*.log
         
         # GitHub Secrets에서 환경 변수 파일 생성
         cat > .env << 'EOFENV'
         ${{ secrets.ENV_BACKEND_DEV }}
         EOFENV
         
-        # PM2 ecosystem 파일 생성
+        # PM2 ecosystem 파일 생성 (user/uid/gid 설정 제거)
         cat > ecosystem.config.js << 'EOFPM2'
         module.exports = {
           apps: [{
@@ -136,12 +183,13 @@ jobs:
             out_file: '/var/log/ktb-chat-backend-out.log',
             error_file: '/var/log/ktb-chat-backend-error.log',
             merge_logs: true,
-            time: true
+            time: true,
+            // user, uid, gid 설정 제거 - PM2가 이미 appuser로 실행됨
           }]
         };
         EOFPM2
         
-        # systemd 서비스 파일 생성
+        # systemd 서비스 파일 생성 (PM2 ecosystem 파일 사용)
         cat > /etc/systemd/system/ktb-chat-backend.service << 'EOFSYSTEMD'
         [Unit]
         Description=KTB Chat Backend Application
@@ -150,15 +198,20 @@ jobs:
         [Service]
         Type=simple
         User=appuser
+        Group=appuser
         WorkingDirectory=/opt/ktb-chat-backend/backend
-        ExecStart=/usr/bin/pm2 start server.js --name ktb-chat-backend --env production --node-args="--max-old-space-size=1024" --no-daemon
-        ExecReload=/usr/bin/pm2 reload ktb-chat-backend
-        ExecStop=/usr/bin/pm2 stop ktb-chat-backend
+        # ecosystem.config.js 파일 사용으로 user 권한 문제 해결
+        ExecStart=/usr/bin/pm2 start ecosystem.config.js --no-daemon
+        ExecReload=/usr/bin/pm2 reload ecosystem.config.js
+        ExecStop=/usr/bin/pm2 stop ecosystem.config.js
         Restart=always
         RestartSec=10
         StandardOutput=syslog
         StandardError=syslog
         SyslogIdentifier=ktb-chat-backend
+        # 환경 변수 설정
+        Environment=NODE_ENV=production
+        Environment=PM2_HOME=/opt/ktb-chat-backend/.pm2
         
         [Install]
         WantedBy=multi-user.target
@@ -168,33 +221,8 @@ jobs:
         systemctl daemon-reload
         systemctl enable ktb-chat-backend.service
         
-        # 로그 로테이션 설정
-        cat > /etc/logrotate.d/ktb-chat-backend << 'EOFLOGROTATE'
-        /var/log/ktb-chat-backend*.log {
-            daily
-            rotate 30
-            compress
-            delaycompress
-            missingok
-            notifempty
-            create 644 appuser appuser
-            postrotate
-                /usr/bin/pm2 reloadLogs
-            endscript
-        }
-        EOFLOGROTATE
-        
-        # CloudWatch 에이전트 설치 (선택사항)
-        echo "CloudWatch 에이전트 설치..."
-        yum install -y amazon-cloudwatch-agent
-        
-        # 헬스체크 엔드포인트 확인 스크립트 생성
-        cat > /usr/local/bin/health-check.sh << 'EOFHEALTH'
-        #!/bin/bash
-        # 백엔드 애플리케이션 헬스체크
-        curl -f http://localhost:5001/health || exit 1
-        EOFHEALTH
-        chmod +x /usr/local/bin/health-check.sh
+        # 백그라운드 작업들 완료 대기
+        wait  # 모든 백그라운드 작업 완료 대기
         
         # API 서버 AMI 설정 완료 표시
         echo "=== API 서버 AMI 설정 완료: $(date) ==="
@@ -258,9 +286,9 @@ jobs:
         echo "⏳ 인스턴스 부팅 및 설정 대기 중..."
         aws ec2 wait instance-running --instance-ids ${INSTANCE_ID}
         
-        # 추가 대기 시간 (애플리케이션 설치 완료를 위해)
-        echo "📦 백엔드 애플리케이션 설치 중... (약 7분 소요)"
-        sleep 420
+        # 최적화된 대기 시간 (병렬 설치로 시간 단축)
+        echo "📦 백엔드 애플리케이션 설치 중... (약 3분 소요)"
+        sleep 180
         
         echo "✅ 인스턴스 설정 완료"
 
