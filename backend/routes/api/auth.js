@@ -21,7 +21,7 @@ router.get('/', (req, res) => {
 // Public routes
 router.post('/register', authController.register);
 router.post('/login', authController.login);
-router.post('/verify-token', authController.verifyToken); // GET /verify-token 라우트 추가
+router.get('/verify-token', authController.verifyToken); // GET /verify-token 라우트 추가
 
 // Protected routes
 router.post('/logout', auth, authController.logout);
