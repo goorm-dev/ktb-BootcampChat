@@ -124,9 +124,8 @@ jobs:
             name: 'ktb-chat-backend',
             script: 'server.js',
             cwd: '/opt/ktb-chat-backend/backend',
-            user: 'appuser',
             instances: 1,
-            exec_mode: 'cluster',
+            exec_mode: 'fork',
             watch: false,
             max_memory_restart: '1G',
             env: {
@@ -149,12 +148,12 @@ jobs:
         After=network.target
         
         [Service]
-        Type=forking
+        Type=simple
         User=appuser
-        WorkingDirectory=/opt/ktb-chat-backend
-        ExecStart=/usr/bin/pm2 start ecosystem.config.js --no-daemon
-        ExecReload=/usr/bin/pm2 reload ecosystem.config.js
-        ExecStop=/usr/bin/pm2 kill
+        WorkingDirectory=/opt/ktb-chat-backend/backend
+        ExecStart=/usr/bin/pm2 start server.js --name ktb-chat-backend --env production --node-args="--max-old-space-size=1024" --no-daemon
+        ExecReload=/usr/bin/pm2 reload ktb-chat-backend
+        ExecStop=/usr/bin/pm2 stop ktb-chat-backend
         Restart=always
         RestartSec=10
         StandardOutput=syslog
