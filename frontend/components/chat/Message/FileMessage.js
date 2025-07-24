@@ -3,10 +3,8 @@ import {
   PdfIcon as FileText, 
   ImageIcon as Image, 
   MovieIcon as Film, 
-  CorrectOutlineIcon as CheckCheck, 
-  CorrectOutlineIcon as Check, 
-  MusicIcon as Music, 
-  ExternalLinkIcon as ExternalLink, 
+  SoundOnIcon as Music, 
+  LinkOutlineIcon as ExternalLink, 
   DownloadIcon as Download,
   ErrorCircleIcon as AlertCircle 
 } from '@vapor-ui/icons';
