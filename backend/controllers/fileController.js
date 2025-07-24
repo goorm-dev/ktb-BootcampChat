@@ -171,11 +171,10 @@ exports.uploadFile = async (req, res) => {
       success: true,
       message: '파일 업로드 성공',
       file: {
-        filename: file.filename,
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-        uploadAt: file.uploadDate
+        filename: filename,
+        originalname: originalname,
+        mimetype: mimetype,
+        size: size,
       }
     });
   } catch (e) {

@@ -27,7 +27,7 @@ export const useFileHandling = (socketRef, currentUser, router, handleSessionErr
       setUploadError(null);
       setUploadProgress(0);
 
-      const uploadResponse = await fileService.uploadFile(
+      const uploadResponse = await fileService.uploadFileWithS3PresignedUrl(
         file,
         (progress) => setUploadProgress(progress)
       );
@@ -55,9 +55,9 @@ export const useFileHandling = (socketRef, currentUser, router, handleSessionErr
 
     } catch (error) {
       console.error('File upload error:', error);
-      
-      if (error.message?.includes('세션') || 
-          error.message?.includes('인증') || 
+
+      if (error.message?.includes('세션') ||
+          error.message?.includes('인증') ||
           error.message?.includes('토큰')) {
         await handleSessionError();
         return;
@@ -93,7 +93,7 @@ export const useFileHandling = (socketRef, currentUser, router, handleSessionErr
     } catch (error) {
       console.error('File selection error:', error);
       Toast.error(error.message || '파일 선택 중 오류가 발생했습니다.');
-      
+
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
