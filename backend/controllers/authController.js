@@ -58,6 +58,13 @@ const authController = {
         password: password,
         id: Date.now()
       });
+
+      await redis.hSet(`user:${id}`, {
+        name: name,
+        email: email,
+        password: password,
+        id: Date.now()
+      })
       console.log('User created:', user.id);
 
       // Create session with metadata

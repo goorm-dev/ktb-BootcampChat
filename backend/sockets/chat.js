@@ -226,13 +226,13 @@ function setSocketIO(io) {
         return next(new Error(validationResult.message || 'Invalid session'));
       }
 
-      const user = await User.findById(decoded.user.id);
-      if (!user) {
+      const user = await redis.hGetAll(`user:${decoded.user.id}`)
+      if (!user || Object.keys(user).length === 0) {
         return next(new Error('User not found'));
       }
 
       socket.user = {
-        id: user._id.toString(),
+        id: user.id.toString(),
         name: user.name,
         email: user.email,
         sessionId: sessionId,
@@ -310,7 +310,7 @@ function setSocketIO(io) {
         const participants = Array.isArray(room.participants)
             ? room.participants
             : JSON.parse(room.participants || '[]');
-        if (!participants.includes(socket.user.email)) {
+        if (!participants.includes(socket.user.id)) {
           throw new Error('채팅방 접근 권한이 없습니다.');
         }
 
@@ -436,20 +436,21 @@ function setSocketIO(io) {
         let participants = Array.isArray(room.participants)
             ? room.participants
             : JSON.parse(room.participants || '[]');
-        if (!participants.includes(socket.user.email)) {
-          participants.push(socket.user.email);
+        if (!participants.includes(socket.user.id)) {
+          participants.push(socket.user.id);
           await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
         }
 
         socket.join(roomId);
         userRooms.set(socket.user.id, roomId);
 
-        // 4. 참가자 정보 로드 (User DB, profileImage 포함)
-        const userObjs = await User.find({ _id: { $in: participants } })
-            .select('name email profileImage');
-        // participant 응답 형태 맞추기
-        const participantArr = participants.map(pid =>
-            userObjs.find(u => u._id.toString() === pid) || { _id: pid, name: '알 수 없음', email: '', profileImage: '' }
+        const participantArr = await Promise.all(
+            participants.map(async pid => {
+              const u = await redis.hGetAll(`user:${pid}`);
+              return u && Object.keys(u).length > 0
+                  ? { id: u.userId || pid, name: u.name, email: u.email, profileImage: u.profileImage || '' }
+                  : { id: pid, name: '알 수 없음', email: '', profileImage: '' };
+            })
         );
 
         // 5. 입장 메시지 Redis에 저장
@@ -528,7 +529,7 @@ function setSocketIO(io) {
         const participants = Array.isArray(chatRoom.participants)
             ? chatRoom.participants
             : JSON.parse(chatRoom.participants || '[]');
-        if (!participants.includes(socket.user.email)) {
+        if (!participants.includes(socket.user.id)) {
           throw new Error('채팅방 접근 권한이 없습니다.');
         }
 
@@ -676,7 +677,7 @@ function setSocketIO(io) {
             ? room.participants
             : JSON.parse(room.participants || '[]');
 
-        if (!participants.includes(socket.user.email)) {
+        if (!participants.includes(socket.user.id)) {
           console.log(`User ${socket.user.id} has no access to room ${roomId}`);
           return;
         }
@@ -694,13 +695,16 @@ function setSocketIO(io) {
         await redis.rPush(`chat:messages:${roomId}`, JSON.stringify(leaveMessage));
 
         // 참가자 목록에서 유저 제거
-        participants = participants.filter(email => email !== socket.user.email);
+        participants = participants.filter(id => id !== socket.user.id);
         await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
 
-        // 참가자 정보 - profileImage 포함 (User DB)
-        const userObjs = await User.find({ _id: { $in: participants } }).select('name email profileImage');
-        const participantArr = participants.map(pid =>
-            userObjs.find(u => u._id.toString() === pid) || { _id: pid, name: '알 수 없음', email: '', profileImage: '' }
+        const participantArr = await Promise.all(
+            participants.map(async pid => {
+              const u = await redis.hGetAll(`user:${pid}`);
+              return u && Object.keys(u).length > 0
+                  ? { id: u.userId || pid, name: u.name, email: u.email, profileImage: u.profileImage || '' }
+                  : { id: pid, name: '알 수 없음', email: '', profileImage: '' };
+            })
         );
 
         // 스트리밍 세션/메시지 큐 등 정리
@@ -767,7 +771,7 @@ function setSocketIO(io) {
               let participants = Array.isArray(room.participants)
                   ? room.participants
                   : JSON.parse(room.participants || '[]');
-              participants = participants.filter(email => email !== socket.user.email);
+              participants = participants.filter(id => id !== socket.user.id);
               await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
 
               // 2. 퇴장 메시지 생성 및 Redis에 저장
@@ -779,10 +783,13 @@ function setSocketIO(io) {
               };
               await redis.rPush(`chat:messages:${roomId}`, JSON.stringify(leaveMessage));
 
-              // 3. 참가자 정보 최신화 (User DB)
-              const userObjs = await User.find({ _id: { $in: participants } }).select('name email profileImage');
-              const participantArr = participants.map(pid =>
-                  userObjs.find(u => u._id.toString() === pid) || { _id: pid, name: '알 수 없음', email: '', profileImage: '' }
+              const participantArr = await Promise.all(
+                  participants.map(async pid => {
+                    const u = await redis.hGetAll(`user:${pid}`);
+                    return u && Object.keys(u).length > 0
+                        ? { id: u.userId || pid, name: u.name, email: u.email, profileImage: u.profileImage || '' }
+                        : { id: pid, name: '알 수 없음', email: '', profileImage: '' };
+                  })
               );
 
               // 4. 소켓 이벤트 전파
