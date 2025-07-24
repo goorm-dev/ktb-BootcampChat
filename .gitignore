@@ -11,7 +11,10 @@ backend/uploads
 .next/
 out/
 
+# Test
 test-results/
+e2e/*.js
+e2e/test/**/*.js
 
 # Logs
 logs/
