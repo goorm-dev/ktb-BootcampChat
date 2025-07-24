@@ -38,7 +38,7 @@ const generateSafeFilename = (originalFilename) => {
   const ext = path.extname(originalFilename || '').toLowerCase();
   const timestamp = Date.now();
   const randomBytes = crypto.randomBytes(8).toString('hex');
-  return `${timestamp}_${randomBytes}${ext}`;
+  return `static/${timestamp}_${randomBytes}${ext}`;
 };
 
 // 개선된 파일 정보 조회 함수
@@ -139,9 +139,9 @@ exports.getPresignedUrl = async (req, res) => {
     // 응답
     res.json({
       success: true,
-      url: presignedUrl,
+      presignedUrl: presignedUrl,
       key: key, // 프론트가 업로드 후 다시 보내야 하는 값
-      s3Url: `https://${BUCKET}.s3.amazonaws.com/${key}` // 파일의 실제 S3 URL
+      cloudFrontUrl: `https://goorm-ktb-020.goorm.team/${key}` // 파일의 실제 S3 URL
     });
 
   } catch (error) {
@@ -152,8 +152,8 @@ exports.getPresignedUrl = async (req, res) => {
 
 exports.uploadFile = async (req, res) => {
   try {
-    const { filename, originalname, mimetype, size, s3Url } = req.body;
-    if (!filename || !originalname || !s3Url) {
+    const { filename, originalname, mimetype, size, cloudFrontUrl } = req.body;
+    if (!filename || !originalname || !cloudFrontUrl) {
       return res.status(400).json({ success: false, message: "필수값 누락" });
     }
 
@@ -163,7 +163,7 @@ exports.uploadFile = async (req, res) => {
       originalname,
       mimetype,
       size,
-      s3Url,
+      cloudFrontUrl,
       uploadedAt: Date.now(),
     });
 
@@ -171,11 +171,10 @@ exports.uploadFile = async (req, res) => {
       success: true,
       message: '파일 업로드 성공',
       file: {
-        filename: file.filename,
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size,
-        uploadAt: file.uploadDate
+        filename: filename,
+        originalname: originalname,
+        mimetype: mimetype,
+        size: size,
       }
     });
   } catch (e) {

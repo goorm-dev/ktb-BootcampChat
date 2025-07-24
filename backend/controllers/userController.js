@@ -216,65 +216,68 @@ exports.changePassword = async (req, res) => {
 // 프로필 이미지 업로드
 exports.uploadProfileImage = async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.url) {
       return res.status(400).json({
         success: false,
         message: '이미지가 제공되지 않았습니다.'
       });
     }
 
+    await redis.hSet(`user:${req.user.email}`, 'profileImage', req.url);
+
     // 파일 유효성 검사
-    const fileSize = req.file.size;
-    const fileType = req.file.mimetype;
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // const fileSize = req.file.size;
+    // const fileType = req.file.mimetype;
+    // const maxSize = 5 * 1024 * 1024; // 5MB
+    //
+    // if (fileSize > maxSize) {
+    //   // 업로드된 파일 삭제
+    //   await fs.unlink(req.file.path);
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: '파일 크기는 5MB를 초과할 수 없습니다.'
+    //   });
+    // }
+    //
+    // if (!fileType.startsWith('image/')) {
+    //   // 업로드된 파일 삭제
+    //   await fs.unlink(req.file.path);
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: '이미지 파일만 업로드할 수 있습니다.'
+    //   });
+    // }
 
-    if (fileSize > maxSize) {
-      // 업로드된 파일 삭제
-      await fs.unlink(req.file.path);
-      return res.status(400).json({
-        success: false,
-        message: '파일 크기는 5MB를 초과할 수 없습니다.'
-      });
-    }
+    // const user = await redis.hGetAll(`user:${req.user.email}`);
 
-    if (!fileType.startsWith('image/')) {
-      // 업로드된 파일 삭제
-      await fs.unlink(req.file.path);
-      return res.status(400).json({
-        success: false,
-        message: '이미지 파일만 업로드할 수 있습니다.'
-      });
-    }
-
-    const user = await redis.hGetAll(`user:${req.user.email}`);
-    if (!user || Object.keys(user).length === 0) {
-      // 업로드된 파일 삭제
-      await fs.unlink(req.file.path);
-      return res.status(404).json({
-        success: false,
-        message: '사용자를 찾을 수 없습니다.'
-      });
-    }
+    // if (!user || Object.keys(user).length === 0) {
+    //   // 업로드된 파일 삭제
+    //   await fs.unlink(req.file.path);
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: '사용자를 찾을 수 없습니다.'
+    //   });
+    // }
 
     // 기존 프로필 이미지가 있다면 삭제
-    if (user.profileImage) {
-      const oldImagePath = path.join(__dirname, '..', user.profileImage);
-      try {
-        await fs.access(oldImagePath);
-        await fs.unlink(oldImagePath);
-      } catch (error) {
-        console.error('Old profile image delete error:', error);
-      }
-    }
-
-    // 새 이미지 경로 저장
-    const imageUrl = `/uploads/${req.file.filename}`;
-    await redis.hSet(`user:${req.user.email}`, 'profileImage', imageUrl);
-
+    // if (user.profileImage) {
+    //   const oldImagePath = path.join(__dirname, '..', user.profileImage);
+    //   try {
+    //     await fs.access(oldImagePath);
+    //     await fs.unlink(oldImagePath);
+    //   } catch (error) {
+    //     console.error('Old profile image delete error:', error);
+    //   }
+    // }
+    //
+    // // 새 이미지 경로 저장
+    // const imageUrl = `/uploads/${req.file.filename}`;
+    // await redis.hSet(`user:${req.user.email}`, 'profileImage', imageUrl);
+    //
     res.json({
       success: true,
       message: '프로필 이미지가 업데이트되었습니다.',
-      imageUrl: user.profileImage
+      imageUrl: req.url
     });
 
   } catch (error) {
