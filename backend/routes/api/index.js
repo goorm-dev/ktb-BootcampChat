@@ -6,6 +6,7 @@ const authRoutes = require('./auth');
 const userRoutes = require('./users');
 const roomRoutes = require('./rooms');
 const fileRoutes = require('./files');
+const detectiveRoutes = require('./detective');
 
 // API documentation route
 router.get('/', (req, res) => {
@@ -27,6 +28,7 @@ router.get('/', (req, res) => {
       users: '/users',
       rooms: '/rooms',
       files: '/files',
+      detective: '/detective'
     }
   });
 });
@@ -36,5 +38,6 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/rooms', roomRoutes);
 router.use('/files', fileRoutes);
+router.use('/detective', detectiveRoutes);
 
 module.exports = router;

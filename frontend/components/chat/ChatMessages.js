@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { Text } from '@vapor-ui/core';
 import { SystemMessage, FileMessage, UserMessage, AIMessage } from './Message';
+import { DetectiveSystemMessage, DetectiveSteveMessage, DetectiveUserMessage } from './DetectiveMessage';
 
 // ScrollHandler 클래스 정의
 class ScrollHandler {
@@ -270,7 +271,8 @@ const ChatMessages = ({
   messagesEndRef,
   socketRef,
   scrollToBottomOnNewMessage = true,
-  onScrollPositionChange = () => {}
+  onScrollPositionChange = () => {},
+  detectiveMode = false
 }) => {
   const containerRef = useRef(null);
   const lastMessageRef = useRef(null);
@@ -396,45 +398,56 @@ const ChatMessages = ({
   }, [messages, streamingMessages]);
 
   const renderMessage = useCallback((msg, idx) => {
-    if (!msg || !SystemMessage || !FileMessage || !UserMessage || !AIMessage) {
-      console.error('Message component undefined:', {
-        msgType: msg?.type,
-        hasSystemMessage: !!SystemMessage,
-        hasFileMessage: !!FileMessage,
-        hasUserMessage: !!UserMessage,
-        hasAIMessage: !!AIMessage
-      });
-      return null;
-    }
+    if (!msg) return null;
 
     const isLast = idx === allMessages.length - 1;
     const commonProps = {
+      key: msg._id || `msg-${idx}`,
+      ref: isLast ? lastMessageRef : null,
+      msg: msg,
       currentUser,
       room,
       onReactionAdd,
-      onReactionRemove
+      onReactionRemove,
+      socketRef,
     };
+
+    if (detectiveMode && msg.type === 'detective') {
+        switch (msg.subType) {
+            case 'game_start':
+            case 'investigation_areas':
+            case 'evidence_found':
+            case 'info':
+                return <DetectiveSystemMessage {...commonProps} />;
+            case 'steve_response':
+                return <DetectiveSteveMessage {...commonProps} />;
+            case 'user_interrogation':
+                return <DetectiveUserMessage {...commonProps} />;
+            default:
+                return <DetectiveSystemMessage {...commonProps} />;
+        }
+    }
 
     const MessageComponent = {
       system: SystemMessage,
       file: FileMessage,
-      ai: AIMessage
+      ai: AIMessage,
     }[msg.type] || UserMessage;
+
+    if (!MessageComponent) {
+        return null;
+    }
 
     return (
       <MessageComponent
-        key={msg._id || `msg-${idx}`}
-        ref={isLast ? lastMessageRef : null}
         {...commonProps}
-        msg={msg}
         content={msg.content}
         isMine={msg.type !== 'system' ? isMine(msg) : undefined}
         isStreaming={msg.type === 'ai' ? (msg.isStreaming || false) : undefined}
         messageRef={msg}
-        socketRef={socketRef}
       />
     );
-  }, [allMessages.length, currentUser, room, isMine, onReactionAdd, onReactionRemove, socketRef]);
+  }, [allMessages.length, currentUser, room, isMine, onReactionAdd, onReactionRemove, socketRef, detectiveMode]);
 
   return (
     <div 

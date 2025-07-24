@@ -8,6 +8,7 @@ const redisClient = require('../utils/redisClient');
 const SessionService = require('../services/sessionService');
 const audioService = require('../services/audioService');
 const aiService = require('../services/aiService');
+const detectiveGame = require('../services/detectiveGame');
 
 module.exports = function(io) {
   const connectedUsers = new Map();
@@ -438,6 +439,193 @@ module.exports = function(io) {
         });
       }
     });
+
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
+        });
+      }
+    });
     
     // 메시지 전송 처리
     socket.on('chatMessage', async (messageData) => {
@@ -573,6 +761,193 @@ module.exports = function(io) {
       }
     });
 
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
     // 채팅방 퇴장 처리
     socket.on('leaveRoom', async (roomId) => {
       try {
@@ -646,6 +1021,193 @@ module.exports = function(io) {
         console.error('Leave room error:', error);
         socket.emit('error', {
           message: error.message || '채팅방 퇴장 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
         });
       }
     });
@@ -745,6 +1307,193 @@ module.exports = function(io) {
       }
     });
 
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
     // 메시지 읽음 상태 처리
     socket.on('markMessagesAsRead', async ({ roomId, messageIds }) => {
       try {
@@ -786,6 +1535,193 @@ module.exports = function(io) {
       }
     });
 
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
     // 리액션 처리
     socket.on('messageReaction', async ({ messageId, reaction, type }) => {
       try {
@@ -815,6 +1751,193 @@ module.exports = function(io) {
         console.error('Message reaction error:', error);
         socket.emit('error', {
           message: error.message || '리액션 처리 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
         });
       }
     });
@@ -863,6 +1986,193 @@ module.exports = function(io) {
       }
     });
 
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
     // Complete audio transcription
     socket.on('audioComplete', async ({ sessionId, roomId }) => {
       try {
@@ -891,6 +2201,193 @@ module.exports = function(io) {
         socket.emit('transcriptionError', {
           sessionId: sessionId || 'unknown',
           error: error.message || 'Audio completion failed'
+        });
+      }
+    });
+
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
         });
       }
     });
@@ -939,6 +2436,193 @@ module.exports = function(io) {
         socket.emit('ttsError', {
           messageId: messageId || 'unknown',
           error: error.message || 'TTS generation failed'
+        });
+      }
+    });
+
+    // Detective Game Events
+    
+    // Start detective game
+    socket.on('startDetectiveGame', async ({ roomId }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        // Initialize game
+        const gameState = detectiveGame.initializeGame(socket.user.id, roomId);
+        
+        // Join detective game room
+        socket.join(`detective_${roomId}`);
+        
+        // Send initial game state
+        socket.emit('detectiveGameStarted', {
+          success: true,
+          gameState: {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            instructions: {
+              objective: '스모군을 심문하여 자백을 받아내세요',
+              rules: [
+                '자백을 받으려면 두 가지 핵심 증거를 모두 제시해야 합니다:',
+                '1. 프로덕션에 직접 force push한 증거',
+                '2. 로그를 삭제하여 흔적을 지운 증거',
+                '그 전까지는 모든 것을 부인하고 다른 사람을 탓할 것입니다'
+              ],
+              tips: [
+                '기술적 전문용어로 회피하려 할 것입니다',
+                'Jenkins, CI/CD, 다른 개발자들을 탓하는 것을 좋아합니다',
+                '끈질기게 구체적인 증거를 제시하세요',
+                '@smokinggun 태그로 대화해야 합니다'
+              ]
+            }
+          }
+        });
+
+        // Send initial character message
+        const initialResponse = await detectiveGame.processPlayerMessage(
+          socket.user.id, 
+          'detective_game_start',
+          []
+        );
+
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: initialResponse.response,
+          mood: initialResponse.mood,
+          timestamp: new Date(),
+          isSystemMessage: true
+        });
+
+        logDebug('detective game started', {
+          userId: socket.user.id,
+          roomId
+        });
+
+      } catch (error) {
+        console.error('Start detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '탐정 게임 시작 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Send message to detective character
+    socket.on('detectiveInterrogate', async ({ message, evidence = [] }) => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        if (!message || typeof message !== 'string') {
+          throw new Error('메시지가 필요합니다.');
+        }
+
+        // Process the interrogation
+        const response = await detectiveGame.processPlayerMessage(
+          socket.user.id,
+          message,
+          evidence
+        );
+
+        if (!response.success) {
+          socket.emit('detectiveGameError', {
+            message: response.error || '심문 처리 중 오류가 발생했습니다.'
+          });
+          return;
+        }
+
+        // Send character response
+        socket.emit('detectiveMessage', {
+          character: '스모군',
+          message: response.response,
+          mood: response.mood,
+          timestamp: new Date(),
+          isConfession: response.isConfession,
+          gameEnded: response.gameEnded
+        });
+
+        // If game ended with confession, send completion event
+        if (response.gameEnded && response.isConfession) {
+          const stats = detectiveGame.getGameStats(socket.user.id);
+          
+          socket.emit('detectiveGameComplete', {
+            success: true,
+            confessionAchieved: true,
+            stats,
+            finalMessage: '축하합니다! 스모군의 자백을 받아냈습니다!'
+          });
+        }
+
+        logDebug('detective interrogation processed', {
+          userId: socket.user.id,
+          messageLength: message.length,
+          evidenceCount: evidence.length,
+          gameEnded: response.gameEnded
+        });
+
+      } catch (error) {
+        console.error('Detective interrogation error:', error);
+        socket.emit('detectiveGameError', {
+          message: error.message || '심문 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // Get detective game status
+    socket.on('getDetectiveStatus', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.getGameState(socket.user.id);
+        const stats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveStatus', {
+          hasActiveGame: gameState ? gameState.isActive : false,
+          gameState: gameState ? {
+            character: gameState.character,
+            startTime: gameState.startTime,
+            isActive: gameState.isActive,
+            confessionTriggered: gameState.confessionTriggered
+          } : null,
+          stats
+        });
+
+      } catch (error) {
+        console.error('Get detective status error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 상태 확인 중 오류가 발생했습니다.'
+        });
+      }
+    });
+
+    // End detective game
+    socket.on('endDetectiveGame', async () => {
+      try {
+        if (!socket.user) {
+          throw new Error('Unauthorized');
+        }
+
+        const gameState = detectiveGame.endGame(socket.user.id);
+        const finalStats = detectiveGame.getGameStats(socket.user.id);
+
+        socket.emit('detectiveGameEnded', {
+          success: true,
+          finalStats,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+        logDebug('detective game ended', {
+          userId: socket.user.id,
+          confessionAchieved: gameState ? gameState.confessionTriggered : false
+        });
+
+      } catch (error) {
+        console.error('End detective game error:', error);
+        socket.emit('detectiveGameError', {
+          message: '게임 종료 중 오류가 발생했습니다.'
         });
       }
     });

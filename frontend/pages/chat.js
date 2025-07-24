@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AlertCircle,
-  WifiOff
+  WifiOff,
+  Gamepad2
 } from 'lucide-react';
 import { Button, Text, Callout, Card, Badge, Avatar } from '@vapor-ui/core';
 import { Flex, Box, HStack } from '../components/ui/Layout';
@@ -12,6 +13,8 @@ import ChatInput from '../components/chat/ChatInput';
 import { generateColorFromEmail, getContrastTextColor } from '../utils/colorUtils';
 
 const ChatPage = () => {
+  const [detectiveMode, setDetectiveMode] = useState(false);
+  
   const {
     room,
     messages,
@@ -51,6 +54,30 @@ const ChatPage = () => {
     hasMoreMessages,
     handleLoadMore
   } = useChatRoom();
+
+  const handleDetectiveToggle = () => {
+    if (!detectiveMode) {
+      // Starting detective game - send initial system message
+      if (socketRef.current) {
+        socketRef.current.emit('startDetectiveGame', { roomId: room._id });
+      }
+    }
+    setDetectiveMode(!detectiveMode);
+  };
+
+  const handleDetectiveMessageSubmit = (e) => {
+    if (detectiveMode && socketRef.current && message.trim()) {
+      // Send detective interrogation message
+      socketRef.current.emit('detectiveInterrogate', {
+        roomId: room._id,
+        message: message.trim()
+      });
+      setMessage('');
+      e.preventDefault();
+    } else {
+      handleMessageSubmit(e);
+    }
+  };
 
   const renderParticipants = () => {
     if (!room?.participants) return null;
@@ -204,6 +231,7 @@ const ChatPage = () => {
         hasMoreMessages={hasMoreMessages}
         onLoadMore={handleLoadMore}
         socketRef={socketRef}
+        detectiveMode={detectiveMode}
       />
     );
   };
@@ -245,31 +273,40 @@ const ChatPage = () => {
             <Flex justify="space-between" align="center">
               <Flex align="center" gap="300">
                 <Text typography="heading4" style={{ fontWeight: 'bold' }} className="chat-room-title">
-                  {room.name}
+                  {room.name} {detectiveMode && <span style={{ color: '#dc2626' }}>- 탐정 모드</span>}
                 </Text>
                 {renderParticipants()}
               </Flex>
-              <Badge color={status.color === 'success' ? 'success' : status.color === 'warning' ? 'warning' : 'danger'}>
-                {status.label}
-              </Badge>
+              <Flex align="center" gap="200">
+                <Button
+                  variant={detectiveMode ? "solid" : "outline"}
+                  size="sm"
+                  onClick={handleDetectiveToggle}
+                  style={detectiveMode ? { backgroundColor: '#dc2626', borderColor: '#dc2626' } : {}}
+                >
+                  <Gamepad2 size={16} className="me-1" />
+                  {detectiveMode ? '탐정 모드 종료' : '탐정 게임 시작'}
+                </Button>
+                <Badge color={status.color === 'success' ? 'success' : status.color === 'warning' ? 'warning' : 'danger'}>
+                  {status.label}
+                </Badge>
+              </Flex>
             </Flex>
           </div>
         </Card.Header>
 
         <Card.Body className="chat-room-body">
-          <div>
-            <div className="chat-messages">
-              {renderContent()}
-            </div>
+          <div className="chat-messages-container">
+            {renderContent()}
           </div>
         </Card.Body>
 
         <Card.Footer className="chat-room-footer">
-          <div>
+          <Flex direction="column" gap="100">
             <ChatInput
               message={message}
               onMessageChange={handleMessageChange}
-              onSubmit={handleMessageSubmit}
+              onSubmit={detectiveMode ? handleDetectiveMessageSubmit : handleMessageSubmit}
               onEmojiToggle={handleEmojiToggle}
               fileInputRef={fileInputRef}
               messageInputRef={messageInputRef}
@@ -284,16 +321,17 @@ const ChatPage = () => {
               setMessage={setMessage}
               setShowEmojiPicker={setShowEmojiPicker}
               setShowMentionList={setShowMentionList}
-              setMentionFilter={setMentionFilter}
-              setMentionIndex={setMentionIndex}
-              room={room} // room 객체 전달
+              setMentionFilter={setMentionIndex}
+              room={room}
               onMentionSelect={(user) => {
                 insertMention(user);
                 setShowMentionList(false);
               }}
               onFileRemove={removeFilePreview}
+              detectiveMode={detectiveMode}
+              placeholder={detectiveMode ? "스티브에게 질문하세요..." : "메시지를 입력하세요..."}
             />
-          </div>
+          </Flex>
         </Card.Footer>
       </Card.Root>
     </div>
