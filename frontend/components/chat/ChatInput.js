@@ -377,52 +377,11 @@ const ChatInput = forwardRef(({
     let newSelectionStart;
     let newSelectionEnd;
 
-    if (markdown.includes('\n')) {
-      newText = message.substring(0, start) +
-                markdown.replace('\n\n', '\n' + selectedText + '\n') +
-                message.substring(end);
-      if (selectedText) {
-        newSelectionStart = start + markdown.split('\n')[0].length + 1;
-        newSelectionEnd = newSelectionStart + selectedText.length;
-        newCursorPos = newSelectionEnd;
-      } else {
-        newCursorPos = start + markdown.indexOf('\n') + 1;
-        newSelectionStart = newCursorPos;
-        newSelectionEnd = newCursorPos;
-      }
-    } else if (markdown.endsWith(' ')) {
-      newText = message.substring(0, start) +
-                markdown + selectedText +
-                message.substring(end);
-      newCursorPos = start + markdown.length + selectedText.length;
-      newSelectionStart = newCursorPos;
-      newSelectionEnd = newCursorPos;
-    } else {
-      newText = message.substring(0, start) +
-                markdown + selectedText + markdown +
-                message.substring(end);
-      if (selectedText) {
-        newSelectionStart = start + markdown.length;
-        newSelectionEnd = newSelectionStart + selectedText.length;
-      } else {
-        newSelectionStart = start + markdown.length;
-        newSelectionEnd = newSelectionStart;
-      }
-      newCursorPos = newSelectionEnd;
-    }
+    if (markdown.includes('
+')) {
+      
 
-    setMessage(newText);
-
-    setTimeout(() => {
-      if (messageInputRef.current) {
-        input.focus();
-        input.setSelectionRange(newSelectionStart, newSelectionEnd);
-        if (selectedText) {
-          input.setSelectionRange(newCursorPos, newCursorPos);
-        }
-      }
-    }, 0);
-  }, [message, setMessage, messageInputRef]);
+  
 
   const handleEmojiSelect = useCallback((emoji) => {
     if (!messageInputRef?.current) return;
@@ -617,6 +576,10 @@ const ChatInput = forwardRef(({
     </>
   );
 });
+
+ChatInput.displayName = 'ChatInput';
+
+export default ChatInput;
 
 ChatInput.displayName = 'ChatInput';
 

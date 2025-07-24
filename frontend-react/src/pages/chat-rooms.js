@@ -298,8 +298,6 @@ function ChatRoomsComponent() {
         setLoadingMore(true);
       }
 
-      await attemptConnection();
-
       const response = await axiosInstance.get('/api/rooms', {
         params: {
           page: isLoadingMore ? pageIndex : 0,
@@ -423,28 +421,34 @@ function ChatRoomsComponent() {
         await fetchRooms(false);
       } catch (error) {
         console.error('Initial fetch failed:', error);
-        setTimeout(() => {
-          if (connectionStatus === CONNECTION_STATUS.CHECKING) {
-            fetchRooms(false);
-          }
-        }, 3000);
       }
     };
 
     initFetch();
+  }, [currentUser, fetchRooms]);
 
-    connectionCheckTimerRef.current = setInterval(() => {
-      if (connectionStatus === CONNECTION_STATUS.CHECKING) {
+  // Connection status check and retry logic
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const checkConnection = () => {
+      if (connectionStatus === CONNECTION_STATUS.CHECKING || connectionStatus === CONNECTION_STATUS.ERROR) {
         attemptConnection();
       }
-    }, 5000);
+    };
+
+    // Initial check
+    checkConnection();
+
+    // Periodic check
+    connectionCheckTimerRef.current = setInterval(checkConnection, RETRY_CONFIG.reconnectInterval);
 
     return () => {
       if (connectionCheckTimerRef.current) {
         clearInterval(connectionCheckTimerRef.current);
       }
     };
-  }, [currentUser, connectionStatus, attemptConnection, fetchRooms]);
+  }, [currentUser, connectionStatus, attemptConnection]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -506,27 +510,15 @@ function ChatRoomsComponent() {
             setConnectionStatus(CONNECTION_STATUS.ERROR);
           },
           roomCreated: (newRoom) => {
-            setRooms(prev => {
-              const updatedRooms = [newRoom, ...prev];
-              previousRoomsRef.current = updatedRooms;
-              return updatedRooms;
-            });
+            setRooms(prev => [newRoom, ...prev]);
           },
           roomDeleted: (roomId) => {
-            setRooms(prev => {
-              const updatedRooms = prev.filter(room => room._id !== roomId);
-              previousRoomsRef.current = updatedRooms;
-              return updatedRooms;
-            });
+            setRooms(prev => prev.filter(room => room._id !== roomId));
           },
           roomUpdated: (updatedRoom) => {
-            setRooms(prev => {
-              const updatedRooms = prev.map(room => 
+            setRooms(prev => prev.map(room => 
                 room._id === updatedRoom._id ? updatedRoom : room
-              );
-              previousRoomsRef.current = updatedRooms;
-              return updatedRooms;
-            });
+            ));
           }
         };
 

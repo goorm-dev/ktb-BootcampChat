@@ -46,7 +46,7 @@ const MarkdownToolbar = ({ onAction, className = '', size = 'xs' }) => {
     { 
       id: 'code-block',
       icon: FileCode2, 
-      markdown: '```\n\n```',
+      markdown: '```',
       tooltip: '코드 블록',
       shortcut: `${modifierKey}+Shift+C`,
       keyBinding: { key: 'c', modifier: true, shift: true }
@@ -78,7 +78,7 @@ const MarkdownToolbar = ({ onAction, className = '', size = 'xs' }) => {
     { 
       id: 'heading',
       icon: Heading2, 
-      markdown: '## ',
+      markdown: '# ',
       tooltip: '제목',
       shortcut: `${modifierKey}+H`,
       keyBinding: { key: 'h', modifier: true }
