@@ -396,7 +396,8 @@ const ChatInput = forwardRef(({
     let newSelectionEnd;
 
     if (markdown.includes('\n')) {
-      newText = message.substring(0, start) +
+      newText =
+        message.substring(0, start) +
                 markdown.replace('\n\n', '\n' + selectedText + '\n') +
                 message.substring(end);
       if (selectedText) {
@@ -409,20 +410,27 @@ const ChatInput = forwardRef(({
         newSelectionEnd = newCursorPos;
       }
     } else if (markdown.endsWith(' ')) {
-      newText = message.substring(0, start) +
-                markdown + selectedText +
+      newText =
+        message.substring(0, start) +
+        markdown +
+        selectedText +
                 message.substring(end);
       newCursorPos = start + markdown.length + selectedText.length;
       newSelectionStart = newCursorPos;
       newSelectionEnd = newCursorPos;
     } else {
-      newText = message.substring(0, start) +
-                markdown + selectedText + markdown +
-                message.substring(end);
       if (selectedText) {
+        newText =
+          message.substring(0, start) +
+          markdown +
+          selectedText +
+          markdown +
+          message.substring(end);
         newSelectionStart = start + markdown.length;
         newSelectionEnd = newSelectionStart + selectedText.length;
       } else {
+        newText =
+          message.substring(0, start) + markdown + message.substring(end);
         newSelectionStart = start + markdown.length;
         newSelectionEnd = newSelectionStart;
       }
