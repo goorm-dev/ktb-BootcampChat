@@ -23,8 +23,8 @@ jobs:
     outputs:
       frontend-changed: ${{ steps.changes.outputs.frontend }}
       backend-changed: ${{ steps.changes.outputs.backend }}
-      manual-frontend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'frontend' || inputs.deploy_target == 'both') }}
-      manual-backend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'backend' || inputs.deploy_target == 'both') }}
+      manual-frontend: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'frontend' || github.event.inputs.deploy_target == 'both') }}
+      manual-backend: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'backend' || github.event.inputs.deploy_target == 'both') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
