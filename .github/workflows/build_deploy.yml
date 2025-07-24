@@ -23,8 +23,8 @@ jobs:
     outputs:
       frontend-changed: ${{ steps.changes.outputs.frontend }}
       backend-changed: ${{ steps.changes.outputs.backend }}
-      manual-frontend: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'frontend' || github.event.inputs.deploy_target == 'both') }}
-      manual-backend: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_target == 'backend' || github.event.inputs.deploy_target == 'both') }}
+      manual-frontend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'frontend' || inputs.deploy_target == 'both') }}
+      manual-backend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'backend' || inputs.deploy_target == 'both') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,6 +40,13 @@ jobs:
               - 'frontend/**'
             backend:
               - 'backend/**'
+
+      - name: Debug outputs
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Deploy target: ${{ inputs.deploy_target }}"
+          echo "Manual frontend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'frontend' || inputs.deploy_target == 'both') }}"
+          echo "Manual backend: ${{ github.event_name == 'workflow_dispatch' && (inputs.deploy_target == 'backend' || inputs.deploy_target == 'both') }}"
 
   # Frontend 빌드 및 S3 배포
   deploy-frontend:
