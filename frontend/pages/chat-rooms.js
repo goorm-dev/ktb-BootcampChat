@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { LockIcon, ErrorCircleIcon, NetworkIcon, RefreshOutlineIcon, GroupIcon } from '@vapor-ui/icons';
-import { Button, Card, Text, Badge, Callout } from '@vapor-ui/core';
+import { Button, Card, Text, Badge, Callout, TextInput } from '@vapor-ui/core';
 import { Flex, HStack, Stack, Box } from '../components/ui/Layout';
 import { StyledTable, StyledTableHead, StyledTableBody, StyledTableRow, StyledTableHeader, StyledTableCell } from '../components/ui/StyledTable';
 import socketService from '../services/socket';
@@ -10,9 +10,8 @@ import authService from '../services/authService';
 import axiosInstance from '../services/axios';
 import { withAuth } from '../middleware/withAuth';
 import { Toast } from '../components/Toast';
+import { Modal, ModalFooter, ModalBody, ModalHeader } from '../components/ui/Modal';
 
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal';
-import { TextInput } from '@vapor-ui/core';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -183,10 +182,10 @@ function ChatRoomsComponent() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [joiningRoom, setJoiningRoom] = useState(false);
 
-  //비밀번호 입력 방
-  const [password, setPassword] = useState('');
-  const [passwordRoomId, setPasswordRoomId] = useState(0);
+  const [currentRoomId, setCurrentRoomId] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+
   // Refs
   const socketRef = useRef(null);
   const tableContainerRef = useRef(null);
@@ -566,22 +565,23 @@ function ChatRoomsComponent() {
   }, [currentUser, handleAuthError]);
 
   const handleJoinRoom = (roomId, hasPassword) => {
-    if(hasPassword) {
+    if (hasPassword) {
       setShowPasswordModal(true);
-      setPasswordRoomId(roomId);
-    } else{
+      setCurrentRoomId(roomId);
+    } else {
       joinRoom(roomId);
     }
   }
-    const joinRoom = async(roomId, password=null) =>{
-      if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
-        setError({
-          title: '채팅방 입장 실패',
-          message: '서버와 연결이 끊어져 있습니다.',
-          type: 'danger'
-        });
-        return;
-      }
+
+  const joinRoom = async (roomId, password = null) => {
+    if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
+      setError({
+        title: '채팅방 입장 실패',
+        message: '서버와 연결이 끊어져 있습니다.',
+        type: 'danger'
+      });
+      return;
+    }
 
       setJoiningRoom(true);
 
@@ -591,14 +591,14 @@ function ChatRoomsComponent() {
         }, {
           timeout: 5000
         });
-        
-        
+
+
         if (response?.data?.success) {
           router.push(`/chat?room=${roomId}`);
         }
       } catch (error) {
         console.error('Room join error:', error);
-        
+
         let errorMessage = '입장에 실패했습니다.';
         if (error.response?.status === 404) {
           errorMessage = '채팅방을 찾을 수 없습니다.';
@@ -612,8 +612,8 @@ function ChatRoomsComponent() {
         type: 'danger'
       });
       return;
-        } 
-        
+        }
+
         setError({
           title: '채팅방 입장 실패',
           message: error.response?.data?.message || errorMessage,
@@ -625,6 +625,12 @@ function ChatRoomsComponent() {
     }
 
 
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setCurrentRoomId(null);
+    setPassword('');
+  }
 
   const renderRoomsTable = () => {
     if (!rooms || rooms.length === 0) return null;
@@ -691,25 +697,39 @@ function ChatRoomsComponent() {
     <div className="auth-container">
       <Modal
         isOpen={showPasswordModal}
-        title="비밀번호를 입력하세요."
-        onClose={() => setShowPasswordModal(false)}
+        onClose={() => closePasswordModal()}
+        size="md"
+        title="채팅방 비밀번호 입력"
       >
         <ModalBody>
-            <TextInput.Root 
-              type="password" 
-              id="passwordInput"
-              placeholder="비밀번호를 입력하세요"
+          <TextInput.Root>
+            <TextInput.Field
+              style={{ width: '100%' }}
               value={password}
-              onValueChange={setPassword}
-            >
-              <TextInput.Label htmlFor='passwordInput'/>
-              <TextInput.Field />
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  joinRoom(currentRoomId, password);
+                }
+              }}
+              placeholder="비밀번호를 입력하세요"
+              type="password"
+              autoFocus
+            />
           </TextInput.Root>
         </ModalBody>
         <ModalFooter>
-          <Button onClick={() => {
-            joinRoom(passwordRoomId, password);
-            }}>확인</Button>
+          <Button type='button' variant="ghost" onClick={closePasswordModal}>
+            닫기
+          </Button>
+          <Button
+            type="submit"
+            variant="fill"
+            onClick={() => joinRoom(currentRoomId, password)}
+          >
+            입장
+          </Button>
         </ModalFooter>
       </Modal>
       <Card.Root className="chat-rooms-card">
@@ -718,7 +738,15 @@ function ChatRoomsComponent() {
           <Stack gap="300" align="center">
             <Text typography="heading3">채팅방 목록</Text>
             <HStack gap="200">
-              <Badge color={STATUS_CONFIG[connectionStatus].color === 'success' ? 'success' : STATUS_CONFIG[connectionStatus].color === 'warning' ? 'warning' : 'danger'}>
+              <Badge
+                color={
+                  STATUS_CONFIG[connectionStatus].color === 'success'
+                    ? 'success'
+                    : STATUS_CONFIG[connectionStatus].color === 'warning'
+                    ? 'warning'
+                    : 'danger'
+                }
+              >
                 {STATUS_CONFIG[connectionStatus].label}
               </Badge>
               {(error || connectionStatus === CONNECTION_STATUS.ERROR) && (
@@ -742,40 +770,53 @@ function ChatRoomsComponent() {
 
           {error && (
             <Box mt="400">
-            <Callout 
-              color={error.type === 'danger' ? 'danger' : error.type === 'warning' ? 'warning' : 'primary'} 
-              className="mb-4"
-            >
-              <Flex align="flex-start" gap="200">
-                {connectionStatus === CONNECTION_STATUS.ERROR ? (
-                  <NetworkIcon size={16} style={{ marginTop: '4px' }} />
-                ) : (
-                  <ErrorCircleIcon size={16} style={{ marginTop: '4px' }} />
-                )}
-                <div>
-                  <Text typography="subtitle2" style={{ fontWeight: 500 }}>{error.title}</Text>
-                  <Text typography="body2" style={{ marginTop: 'var(--vapor-space-050)' }}>{error.message}</Text>
-                  {error.showRetry && !isRetrying && (
-                    <Button
-                      variant="outline"
-                      color="secondary"
-                      size="sm"
-                      style={{ marginTop: 'var(--vapor-space-200)' }}
-                      onClick={() => {
-                        lastLoadedPageRef.current = 0;
-                        setPageIndex(0);
-                        fetchRooms(false);
-                      }}
-                    >
-                      다시 시도
-                    </Button>
+              <Callout
+                color={
+                  error.type === 'danger'
+                    ? 'danger'
+                    : error.type === 'warning'
+                    ? 'warning'
+                    : 'primary'
+                }
+                className="mb-4"
+              >
+                <Flex align="flex-start" gap="200">
+                  {connectionStatus === CONNECTION_STATUS.ERROR ? (
+                    <NetworkIcon size={16} style={{ marginTop: '4px' }} />
+                  ) : (
+                    <ErrorCircleIcon size={16} style={{ marginTop: '4px' }} />
                   )}
-                </div>
-              </Flex>
-            </Callout>
+                  <div>
+                    <Text typography="subtitle2" style={{ fontWeight: 500 }}>
+                      {error.title}
+                    </Text>
+                    <Text
+                      typography="body2"
+                      style={{ marginTop: 'var(--vapor-space-050)' }}
+                    >
+                      {error.message}
+                    </Text>
+                    {error.showRetry && !isRetrying && (
+                      <Button
+                        variant="outline"
+                        color="secondary"
+                        size="sm"
+                        style={{ marginTop: 'var(--vapor-space-200)' }}
+                        onClick={() => {
+                          lastLoadedPageRef.current = 0;
+                          setPageIndex(0);
+                          fetchRooms(false);
+                        }}
+                      >
+                        다시 시도
+                      </Button>
+                    )}
+                  </div>
+                </Flex>
+              </Callout>
             </Box>
           )}
-          
+
           {loading ? (
             <Box mt="400">
               <LoadingIndicator text="채팅방 목록을 불러오는 중..." />
@@ -791,39 +832,53 @@ function ChatRoomsComponent() {
                 {renderRoomsTable()}
               </TableWrapper>
             </Box>
-          ) : !error && (
-            <Box mt="400" style={{ textAlign: 'center' }}>
-              <Text typography="body1" style={{ marginBottom: 'var(--vapor-space-400)' }}>생성된 채팅방이 없습니다.</Text>
-              <Button
-                color="primary"
-                onClick={() => router.push('/chat-rooms/new')}
-                disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
-              >
-                새 채팅방 만들기
-              </Button>
-            </Box>
+          ) : (
+            !error && (
+              <Box mt="400" style={{ textAlign: 'center' }}>
+                <Text
+                  typography="body1"
+                  style={{ marginBottom: 'var(--vapor-space-400)' }}
+                >
+                  생성된 채팅방이 없습니다.
+                </Text>
+                <Button
+                  color="primary"
+                  onClick={() => router.push('/chat-rooms/new')}
+                  disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
+                >
+                  새 채팅방 만들기
+                </Button>
+              </Box>
+            )
           )}
         </Card.Body>
       </Card.Root>
-      
+
       {joiningRoom && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
+        >
           <Stack align="center" gap="300">
-            <div className="spinner-border spinner-border-lg text-primary" role="status">
+            <div
+              className="spinner-border spinner-border-lg text-primary"
+              role="status"
+            >
               <span className="visually-hidden">Loading...</span>
             </div>
-            <Text typography="body1" style={{ color: 'white' }}>채팅방 입장 중...</Text>
+            <Text typography="body1" style={{ color: 'white' }}>
+              채팅방 입장 중...
+            </Text>
           </Stack>
         </div>
       )}
