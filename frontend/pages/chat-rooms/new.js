@@ -52,7 +52,7 @@ function NewChatRoom() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       setError('채팅방 이름을 입력해주세요.');
       return;
@@ -106,12 +106,13 @@ function NewChatRoom() {
       const { data } = await response.json();
       
       // 생성된 채팅방에 자동으로 입장
+      localStorage.setItem(`room-password:${data._id}`, formData.password);
       await joinRoom(data._id, formData.hasPassword ? formData.password : undefined);
 
     } catch (error) {
       console.error('Room creation/join error:', error);
       setError(error.message);
-      
+
       if (error.message.includes('인증') || error.message.includes('만료')) {
         authService.logout();
         router.push('/');
@@ -143,11 +144,11 @@ function NewChatRoom() {
 
           <form onSubmit={handleSubmit}>
             <Stack gap="300">
-              <TextInput.Root 
-                type="text" 
-                value={formData.name} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, name: value }))} 
-                disabled={loading} 
+              <TextInput.Root
+                type="text"
+                value={formData.name}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, name: value }))}
+                disabled={loading}
                 placeholder="채팅방 이름을 입력하세요"
               >
                 <TextInput.Label>채팅방 이름</TextInput.Label>
@@ -173,11 +174,11 @@ function NewChatRoom() {
               </Switch.Root>
 
               {formData.hasPassword && (
-                <TextInput.Root 
-                  type="password" 
-                  value={formData.password} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, password: value }))} 
-                  disabled={loading} 
+                <TextInput.Root
+                  type="password"
+                  value={formData.password}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, password: value }))}
+                  disabled={loading}
                   placeholder="비밀번호를 입력하세요"
                 >
                   <TextInput.Label>비밀번호</TextInput.Label>
