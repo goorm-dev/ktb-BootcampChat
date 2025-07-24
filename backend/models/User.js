@@ -39,7 +39,6 @@ const UserSchema = new mongoose.Schema({
   }
 });
 
-// 비밀번호 해싱 미들웨어
 UserSchema.pre('save', async function(next) {
   try {
     // 비밀번호 변경 시에만 해싱
@@ -50,8 +49,17 @@ UserSchema.pre('save', async function(next) {
 
     next();
   } catch (error) {
+    console.error('Pre-save middleware error:', error);
     next(error);
   }
+});
+
+// 저장 후 확인 미들웨어
+UserSchema.post('save', function(doc, next) {
+  if (!doc.encryptedEmail) {
+    console.error('Warning: User saved without encryptedEmail:', doc.email);
+  }
+  next();
 });
 
 // 비밀번호 비교 메서드

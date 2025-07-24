@@ -1,6 +1,6 @@
 // backend/utils/redisClient.js
 const Redis = require('redis');
-const { redisHost, redisPort } = require('../config/keys');
+const { redisHost, redisPort, redisPassword } = require('../config/keys');
 
 class MockRedisClient {
   constructor() {
@@ -87,6 +87,7 @@ class RedisClient {
 
       this.client = Redis.createClient({
         url: `redis://${redisHost}:${redisPort}`,
+        password: redisPassword,
         socket: {
           host: redisHost,
           port: redisPort,

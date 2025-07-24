@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import Image from 'next/image';
-import { Button, Avatar, Text } from '@vapor-ui/core';
-import { Flex, HStack, Box, Container } from './ui/Layout';
-import authService from '../services/authService';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import Image from "next/image";
+import { Button, Avatar, Text } from "@vapor-ui/core";
+import { Flex, HStack, Box, Container } from "./ui/Layout";
+import authService from "../services/authService";
 
 const Navbar = () => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -29,13 +29,13 @@ const Navbar = () => {
       checkAuth();
     };
 
-    window.addEventListener('authStateChange', handleAuthChange);
-    window.addEventListener('userProfileUpdate', handleProfileUpdate);
+    window.addEventListener("authStateChange", handleAuthChange);
+    window.addEventListener("userProfileUpdate", handleProfileUpdate);
 
     // 정리 함수
     return () => {
-      window.removeEventListener('authStateChange', handleAuthChange);
-      window.removeEventListener('userProfileUpdate', handleProfileUpdate);
+      window.removeEventListener("authStateChange", handleAuthChange);
+      window.removeEventListener("userProfileUpdate", handleProfileUpdate);
     };
   }, []);
 
@@ -46,10 +46,10 @@ const Navbar = () => {
   const handleLogout = async () => {
     await authService.logout();
     // 로그아웃 후 authStateChange 이벤트 발생
-    window.dispatchEvent(new Event('authStateChange'));
+    window.dispatchEvent(new Event("authStateChange"));
   };
 
-  const isInChatRooms = router.pathname === '/chat-rooms';
+  const isInChatRooms = router.pathname === "/chat-rooms";
 
   return (
     <nav>
@@ -57,14 +57,16 @@ const Navbar = () => {
         <Flex justify="space-between" align="center">
           {/* Logo */}
           <Box>
-            <div 
-              onClick={() => handleNavigation(currentUser ? '/chat-rooms' : '/')}
-              style={{ cursor: 'pointer' }}
+            <div
+              onClick={() =>
+                handleNavigation(currentUser ? "/chat-rooms" : "/")
+              }
+              style={{ cursor: "pointer" }}
               role="button"
               tabIndex={0}
               onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleNavigation(currentUser ? '/chat-rooms' : '/');
+                if (e.key === "Enter") {
+                  handleNavigation(currentUser ? "/chat-rooms" : "/");
                 }
               }}
             >
@@ -73,7 +75,9 @@ const Navbar = () => {
                 alt="Chat App Logo"
                 width={240}
                 height={81}
-                style={{ objectFit: 'contain' }}
+                style={{ objectFit: "contain" }}
+                draggable="false"
+                onDragStart={(e) => e.preventDefault()}
                 priority
               />
             </div>
@@ -86,14 +90,14 @@ const Navbar = () => {
                 <Button
                   color="primary"
                   size="md"
-                  onClick={() => handleNavigation('/chat-rooms')}
+                  onClick={() => handleNavigation("/chat-rooms")}
                 >
                   채팅방 목록
                 </Button>
                 <Button
                   color="primary"
                   size="md"
-                  onClick={() => handleNavigation('/chat-rooms/new')}
+                  onClick={() => handleNavigation("/chat-rooms/new")}
                 >
                   새 채팅방
                 </Button>
@@ -109,46 +113,39 @@ const Navbar = () => {
                 <Avatar.Root
                   size="md"
                   style={{ flexShrink: 0 }}
-                  src={currentUser.profileImage ? `${process.env.NEXT_PUBLIC_API_URL}${currentUser.profileImage}` : undefined}
+                  src={
+                    currentUser.profileImage
+                      ? `${process.env.NEXT_PUBLIC_API_URL}${currentUser.profileImage}`
+                      : undefined
+                  }
                 >
                   <Avatar.Image />
-                  <Avatar.Fallback>{currentUser.name?.[0]?.toUpperCase()}</Avatar.Fallback>
+                  <Avatar.Fallback>
+                    {currentUser.name?.[0]?.toUpperCase()}
+                  </Avatar.Fallback>
                 </Avatar.Root>
-                
+
                 {/* Member Name */}
                 <Text typography="body2" style={{ fontWeight: 500 }}>
                   {currentUser.name}
                 </Text>
-                
+
                 {/* Profile Button */}
-                <Button
-                  size="md"
-                  onClick={() => handleNavigation('/profile')}
-                >
+                <Button size="md" onClick={() => handleNavigation("/profile")}>
                   프로필
                 </Button>
-                
+
                 {/* Logout Button */}
-                <Button
-                  color="danger"
-                  size="md"
-                  onClick={handleLogout}
-                >
+                <Button color="danger" size="md" onClick={handleLogout}>
                   로그아웃
                 </Button>
               </HStack>
             ) : (
               <HStack gap="150">
-                <Button
-                  size="md"
-                  onClick={() => handleNavigation('/')}
-                >
+                <Button size="md" onClick={() => handleNavigation("/")}>
                   로그인
                 </Button>
-                <Button
-                  size="md"
-                  onClick={() => handleNavigation('/register')}
-                >
+                <Button size="md" onClick={() => handleNavigation("/register")}>
                   회원가입
                 </Button>
               </HStack>

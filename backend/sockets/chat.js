@@ -244,15 +244,29 @@ module.exports = function(io) {
     }
   });
   
-  io.on('connection', (socket) => {
+  io.on("connection", (socket) => {
+    let pingTimeout;
+
     logDebug('socket connected', {
       socketId: socket.id,
       userId: socket.user?.id,
       userName: socket.user?.name
     });
 
+    const heartbeat = () => {
+      clearTimeout(pingTimeout);
+      pingTimeout = setTimeout(() => {
+        socket.disconnect(true);
+      }, 30000); // 30초 타임아웃
+    };
+
+    socket.on("ping", () => {
+      socket.emit("pong");
+      heartbeat();
+    });
+
+    // 중복 로그인 감지
     if (socket.user) {
-      // 이전 연결이 있는지 확인
       const previousSocketId = connectedUsers.get(socket.user.id);
       if (previousSocketId && previousSocketId !== socket.id) {
         const previousSocket = io.sockets.sockets.get(previousSocketId);
@@ -275,11 +289,61 @@ module.exports = function(io) {
           }, DUPLICATE_LOGIN_TIMEOUT);
         }
       }
-      
-      // 새로운 연결 정보 저장
+
+      // 새로운 연결 정보 등록
       connectedUsers.set(socket.user.id, socket.id);
     }
 
+    // 기존 연결 성공 정보 전송
+    socket.emit("connect_success", {
+      socketId: socket.id,
+      userId: socket.user?.id,
+      connected: true,
+      timestamp: Date.now(),
+    });
+
+    // 재연결 시 이전 방 복구
+    socket.on("reconnect", async () => {
+      if (socket.user) {
+        const currentRoom = userRooms.get(socket.user.id);
+        if (currentRoom) {
+          socket.join(currentRoom);
+          const room = await Room.findById(currentRoom).populate(
+            "participants",
+            "name email profileImage"
+          );
+          if (room) {
+            socket.emit("joinRoomSuccess", {
+              roomId: currentRoom,
+              participants: room.participants,
+              socketConnected: true,
+            });
+          }
+        }
+      }
+    });
+
+    // 최초 접속 시 방 참여 처리
+    if (socket.user) {
+      const currentRoom = userRooms.get(socket.user.id);
+      if (currentRoom) {
+        socket.join(currentRoom);
+        socket.emit("joinRoomSuccess", {
+          roomId: currentRoom,
+          socketConnected: true,
+        });
+      }
+    }
+
+    // 연결 종료 시 cleanup
+    socket.on("disconnect", () => {
+      if (socket.user?.id) {
+        connectedUsers.delete(socket.user.id);
+      }
+      clearTimeout(pingTimeout);
+      console.log(`User disconnected: ${socket.user?.id}`);
+    });
+    
     // 이전 메시지 로딩 처리 개선
     socket.on('fetchPreviousMessages', async ({ roomId, before }) => {
       const queueKey = `${roomId}:${socket.user.id}`;
