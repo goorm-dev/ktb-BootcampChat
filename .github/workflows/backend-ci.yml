@@ -1,0 +1,251 @@
+# 백엔드 CI 파이프라인
+# Docker 이미지 빌드 및 S3 업로드
+name: Backend CI
+
+on:
+  push:
+    branches: [ main, dev ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+
+# 환경 변수 설정
+env:
+  AWS_REGION: ap-northeast-2
+  S3_BUCKET: 8-ktb-chat-common
+  IMAGE_NAME: ktb-chat-backend
+  
+jobs:
+  # 코드 품질 검사
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 코드 체크아웃
+      uses: actions/checkout@v4
+
+    - name: Node.js 설정
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+
+    - name: 의존성 설치
+      working-directory: ./backend
+      run: npm ci
+
+    - name: 코드 린팅 (ESLint)
+      working-directory: ./backend
+      run: |
+        # ESLint가 설치되어 있다면 실행, 없다면 스킵
+        if npm list eslint >/dev/null 2>&1; then
+          npm run lint
+        else
+          echo "ESLint not configured, skipping..."
+        fi
+      continue-on-error: true
+
+    - name: 단위 테스트 실행
+      working-directory: ./backend
+      run: |
+        # 테스트 스크립트가 있다면 실행, 없다면 스킵
+        if npm run | grep -q "test"; then
+          npm test
+        else
+          echo "No test script found, skipping..."
+        fi
+      continue-on-error: true
+
+  # Docker 이미지 빌드 및 S3 업로드
+  build-and-upload:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 코드 체크아웃
+      uses: actions/checkout@v4
+      
+    - name: AWS 자격증명 설정
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Docker Buildx 설정
+      uses: docker/setup-buildx-action@v3
+
+    - name: 빌드 메타데이터 생성
+      id: meta
+      run: |
+        # Git 커밋 해시의 짧은 버전 생성
+        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+        
+        # 브랜치 이름 정규화 (슬래시를 하이픈으로 변경)
+        BRANCH_NAME=$(echo ${{ github.ref_name }} | sed 's/\//-/g')
+        
+        # 타임스탬프 생성
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        
+        # 이미지 태그 생성
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          TAG="latest"
+          VERSION_TAG="${TIMESTAMP}-${SHORT_SHA}"
+        else
+          TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          VERSION_TAG="${BRANCH_NAME}-${TIMESTAMP}-${SHORT_SHA}"
+        fi
+        
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
+        echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+        echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+
+    - name: Docker 이미지 빌드
+      working-directory: ./backend
+      run: |
+        echo "🔨 Docker 이미지 빌드 시작..."
+        
+        # 프로덕션 이미지 빌드
+        docker build \
+          --target production \
+          --tag ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }} \
+          --tag ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version_tag }} \
+          --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+          --label "org.opencontainers.image.revision=${{ github.sha }}" \
+          --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          .
+          
+        echo "✅ Docker 이미지 빌드 완료"
+        
+        # 빌드된 이미지 확인
+        docker images | grep ${{ env.IMAGE_NAME }}
+
+    - name: Docker 이미지 테스트
+      run: |
+        echo "🧪 Docker 이미지 테스트 시작..."
+        
+        # 컨테이너 실행 테스트
+        docker run --name test-container -d \
+          -p 5000:5000 \
+          -e NODE_ENV=test \
+          -e MONGO_URI=mongodb://localhost:27017/test \
+          -e JWT_SECRET=test-secret \
+          ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+        
+        # 헬스체크 대기 (최대 30초)
+        echo "헬스체크 대기 중..."
+        sleep 10
+        
+        # 컨테이너 상태 확인
+        if docker ps | grep -q test-container; then
+          echo "✅ 컨테이너가 정상적으로 실행되고 있습니다"
+        else
+          echo "❌ 컨테이너 실행 실패"
+          docker logs test-container
+          exit 1
+        fi
+        
+        # 컨테이너 정리
+        docker stop test-container
+        docker rm test-container
+
+    - name: Docker 이미지를 TAR 파일로 저장
+      run: |
+        echo "📦 Docker 이미지를 TAR 파일로 저장 중..."
+        
+        # 이미지를 tar 파일로 저장
+        docker save \
+          ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }} \
+          ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version_tag }} \
+          | gzip > backend-${{ steps.meta.outputs.version_tag }}.tar.gz
+        
+        # 파일 크기 확인
+        ls -lh backend-${{ steps.meta.outputs.version_tag }}.tar.gz
+        
+        echo "✅ TAR 파일 생성 완료"
+
+    - name: S3에 Docker 이미지 업로드
+      run: |
+        echo "☁️ S3에 Docker 이미지 업로드 시작..."
+        
+        # S3 버킷 존재 확인
+        if ! aws s3 ls s3://${{ env.S3_BUCKET }} >/dev/null 2>&1; then
+          echo "❌ S3 버킷이 존재하지 않습니다: ${{ env.S3_BUCKET }}"
+          exit 1
+        fi
+        
+        # S3에 업로드 (백엔드 전용 폴더)
+        aws s3 cp backend-${{ steps.meta.outputs.version_tag }}.tar.gz \
+          s3://${{ env.S3_BUCKET }}/backend/images/backend-${{ steps.meta.outputs.version_tag }}.tar.gz \
+          --metadata "commit-sha=${{ github.sha }},build-timestamp=${{ steps.meta.outputs.timestamp }},branch=${{ github.ref_name }}"
+        
+        # latest 태그인 경우 latest 파일도 업로드
+        if [[ "${{ steps.meta.outputs.tag }}" == "latest" ]]; then
+          aws s3 cp backend-${{ steps.meta.outputs.version_tag }}.tar.gz \
+            s3://${{ env.S3_BUCKET }}/backend/images/backend-latest.tar.gz \
+            --metadata "commit-sha=${{ github.sha }},build-timestamp=${{ steps.meta.outputs.timestamp }},branch=${{ github.ref_name }}"
+        fi
+        
+        echo "✅ S3 업로드 완료"
+
+    - name: 빌드 정보 S3에 업로드
+      run: |
+        echo "📄 빌드 정보 파일 생성 및 업로드..."
+        
+        # 빌드 정보 JSON 파일 생성
+        cat > build-info.json << EOF
+        {
+          "buildTimestamp": "${{ steps.meta.outputs.timestamp }}",
+          "commitSha": "${{ github.sha }}",
+          "shortSha": "${{ steps.meta.outputs.short_sha }}",
+          "branch": "${{ github.ref_name }}",
+          "tag": "${{ steps.meta.outputs.tag }}",
+          "versionTag": "${{ steps.meta.outputs.version_tag }}",
+          "repository": "${{ github.repository }}",
+          "workflow": "${{ github.workflow }}",
+          "runId": "${{ github.run_id }}",
+          "imageName": "${{ env.IMAGE_NAME }}",
+          "imageSize": "$(stat -c%s backend-${{ steps.meta.outputs.version_tag }}.tar.gz) bytes"
+        }
+        EOF
+        
+        # S3에 빌드 정보 업로드 (백엔드 전용 폴더)
+        aws s3 cp build-info.json \
+          s3://${{ env.S3_BUCKET }}/backend/build-info/backend-${{ steps.meta.outputs.version_tag }}.json
+        
+        # latest인 경우 latest 빌드 정보도 업로드
+        if [[ "${{ steps.meta.outputs.tag }}" == "latest" ]]; then
+          aws s3 cp build-info.json \
+            s3://${{ env.S3_BUCKET }}/backend/build-info/backend-latest.json
+        fi
+
+    - name: 정리 작업
+      if: always()
+      run: |
+        echo "🧹 임시 파일 정리..."
+        rm -f backend-${{ steps.meta.outputs.version_tag }}.tar.gz
+        rm -f build-info.json
+        
+        # Docker 이미지 정리
+        docker rmi ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }} || true
+        docker rmi ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version_tag }} || true
+
+    - name: 결과 요약
+      run: |
+        echo "## 🎉 백엔드 CI 빌드 완료" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 빌드 정보" >> $GITHUB_STEP_SUMMARY
+        echo "- **커밋**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **브랜치**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **이미지 태그**: ${{ steps.meta.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **버전 태그**: ${{ steps.meta.outputs.version_tag }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **S3 버킷**: ${{ env.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 S3 업로드 경로" >> $GITHUB_STEP_SUMMARY
+        echo "- 이미지: \`s3://${{ env.S3_BUCKET }}/backend/images/backend-${{ steps.meta.outputs.version_tag }}.tar.gz\`" >> $GITHUB_STEP_SUMMARY
+        echo "- 빌드 정보: \`s3://${{ env.S3_BUCKET }}/backend/build-info/backend-${{ steps.meta.outputs.version_tag }}.json\`" >> $GITHUB_STEP_SUMMARY 

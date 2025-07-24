@@ -21,6 +21,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@vapor-ui/core": "^0.3.1"
+    "@vapor-ui/core": "^0.3.1",
+    "reactstrap": "^9.2.3"
   }
 }

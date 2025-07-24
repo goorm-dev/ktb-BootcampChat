@@ -6,7 +6,7 @@ import {
   CorrectOutlineIcon as CheckCheck, 
   CorrectOutlineIcon as Check, 
   MusicIcon as Music, 
-  ExternalLinkIcon as ExternalLink, 
+  LinkOutlineIcon as ExternalLink, 
   DownloadIcon as Download,
   ErrorCircleIcon as AlertCircle 
 } from '@vapor-ui/icons';
@@ -17,6 +17,29 @@ import MessageActions from './MessageActions';
 import ReadStatus from '../ReadStatus';
 import fileService from '../../../services/fileService';
 import authService from '../../../services/authService';
+
+const FileActions = ({ handleViewInNewTab, handleFileDownload }) => (
+  <div className="file-actions mt-2 pt-2 border-t border-gray-200">
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={handleViewInNewTab}
+      title="새 탭에서 보기"
+    >
+      <ExternalLink size={16} />
+      <span>새 탭에서 보기</span>
+    </Button>
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={handleFileDownload}
+      title="다운로드"
+    >
+      <Download size={16} />
+      <span>다운로드</span>
+    </Button>
+  </div>
+);
 
 const FileMessage = ({ 
   msg = {}, 
@@ -212,29 +235,6 @@ const FileMessage = ({
     const mimetype = msg.file?.mimetype || '';
     const originalname = getDecodedFilename(msg.file?.originalname || 'Unknown File');
     const size = fileService.formatFileSize(msg.file?.size || 0);
-    
-    const FileActions = () => (
-      <div className="file-actions mt-2 pt-2 border-t border-gray-200">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleViewInNewTab}
-          title="새 탭에서 보기"
-        >
-          <ExternalLink size={16} />
-          <span>새 탭에서 보기</span>
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleFileDownload}
-          title="다운로드"
-        >
-          <Download size={16} />
-          <span>다운로드</span>
-        </Button>
-      </div>
-    );
 
     const previewWrapperClass = 
       "overflow-hidden";
@@ -251,7 +251,7 @@ const FileMessage = ({
               <span className="text-sm text-muted">{size}</span>
             </div>
           </div>
-          <FileActions />
+          <FileActions handleViewInNewTab={handleViewInNewTab} handleFileDownload={handleFileDownload} />
         </div>
       );
     }
@@ -284,7 +284,7 @@ const FileMessage = ({
               <span className="text-sm text-muted">{size}</span>
             </div>
           </div>
-          <FileActions />
+          <FileActions handleViewInNewTab={handleViewInNewTab} handleFileDownload={handleFileDownload} />
         </div>
       );
     }
@@ -312,7 +312,7 @@ const FileMessage = ({
               </audio>
             )}
           </div>
-          <FileActions />
+          <FileActions handleViewInNewTab={handleViewInNewTab} handleFileDownload={handleFileDownload} />
         </div>
       );
     }
@@ -325,7 +325,7 @@ const FileMessage = ({
             <Text typography="body2" as="span">{size}</Text>
           </div>
         </div>
-        <FileActions />
+        <FileActions handleViewInNewTab={handleViewInNewTab} handleFileDownload={handleFileDownload}  />
       </div>
     );
   };
