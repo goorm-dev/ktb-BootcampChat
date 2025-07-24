@@ -47,57 +47,32 @@ module.exports = function(io) {
         reject(new Error('Message loading timed out'));
       }, MESSAGE_LOAD_TIMEOUT);
     });
-  
+
     try {
-      const matchQuery = { room: roomId, isDeleted: false };
+      // 쿼리 구성
+      const query = { room: roomId };
       if (before) {
-        matchQuery.timestamp = { $lt: new Date(before) };
+        query.timestamp = { $lt: new Date(before) };
       }
-  
-      // const start = Date.now();
-  
+
+      // 메시지 로드 with profileImage
       const messages = await Promise.race([
-        Message.aggregate([
-          { $match: matchQuery },
-          { $sort: { timestamp: -1 } },
-          { $limit: limit + 1 },
-          // sender 조인
-          {
-            $lookup: {
-              from: 'users', // 컬렉션명 (소문자 + 복수형, Mongoose 모델명 기준)
-              localField: 'sender',
-              foreignField: '_id',
-              as: 'sender'
-            }
-          },
-          { $unwind: { path: '$sender', preserveNullAndEmptyArrays: true } },
-          { 
-            $project: {
-              'sender.password': 0,
-              'sender.encryptedEmail': 0,
-              'sender.__v': 0
-            }
-          },
-          // file 조인
-          {
-            $lookup: {
-              from: 'files',
-              localField: 'file',
-              foreignField: '_id',
-              as: 'file'
-            }
-          },
-          { $unwind: { path: '$file', preserveNullAndEmptyArrays: true } }
-        ]),
+        Message.find(query)
+          .populate('sender', 'name email profileImage')
+          .populate({
+            path: 'file',
+            select: 'filename originalname mimetype size'
+          })
+          .sort({ timestamp: -1 })
+          .limit(limit + 1)
+          .lean(),
         timeoutPromise
       ]);
-  
-      // const end = Date.now();
-      // console.log(`[🔍 AGGREGATE LOG] roomId=${roomId}, messages=${messages.length}, time=${end - start}ms`);
-  
+
+      // 결과 처리
       const hasMore = messages.length > limit;
       const resultMessages = messages.slice(0, limit);
-      const sortedMessages = resultMessages.sort((a, b) =>
+      const sortedMessages = resultMessages.sort((a, b) => 
         new Date(a.timestamp) - new Date(b.timestamp)
       );
 
@@ -133,7 +108,7 @@ module.exports = function(io) {
           console.error('Read status update error:', error);
         });
       }
-  
+
       return {
         messages: sortedMessages,
         hasMore,

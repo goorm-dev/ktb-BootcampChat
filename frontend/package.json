@@ -28,7 +28,6 @@
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.5.0",
     "react-toastify": "^10.0.6",
-    "reactstrap": "^9.2.3",
     "remark-breaks": "^4.0.0",
     "remark-emoji": "^5.0.1",
     "remark-gfm": "^4.0.0",
