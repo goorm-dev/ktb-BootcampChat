@@ -275,6 +275,12 @@ router.post('/:roomId/join', auth, async (req, res) => {
 
     // 비밀번호 확인
     if (room.hasPassword) {
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: '비밀번호를 입력해주세요.'
+        });
+      }
       const isPasswordValid = await room.checkPassword(password);
       if (!isPasswordValid) {
         return res.status(401).json({
