@@ -81,7 +81,7 @@ const getFileFromRequest = async (req) => {
       for (const msgStr of allMessages) {
         try {
           const msg = JSON.parse(msgStr);
-          if (msg.file && (msg.file.filename === filename || msg.file._id === file._id)) {
+          if (msg.file && (msg.file.filename === filename || msg.file.id === file.id)) {
             message = msg;
             break;
           }
@@ -212,7 +212,7 @@ exports.uploadFile = async (req, res) => {
 //       success: true,
 //       message: '파일 업로드 성공',
 //       file: {
-//         _id: file._id,
+//         id: file.id,
 //         filename: file.filename,
 //         originalname: file.originalname,
 //         mimetype: file.mimetype,

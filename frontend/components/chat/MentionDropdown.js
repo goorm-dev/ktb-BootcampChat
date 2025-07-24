@@ -100,7 +100,7 @@ const MentionDropdown = ({
     >
       {participants.map((user, index) => (
         <div
-          key={user._id || `ai-${user.name}`}
+          key={user.id || `ai-${user.name}`}
           ref={el => itemRefs.current[index] = el}
           role="option"
           aria-selected={index === activeIndex}

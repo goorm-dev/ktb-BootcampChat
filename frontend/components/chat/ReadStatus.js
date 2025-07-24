@@ -24,7 +24,7 @@ const ReadStatus = ({
     
     return participants.filter(participant => 
       !currentReaders.some(reader => 
-        reader.userId === participant._id || 
+        reader.userId === participant.id || 
         reader.userId === participant.id
       )
     );
@@ -137,7 +137,7 @@ const ReadStatus = ({
     setCurrentReaders(prev => 
       prev.filter(reader => 
         updatedParticipants.some(p => 
-          p._id === reader.userId || p.id === reader.userId
+          p.id === reader.userId || p.id === reader.userId
         )
       )
     );

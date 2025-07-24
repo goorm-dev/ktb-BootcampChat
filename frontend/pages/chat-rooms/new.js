@@ -106,8 +106,8 @@ function NewChatRoom() {
       const { data } = await response.json();
       
       // 생성된 채팅방에 자동으로 입장
-      localStorage.setItem(`room-password:${data._id}`, formData.password);
-      await joinRoom(data._id, formData.hasPassword ? formData.password : undefined);
+      localStorage.setItem(`room-password:${data.id}`, formData.password);
+      await joinRoom(data.id, formData.hasPassword ? formData.password : undefined);
 
     } catch (error) {
       console.error('Room creation/join error:', error);

@@ -15,7 +15,7 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 낙관적 업데이트
       setMessages(prevMessages => 
         prevMessages.map(msg => {
-          if (msg._id === messageId) {
+          if (msg.id === messageId) {
             const currentReactions = msg.reactions || {};
             const currentUsers = currentReactions[reaction] || [];
             
@@ -47,8 +47,8 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 실패 시 롤백
       setMessages(prevMessages => 
         prevMessages.map(msg => 
-          msg._id === messageId ? 
-          { ...msg, reactions: messages.find(m => m._id === messageId)?.reactions || {} } : 
+          msg.id === messageId ? 
+          { ...msg, reactions: messages.find(m => m.id === messageId)?.reactions || {} } : 
           msg
         )
       );
@@ -64,7 +64,7 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 낙관적 업데이트
       setMessages(prevMessages => 
         prevMessages.map(msg => {
-          if (msg._id === messageId) {
+          if (msg.id === messageId) {
             const currentReactions = msg.reactions || {};
             const currentUsers = currentReactions[reaction] || [];
             return {
@@ -92,8 +92,8 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 실패 시 롤백
       setMessages(prevMessages => 
         prevMessages.map(msg => 
-          msg._id === messageId ? 
-          { ...msg, reactions: messages.find(m => m._id === messageId)?.reactions || {} } : 
+          msg.id === messageId ? 
+          { ...msg, reactions: messages.find(m => m.id === messageId)?.reactions || {} } : 
           msg
         )
       );
@@ -103,7 +103,7 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
   const handleReactionUpdate = useCallback(({ messageId, reactions }) => {
     setMessages(prevMessages => 
       prevMessages.map(msg => 
-        msg._id === messageId ? { ...msg, reactions } : msg
+        msg.id === messageId ? { ...msg, reactions } : msg
       )
     );
   }, [setMessages]);

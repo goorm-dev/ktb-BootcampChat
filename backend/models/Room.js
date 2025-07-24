@@ -46,7 +46,7 @@ RoomSchema.pre('save', async function(next) {
 // 비밀번호 확인 메서드
 RoomSchema.methods.checkPassword = async function(password) {
   if (!this.hasPassword) return true;
-  const room = await this.constructor.findById(this._id).select('+password');
+  const room = await this.constructor.findById(this.id).select('+password');
   return await bcrypt.compare(password, room.password);
 };
 

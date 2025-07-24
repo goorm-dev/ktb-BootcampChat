@@ -114,7 +114,7 @@ class AuthService {
 
       if (response.data?.success && response.data?.token) {
         const userData = {
-          id: response.data.user._id,
+          id: response.data.user.id,
           name: response.data.user.name,
           email: response.data.user.email,
           profileImage: response.data.user.profileImage,
@@ -181,7 +181,7 @@ class AuthService {
 
       if (response.data?.success && response.data?.token) {
         const userInfo = {
-          id: response.data.user._id,
+          id: response.data.user.id,
           name: response.data.user.name,
           email: response.data.user.email,
           profileImage: response.data.user.profileImage,

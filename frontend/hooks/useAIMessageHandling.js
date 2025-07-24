@@ -15,7 +15,7 @@ export const useAIMessageHandling = (
     setStreamingMessages(prev => ({
       ...prev,
       [data.messageId]: {
-        _id: data.messageId,
+        id: data.messageId,
         type: 'ai',
         aiType: data.aiType,
         content: '',
@@ -69,7 +69,7 @@ export const useAIMessageHandling = (
     });
 
     setMessages(prev => [...prev, {
-      _id: data._id,
+      id: data.id,
       type: 'ai',
       aiType: data.aiType,
       content: data.content,

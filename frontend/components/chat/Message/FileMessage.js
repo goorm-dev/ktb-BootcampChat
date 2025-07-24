@@ -372,7 +372,7 @@ const FileMessage = ({
               messageType={msg.type}
               participants={room.participants}
               readers={msg.readers}
-              messageId={msg._id}
+              messageId={msg.id}
               messageRef={messageRef}
               currentUserId={currentUser.id}
               socketRef={socketRef}
@@ -380,7 +380,7 @@ const FileMessage = ({
           </div>
         </div>
         <MessageActions
-          messageId={msg._id}
+          messageId={msg.id}
           messageContent={msg.content}
           reactions={msg.reactions}
           currentUserId={currentUser?.id}

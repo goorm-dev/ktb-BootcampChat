@@ -167,6 +167,25 @@ class MockRedisClient {
     if (!list || list.type !== 'list') return 0;
     return list.value.length;
   }
+
+  async lSet(key, index, value) {
+    const item = this.store.get(key);
+    if (!item) return null;
+    if (Array.isArray(item.value)) {
+      item.value[index] = value;
+      return 'OK';
+    } else if (item.value instanceof Set) {
+      throw new Error('lSet: Not a list');
+    } else {
+      throw new Error('lSet: Not a list');
+    }
+  }
+
+
+  async keys(pattern) {
+    const prefix = pattern.replace('*', '');
+    return Array.from(this.store.keys()).filter(key => key.startsWith(prefix));
+  }
 }
 
 class RedisClient {
@@ -392,6 +411,20 @@ class RedisClient {
       return 'OK';
     }
     return await this.client.lTrim(key, start, stop);
+  }
+
+  async lSet(key, index, value) {
+    if (!this.isConnected) await this.connect();
+    if (this.useMock) return this.client.lSet(key, index, value);
+    return await this.client.lSet(key, index, value);
+  }
+
+
+  async keys(pattern) {
+    if (this.useMock) {
+      return this.client.keys(pattern);
+    }
+    return await this.client.keys(pattern);
   }
 }
 

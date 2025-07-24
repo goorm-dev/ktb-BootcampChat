@@ -370,10 +370,10 @@ const authController = {
       });
 
       await user.save();
-      console.log('User created:', user._id);
+      console.log('User created:', user.id);
 
       // Create session with metadata
-      const sessionInfo = await SessionService.createSession(user._id, {
+      const sessionInfo = await SessionService.createSession(user.id, {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
         deviceInfo: req.headers['user-agent'],
@@ -387,7 +387,7 @@ const authController = {
       // Generate token with additional claims
       const token = jwt.sign(
         { 
-          user: { id: user._id },
+          user: { id: user.id },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -404,7 +404,7 @@ const authController = {
         token,
         sessionId: sessionInfo.sessionId,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email
         }
@@ -461,7 +461,7 @@ const authController = {
       // 기존 세션 확인 시도
       let existingSession = null;
       try {
-        existingSession = await SessionService.getActiveSession(user._id);
+        existingSession = await SessionService.getActiveSession(user.id);
       } catch (sessionError) {
         console.error('Session check error:', sessionError);
       }
@@ -497,7 +497,7 @@ const authController = {
                 try {
                   if (data.token === existingSession.token) {
                     // 기존 세션 종료 및 소켓 연결 해제
-                    await SessionService.removeSession(user._id, existingSession.sessionId);
+                    await SessionService.removeSession(user.id, existingSession.sessionId);
                     io.to(existingSession.socketId).emit('session_terminated', {
                       reason: 'new_login',
                       message: '다른 기기에서 로그인하여 현재 세션이 종료되었습니다.'
@@ -543,12 +543,12 @@ const authController = {
           }
         } else {
           // Socket.IO 연결이 없는 경우 자동으로 기존 세션 종료
-          await SessionService.removeAllUserSessions(user._id);
+          await SessionService.removeAllUserSessions(user.id);
         }
       }
 
       // 새 세션 생성
-      const sessionInfo = await SessionService.createSession(user._id, {
+      const sessionInfo = await SessionService.createSession(user.id, {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
         deviceInfo: req.headers['user-agent'],
@@ -565,7 +565,7 @@ const authController = {
       // JWT 토큰 생성
       const token = jwt.sign(
         { 
-          user: { id: user._id },
+          user: { id: user.id },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -587,7 +587,7 @@ const authController = {
         token,
         sessionId: sessionInfo.sessionId,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           profileImage: user.profileImage
@@ -694,7 +694,7 @@ const authController = {
       }
 
       // 세션 검증
-      const validationResult = await SessionService.validateSession(user._id, sessionId);
+      const validationResult = await SessionService.validateSession(user.id, sessionId);
       if (!validationResult.isValid) {
         console.log('Invalid session:', validationResult);
         return res.status(401).json({
@@ -705,9 +705,9 @@ const authController = {
       }
 
       // 세션 갱신
-      await SessionService.refreshSession(user._id, sessionId);
+      await SessionService.refreshSession(user.id, sessionId);
 
-      console.log('Token verification successful for user:', user._id);
+      console.log('Token verification successful for user:', user.id);
 
       // 프로필 업데이트 필요 여부 확인
       if (validationResult.needsProfileRefresh) {
@@ -717,7 +717,7 @@ const authController = {
       res.json({
         success: true,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           profileImage: user.profileImage
@@ -768,10 +768,10 @@ const authController = {
       }
 
       // 이전 세션 제거
-      await SessionService.removeSession(user._id, oldSessionId);
+      await SessionService.removeSession(user.id, oldSessionId);
 
       // 새 세션 생성
-      const sessionInfo = await SessionService.createSession(user._id, {
+      const sessionInfo = await SessionService.createSession(user.id, {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
         deviceInfo: req.headers['user-agent'],
@@ -785,7 +785,7 @@ const authController = {
       // 새로운 JWT 토큰 생성
       const token = jwt.sign(
         { 
-          user: { id: user._id },
+          user: { id: user.id },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -802,7 +802,7 @@ const authController = {
         token,
         sessionId: sessionInfo.sessionId,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           profileImage: user.profileImage
@@ -881,14 +881,14 @@ const getFileFromRequest = async (req) => {
     }
 
     // 채팅방 권한 검증을 위한 메시지 조회
-    const message = await Message.findOne({ file: file._id });
+    const message = await Message.findOne({ file: file.id });
     if (!message) {
       throw new Error('File message not found');
     }
 
     // 사용자가 해당 채팅방의 참가자인지 확인
     const room = await Room.findOne({
-      _id: message.room,
+      id: message.room,
       participants: req.user.id
     });
 
@@ -935,7 +935,7 @@ exports.uploadFile = async (req, res) => {
       success: true,
       message: '파일 업로드 성공',
       file: {
-        _id: file._id,
+        id: file.id,
         filename: file.filename,
         originalname: file.originalname,
         mimetype: file.mimetype,
@@ -1206,7 +1206,7 @@ exports.register = async (req, res) => {
       success: true,
       message: '회원가입이 완료되었습니다.',
       user: {
-        id: newUser._id,
+        id: newUser.id,
         name: newUser.name,
         email: newUser.email,
         profileImage: newUser.profileImage
@@ -1236,7 +1236,7 @@ exports.getProfile = async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         profileImage: user.profileImage
@@ -1279,7 +1279,7 @@ exports.updateProfile = async (req, res) => {
       success: true,
       message: '프로필이 업데이트되었습니다.',
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         profileImage: user.profileImage
@@ -1999,7 +1999,7 @@ MessageSchema.statics.markAsRead = async function(messageIds, userId) {
   const bulkOps = messageIds.map(messageId => ({
     updateOne: {
       filter: {
-        _id: messageId,
+        id: messageId,
         isDeleted: false,
         'readers.userId': { $ne: userId }
       },
@@ -2045,7 +2045,7 @@ MessageSchema.methods.addReaction = async function(emoji, userId) {
   } catch (error) {
     console.error('Add reaction error:', {
       error,
-      messageId: this._id,
+      messageId: this.id,
       emoji,
       userId
     });
@@ -2073,7 +2073,7 @@ MessageSchema.methods.removeReaction = async function(emoji, userId) {
   } catch (error) {
     console.error('Remove reaction error:', {
       error,
-      messageId: this._id,
+      messageId: this.id,
       emoji,
       userId
     });
@@ -2098,7 +2098,7 @@ MessageSchema.pre('remove', async function(next) {
   } catch (error) {
     console.error('Message pre-remove error:', {
       error,
-      messageId: this._id,
+      messageId: this.id,
       type: this.type
     });
     next(error);
@@ -2120,7 +2120,7 @@ MessageSchema.pre('save', function(next) {
   } catch (error) {
     console.error('Message pre-save error:', {
       error,
-      messageId: this._id
+      messageId: this.id
     });
     next(error);
   }
@@ -2145,7 +2145,7 @@ MessageSchema.methods.toJSON = function() {
   } catch (error) {
     console.error('Message toJSON error:', {
       error,
-      messageId: this._id
+      messageId: this.id
     });
     return {};
   }
@@ -2203,7 +2203,7 @@ RoomSchema.pre('save', async function(next) {
 // 비밀번호 확인 메서드
 RoomSchema.methods.checkPassword = async function(password) {
   if (!this.hasPassword) return true;
-  const room = await this.constructor.findById(this._id).select('+password');
+  const room = await this.constructor.findById(this.id).select('+password');
   return await bcrypt.compare(password, room.password);
 };
 
@@ -2296,7 +2296,7 @@ UserSchema.pre('save', async function(next) {
 // 비밀번호 비교 메서드
 UserSchema.methods.matchPassword = async function(enteredPassword) {
   try {
-    const user = await this.constructor.findById(this._id).select('+password');
+    const user = await this.constructor.findById(this.id).select('+password');
     if (!user || !user.password) {
       return false;
     }
@@ -2356,7 +2356,7 @@ UserSchema.methods.changePassword = async function(currentPassword, newPassword)
 UserSchema.methods.deleteAccount = async function() {
   try {
     // 연결된 데이터 삭제 로직 추가
-    await this.constructor.deleteOne({ _id: this._id });
+    await this.constructor.deleteOne({ id: this.id });
     return true;
   } catch (error) {
     throw error;
@@ -2587,7 +2587,7 @@ router.get('/health', async (req, res) => {
       .lean();
 
     const start = process.hrtime();
-    await Room.findOne().select('_id').lean();
+    await Room.findOne().select('id').lean();
     const [seconds, nanoseconds] = process.hrtime(start);
     const latency = Math.round((seconds * 1000) + (nanoseconds / 1000000));
 
@@ -2662,26 +2662,26 @@ router.get('/', [limiter, auth], async (req, res) => {
     const safeRooms = rooms.map(room => {
       if (!room) return null;
 
-      const creator = room.creator || { _id: 'unknown', name: '알 수 없음', email: '' };
+      const creator = room.creator || { id: 'unknown', name: '알 수 없음', email: '' };
       const participants = Array.isArray(room.participants) ? room.participants : [];
 
       return {
-        _id: room._id?.toString() || 'unknown',
+        id: room.id?.toString() || 'unknown',
         name: room.name || '제목 없음',
         hasPassword: !!room.hasPassword,
         creator: {
-          _id: creator._id?.toString() || 'unknown',
+          id: creator.id?.toString() || 'unknown',
           name: creator.name || '알 수 없음',
           email: creator.email || ''
         },
-        participants: participants.filter(p => p && p._id).map(p => ({
-          _id: p._id.toString(),
+        participants: participants.filter(p => p && p.id).map(p => ({
+          id: p.id.toString(),
           name: p.name || '알 수 없음',
           email: p.email || ''
         })),
         participantsCount: participants.length,
         createdAt: room.createdAt || new Date(),
-        isCreator: creator._id?.toString() === req.user.id,
+        isCreator: creator.id?.toString() === req.user.id,
       };
     }).filter(room => room !== null);
 
@@ -2752,7 +2752,7 @@ router.post('/', auth, async (req, res) => {
     });
 
     const savedRoom = await newRoom.save();
-    const populatedRoom = await Room.findById(savedRoom._id)
+    const populatedRoom = await Room.findById(savedRoom.id)
       .populate('creator', 'name email')
       .populate('participants', 'name email');
     
@@ -3277,7 +3277,7 @@ const crypto = require('crypto');
 class SessionService {
   static SESSION_TTL = 24 * 60 * 60; // 24 hours
   static SESSION_PREFIX = 'session:';
-  static SESSION_ID_PREFIX = 'sessionId:';
+  static SESSIONid_PREFIX = 'sessionId:';
   static USER_SESSIONS_PREFIX = 'user_sessions:';
   static ACTIVE_SESSION_PREFIX = 'active_session:';
 
@@ -3614,7 +3614,7 @@ class SessionService {
   }
 
   static getSessionIdKey(sessionId) {
-    return `${this.SESSION_ID_PREFIX}${sessionId}`;
+    return `${this.SESSIONid_PREFIX}${sessionId}`;
   }
 
   static getUserSessionsKey(userId) {
@@ -3702,10 +3702,10 @@ module.exports = function(io) {
 
       // 읽음 상태 비동기 업데이트
       if (sortedMessages.length > 0 && socket.user) {
-        const messageIds = sortedMessages.map(msg => msg._id);
+        const messageIds = sortedMessages.map(msg => msg.id);
         Message.updateMany(
           {
-            _id: { $in: messageIds },
+            id: { $in: messageIds },
             'readers.userId': { $ne: socket.user.id }
           },
           {
@@ -3854,7 +3854,7 @@ module.exports = function(io) {
       }
 
       socket.user = {
-        id: user._id.toString(),
+        id: user.id.toString(),
         name: user.name,
         email: user.email,
         sessionId: sessionId,
@@ -3926,7 +3926,7 @@ module.exports = function(io) {
 
         // 권한 체크
         const room = await Room.findOne({
-          _id: roomId,
+          id: roomId,
           participants: socket.user.id
         });
 
@@ -4037,7 +4037,7 @@ module.exports = function(io) {
         const activeStreams = Array.from(streamingSessions.values())
           .filter(session => session.room === roomId)
           .map(session => ({
-            _id: session.messageId,
+            id: session.messageId,
             type: 'ai',
             aiType: session.aiType,
             content: session.content,
@@ -4092,7 +4092,7 @@ module.exports = function(io) {
 
         // 채팅방 권한 확인
         const chatRoom = await Room.findOne({
-          _id: room,
+          id: room,
           participants: socket.user.id
         });
 
@@ -4125,12 +4125,12 @@ module.exports = function(io) {
         // 메시지 타입별 처리
         switch (type) {
           case 'file':
-            if (!fileData || !fileData._id) {
+            if (!fileData || !fileData.id) {
               throw new Error('파일 데이터가 올바르지 않습니다.');
             }
 
             const file = await File.findOne({
-              _id: fileData._id,
+              id: fileData.id,
               user: socket.user.id
             });
 
@@ -4142,7 +4142,7 @@ module.exports = function(io) {
               room,
               sender: socket.user.id,
               type: 'file',
-              file: file._id,
+              file: file.id,
               content: content || '',
               timestamp: new Date(),
               reactions: {},
@@ -4193,7 +4193,7 @@ module.exports = function(io) {
         await SessionService.updateLastActivity(socket.user.id);
 
         logDebug('message processed', {
-          messageId: message._id,
+          messageId: message.id,
           type: message.type,
           room
         });
@@ -4223,7 +4223,7 @@ module.exports = function(io) {
 
         // 권한 확인
         const room = await Room.findOne({
-          _id: roomId,
+          id: roomId,
           participants: socket.user.id
         }).select('participants').lean();
 
@@ -4393,7 +4393,7 @@ module.exports = function(io) {
         // 읽음 상태 업데이트
         await Message.updateMany(
           {
-            _id: { $in: messageIds },
+            id: { $in: messageIds },
             room: roomId,
             'readers.userId': { $ne: socket.user.id }
           },
@@ -4554,7 +4554,7 @@ module.exports = function(io) {
           // 완료 메시지 전송
           io.to(room).emit('aiMessageComplete', {
             messageId,
-            _id: aiMessage._id,
+            id: aiMessage.id,
             content: finalContent.content,
             aiType: aiName,
             timestamp: new Date(),
@@ -9814,7 +9814,7 @@ const ChatMessages = ({
   const isMine = useCallback((msg) => {
     if (!msg?.sender || !currentUser?.id) return false;
     return (
-      msg.sender._id === currentUser.id || 
+      msg.sender.id === currentUser.id ||
       msg.sender.id === currentUser.id ||
       msg.sender === currentUser.id
     );
@@ -9942,7 +9942,7 @@ const ChatMessages = ({
 
     return (
       <MessageComponent
-        key={msg._id || `msg-${idx}`}
+        key={msg.id || `msg-${idx}`}
         ref={isLast ? lastMessageRef : null}
         {...commonProps}
         msg={msg}
@@ -10678,7 +10678,7 @@ const MentionDropdown = ({
     >
       {participants.map((user, index) => (
         <div
-          key={user._id || `ai-${user.name}`}
+          key={user.id || `ai-${user.name}`}
           ref={el => itemRefs.current[index] = el}
           role="option"
           aria-selected={index === activeIndex}
@@ -10790,7 +10790,7 @@ const AIMessage = ({
               messageType={msg.type}
               participants={room.participants}
               readers={msg.readers}
-              messageId={msg._id}
+              messageId={msg.id}
               messageRef={messageRef}
               currentUserId={currentUser.id}
               socketRef={socketRef}
@@ -10800,7 +10800,7 @@ const AIMessage = ({
       </div>
       
       <MessageActions 
-        messageId={msg._id}
+        messageId={msg.id}
         messageContent={msg.content}
         reactions={msg.reactions}
         currentUserId={currentUser?.id}
@@ -11195,7 +11195,7 @@ const FileMessage = ({
               messageType={msg.type}
               participants={room.participants}
               readers={msg.readers}
-              messageId={msg._id}
+              messageId={msg.id}
               messageRef={messageRef}
               currentUserId={currentUser.id}
               socketRef={socketRef}
@@ -11203,7 +11203,7 @@ const FileMessage = ({
           </div>
         </div>
         <MessageActions 
-          messageId={msg._id}
+          messageId={msg.id}
           messageContent={msg.content}
           reactions={msg.reactions}
           currentUserId={currentUser?.id}
@@ -11324,7 +11324,7 @@ const MessageActions = ({
     // 사용자 ID들을 문자열로 변환하여 비교하기 위한 Map 생성
     const participantMap = new Map(
       room.participants.map(p => [
-        String(p._id || p.id), 
+        String(p.id || p.id),
         p.name
       ])
     );
@@ -11819,7 +11819,7 @@ const UserMessage = ({
               messageType={msg.type}
               participants={room.participants}
               readers={msg.readers}
-              messageId={msg._id}
+              messageId={msg.id}
               messageRef={messageRef}
               currentUserId={currentUser.id}
               socketRef={socketRef}
@@ -11828,7 +11828,7 @@ const UserMessage = ({
         </div>
           
         <MessageActions 
-          messageId={msg._id}
+          messageId={msg.id}
           messageContent={msg.content}
           reactions={msg.reactions}
           currentUserId={currentUser?.id}
@@ -11887,7 +11887,7 @@ const ReadStatus = ({
     
     return participants.filter(participant => 
       !currentReaders.some(reader => 
-        reader.userId === participant._id || 
+        reader.userId === participant.id ||
         reader.userId === participant.id
       )
     );
@@ -12000,7 +12000,7 @@ const ReadStatus = ({
     setCurrentReaders(prev => 
       prev.filter(reader => 
         updatedParticipants.some(p => 
-          p._id === reader.userId || p.id === reader.userId
+          p.id === reader.userId || p.id === reader.userId
         )
       )
     );
@@ -12243,7 +12243,7 @@ export const useAIMessageHandling = (
     setStreamingMessages(prev => ({
       ...prev,
       [data.messageId]: {
-        _id: data.messageId,
+        id: data.messageId,
         type: 'ai',
         aiType: data.aiType,
         content: '',
@@ -12297,7 +12297,7 @@ export const useAIMessageHandling = (
     });
 
     setMessages(prev => [...prev, {
-      _id: data._id,
+      id: data.id,
       type: 'ai',
       aiType: data.aiType,
       content: data.content,
@@ -12613,9 +12613,9 @@ export const useChatRoom = () => {
       setMessages(prev => {
         // 중복 메시지 필터링 개선
         const newMessages = loadedMessages.filter(msg => {
-          if (!msg._id) return false;
-          if (processedMessageIds.current.has(msg._id)) return false;
-          processedMessageIds.current.add(msg._id);
+          if (!msg.id) return false;
+          if (processedMessageIds.current.has(msg.id)) return false;
+          processedMessageIds.current.add(msg.id);
           return true;
         });
 
@@ -12626,7 +12626,7 @@ export const useChatRoom = () => {
 
         // 중복 제거 (가장 최근 메시지 유지)
         const messageMap = new Map();
-        allMessages.forEach(msg => messageMap.set(msg._id, msg));
+        allMessages.forEach(msg => messageMap.set(msg.id, msg));
         return Array.from(messageMap.values());
       });
 
@@ -12704,17 +12704,17 @@ export const useChatRoom = () => {
 
     // 메시지 이벤트
     socketRef.current.on('message', message => {
-      if (!message || !mountedRef.current || messageProcessingRef.current || !message._id) return;
+      if (!message || !mountedRef.current || messageProcessingRef.current || !message.id) return;
       
-      if (processedMessageIds.current.has(message._id)) {
+      if (processedMessageIds.current.has(message.id)) {
         return;
       }
 
       console.log('Received message:', message);
-      processedMessageIds.current.add(message._id);
+      processedMessageIds.current.add(message.id);
 
       setMessages(prev => {
-        if (prev.some(msg => msg._id === message._id)) {
+        if (prev.some(msg => msg.id === message.id)) {
           return prev;
         }
         return [...prev, message];
@@ -13081,7 +13081,7 @@ export const useFileHandling = (socketRef, currentUser, router, handleSessionErr
         type: 'file',
         content: content,
         fileData: {
-          _id: uploadResponse.data.file._id,
+          id: uploadResponse.data.file.id,
           filename: uploadResponse.data.file.filename,
           originalname: uploadResponse.data.file.originalname,
           mimetype: uploadResponse.data.file.mimetype,
@@ -13351,7 +13351,7 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
          type: 'file',
          content: messageData.content || '',
          fileData: {
-           _id: uploadResponse.data.file._id,
+           id: uploadResponse.data.file.id,
            filename: uploadResponse.data.file.filename,
            originalname: uploadResponse.data.file.originalname,
            mimetype: uploadResponse.data.file.mimetype,
@@ -13404,13 +13404,13 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
 
    const allParticipants = [
      {
-       _id: 'wayneAI',
+       id: 'wayneAI',
        name: 'wayneAI',
        email: 'ai@wayne.ai',
        isAI: true
      },
      {
-       _id: 'consultingAI',
+       id: 'consultingAI',
        name: 'consultingAI',
        email: 'ai@consulting.ai',
        isAI: true
@@ -13503,7 +13503,7 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 낙관적 업데이트
       setMessages(prevMessages => 
         prevMessages.map(msg => {
-          if (msg._id === messageId) {
+          if (msg.id === messageId) {
             const currentReactions = msg.reactions || {};
             const currentUsers = currentReactions[reaction] || [];
             
@@ -13535,8 +13535,8 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 실패 시 롤백
       setMessages(prevMessages => 
         prevMessages.map(msg => 
-          msg._id === messageId ? 
-          { ...msg, reactions: messages.find(m => m._id === messageId)?.reactions || {} } : 
+          msg.id === messageId ?
+          { ...msg, reactions: messages.find(m => m.id === messageId)?.reactions || {} } :
           msg
         )
       );
@@ -13552,7 +13552,7 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 낙관적 업데이트
       setMessages(prevMessages => 
         prevMessages.map(msg => {
-          if (msg._id === messageId) {
+          if (msg.id === messageId) {
             const currentReactions = msg.reactions || {};
             const currentUsers = currentReactions[reaction] || [];
             return {
@@ -13580,8 +13580,8 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
       // 실패 시 롤백
       setMessages(prevMessages => 
         prevMessages.map(msg => 
-          msg._id === messageId ? 
-          { ...msg, reactions: messages.find(m => m._id === messageId)?.reactions || {} } : 
+          msg.id === messageId ?
+          { ...msg, reactions: messages.find(m => m.id === messageId)?.reactions || {} } :
           msg
         )
       );
@@ -13591,7 +13591,7 @@ export const useReactionHandling = (socketRef, currentUser, messages, setMessage
   const handleReactionUpdate = useCallback(({ messageId, reactions }) => {
     setMessages(prevMessages => 
       prevMessages.map(msg => 
-        msg._id === messageId ? { ...msg, reactions } : msg
+        msg.id === messageId ? { ...msg, reactions } : msg
       )
     );
   }, [setMessages]);
@@ -15086,7 +15086,7 @@ function NewChatRoom() {
       const { data } = await response.json();
       
       // 생성된 채팅방에 자동으로 입장
-      await joinRoom(data._id, formData.hasPassword ? formData.password : undefined);
+      await joinRoom(data.id, formData.hasPassword ? formData.password : undefined);
 
     } catch (error) {
       console.error('Room creation/join error:', error);
@@ -15520,8 +15520,8 @@ function ChatRoomsComponent() {
 
       setRooms(prev => {
         if (isLoadingMore) {
-          const existingIds = new Set(prev.map(room => room._id));
-          const newRooms = data.filter(room => !existingIds.has(room._id));
+          const existingIds = new Set(prev.map(room => room.id));
+          const newRooms = data.filter(room => !existingIds.has(room.id));
           return [...prev, ...newRooms];
         }
         return data;
@@ -15589,8 +15589,8 @@ function ChatRoomsComponent() {
         });
         
         setRooms(prev => {
-          const existingIds = new Set(prev.map(room => room._id));
-          const uniqueNewRooms = newRooms.filter(room => !existingIds.has(room._id));
+          const existingIds = new Set(prev.map(room => room.id));
+          const uniqueNewRooms = newRooms.filter(room => !existingIds.has(room.id));
           console.log('Unique new rooms:', uniqueNewRooms.length);
           return [...prev, ...uniqueNewRooms];
         });
@@ -15713,7 +15713,7 @@ function ChatRoomsComponent() {
           },
           roomDeleted: (roomId) => {
             setRooms(prev => {
-              const updatedRooms = prev.filter(room => room._id !== roomId);
+              const updatedRooms = prev.filter(room => room.id !== roomId);
               previousRoomsRef.current = updatedRooms;
               return updatedRooms;
             });
@@ -15721,7 +15721,7 @@ function ChatRoomsComponent() {
           roomUpdated: (updatedRoom) => {
             setRooms(prev => {
               const updatedRooms = prev.map(room => 
-                room._id === updatedRoom._id ? updatedRoom : room
+                room.id === updatedRoom.id ? updatedRoom : room
               );
               previousRoomsRef.current = updatedRooms;
               return updatedRooms;
@@ -15842,7 +15842,7 @@ function ChatRoomsComponent() {
         <Button
           variant="primary"
           size="md"
-          onClick={() => handleJoinRoom(rowData._id)}
+          onClick={() => handleJoinRoom(rowData.id)}
           disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
         >
           입장
@@ -16049,7 +16049,7 @@ const ChatPage = () => {
             
             return (
               <Avatar 
-                key={participant._id} 
+                key={participant.id}
                 style={{ backgroundColor, color }}
                 className="participant-avatar"
                 name={participant.name}
@@ -17275,7 +17275,7 @@ class AuthService {
 
       if (response.data?.success && response.data?.token) {
         const userData = {
-          id: response.data.user._id,
+          id: response.data.user.id,
           name: response.data.user.name,
           email: response.data.user.email,
           profileImage: response.data.user.profileImage,
@@ -17342,7 +17342,7 @@ class AuthService {
 
       if (response.data?.success && response.data?.token) {
         const userInfo = {
-          id: response.data.user._id,
+          id: response.data.user.id,
           name: response.data.user.name,
           email: response.data.user.email,
           profileImage: response.data.user.profileImage,

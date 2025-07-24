@@ -124,7 +124,7 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
          type: 'file',
          content: messageData.content || '',
          fileData: {
-           _id: uploadResponse.data.file._id,
+           id: uploadResponse.data.file.id,
            filename: uploadResponse.data.file.filename,
            originalname: uploadResponse.data.file.originalname,
            mimetype: uploadResponse.data.file.mimetype,
@@ -177,13 +177,13 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
 
    const allParticipants = [
      {
-       _id: 'wayneAI',
+       id: 'wayneAI',
        name: 'wayneAI',
        email: 'ai@wayne.ai',
        isAI: true
      },
      {
-       _id: 'consultingAI',
+       id: 'consultingAI',
        name: 'consultingAI',
        email: 'ai@consulting.ai',
        isAI: true
