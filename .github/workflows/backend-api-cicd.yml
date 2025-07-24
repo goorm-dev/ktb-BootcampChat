@@ -453,10 +453,10 @@ jobs:
         echo "- **브랜치**: jacky" >> $GITHUB_STEP_SUMMARY
         echo "- **빌드 시간**: ${{ steps.meta.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🔧 개발 환경 설정" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔧 빌드 환경 설정" >> $GITHUB_STEP_SUMMARY
         echo "- **GitHub 레포**: ${{ env.GITHUB_REPO }}" >> $GITHUB_STEP_SUMMARY
         echo "- **브랜치**: ${{ env.GITHUB_BRANCH }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **환경**: 개발용 (기본 설정 포함)" >> $GITHUB_STEP_SUMMARY
+        echo "- **배포 대상**: Load Test 환경" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🚀 배포 정보" >> $GITHUB_STEP_SUMMARY
         echo "- **Launch Template**: \`${{ env.LAUNCH_TEMPLATE_NAME }}\` (버전 ${{ steps.update-template.outputs.template_version }})" >> $GITHUB_STEP_SUMMARY
