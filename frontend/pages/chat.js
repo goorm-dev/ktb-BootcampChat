@@ -8,6 +8,7 @@ import { Flex, Box, HStack } from '../components/ui/Layout';
 import { withAuth } from '../middleware/withAuth';
 import { useChatRoom } from '../hooks/useChatRoom';
 import ChatMessages from '../components/chat/ChatMessages';
+import TypingIndicator from "../components/chat/TypingIndicator";
 import ChatInput from '../components/chat/ChatInput';
 import { generateColorFromEmail, getContrastTextColor } from '../utils/colorUtils';
 
@@ -288,6 +289,7 @@ const ChatPage = () => {
             }}
             onFileRemove={removeFilePreview}
           />
+          <TypingIndicator/>
         </Card.Footer>
       </Card.Root>
     </div>
