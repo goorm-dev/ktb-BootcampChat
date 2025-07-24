@@ -51,11 +51,11 @@ const MessageContent = ({ content, isAI = false }) => {
 
       const mentionedName = match[1];
       const isAIMention = mentionedName === 'wayneAI' || mentionedName === 'consultingAI';
-      const displayName = isAIMention 
+      const displayName = isAIMention
         ? (mentionedName === 'wayneAI' ? 'Wayne AI' : 'Consulting AI')
         : mentionedName;
 
-      const mentionClass = isAIMention 
+      const mentionClass = isAIMention
         ? `mention mention-bot ${mentionedName === 'wayneAI' ? 'mention-wayne' : 'mention-consulting'}`
         : 'mention mention-user';
 
@@ -86,8 +86,8 @@ const MessageContent = ({ content, isAI = false }) => {
   const components = useMemo(() => ({
     p: ({ children }) => {
       if (
-        children.length === 1 && 
-        typeof children[0] === 'string' && 
+        children.length === 1 &&
+        typeof children[0] === 'string' &&
         !children[0].includes('\n')
       ) {
         return <Text typography="body2">{renderContentWithMentions(children[0])}</Text>;
@@ -158,15 +158,15 @@ const MessageContent = ({ content, isAI = false }) => {
     ),
     li: ({ node, children, ...props }) => {
       // 체크박스가 포함된 리스트 아이템인지 확인
-      const hasCheckbox = node.children.some(child => 
-        child.type === 'element' && 
-        child.tagName === 'input' && 
+      const hasCheckbox = node.children.some(child =>
+        child.type === 'element' &&
+        child.tagName === 'input' &&
         child.properties.type === 'checkbox'
       );
 
       return (
-        <li 
-          className={`md-list-item ${hasCheckbox ? 'list-none' : ''}`} 
+        <li
+          className={`md-list-item ${hasCheckbox ? 'list-none' : ''}`}
           {...props}
         >
           {children}
@@ -221,23 +221,23 @@ const MessageContent = ({ content, isAI = false }) => {
   }), [renderContentWithMentions, copyToClipboard, copyingMap]);
 
   // 순수 텍스트 내용 여부 확인
-  const isPlainText = useMemo(() => {
-    return typeof content === 'string' && 
-           !content.includes('```') && 
-           !content.includes('`') && 
-           !content.includes('#') && 
-           !content.includes('*') && 
-           !content.includes('_') && 
-           !content.includes('[') && 
-           !content.includes('|');
-  }, [content]);
+  // const isPlainText = useMemo(() => {
+  //   return typeof content === 'string' &&
+  //          !content.includes('```') &&
+  //          !content.includes('`') &&
+  //          !content.includes('#') &&
+  //          !content.includes('*') &&
+  //          !content.includes('_') &&
+  //          !content.includes('[') &&
+  //          !content.includes('|');
+  // }, [content]);
 
   if (typeof content !== 'string') {
     return String(content);
   }
 
-  // 순수 텍스트이면서 멘션이 포함된 경우 직접 렌더링
-  if (isPlainText && content.includes('@')) {
+  // 멘션이 포함된 경우 직접 렌더링
+  if (content.includes('@')) {
     return <Text typography="body2" className="message-text">{renderContentWithMentions(content)}</Text>;
   }
 

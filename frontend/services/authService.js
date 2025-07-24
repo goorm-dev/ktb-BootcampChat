@@ -55,7 +55,7 @@ const validateCredentials = (credentials) => {
 
 // 재시도 딜레이 계산
 const getRetryDelay = (retryCount) => {
-  const delay = RETRY_CONFIG.baseDelay * 
+  const delay = RETRY_CONFIG.baseDelay *
     Math.pow(RETRY_CONFIG.backoffFactor, retryCount) *
     (1 + Math.random() * 0.1);
   return Math.min(delay, RETRY_CONFIG.maxDelay);
@@ -203,7 +203,7 @@ class AuthService {
       throw this._handleError(error);
     }
   }
-  
+
   async updateProfile(data) {
     try {
       const user = this.getCurrentUser();
@@ -231,10 +231,10 @@ class AuthService {
           token: user.token,
           sessionId: user.sessionId
         };
-        
+
         localStorage.setItem('user', JSON.stringify(updatedUser));
         window.dispatchEvent(new Event('userProfileUpdate'));
-        
+
         return updatedUser;
       }
 
@@ -242,7 +242,7 @@ class AuthService {
 
     } catch (error) {
       console.error('Profile update error:', error);
-      
+
       if (error.response?.status === 401) {
         try {
           const refreshed = await this.refreshToken();
@@ -266,7 +266,7 @@ class AuthService {
       }
 
       const response = await axios.put(
-        `${API_URL}/api/users/profile`,
+        `${API_URL}/api/users/password`,
         {
           currentPassword,
           newPassword
@@ -306,7 +306,7 @@ class AuthService {
 
       throw this._handleError(error);
     }
-  }  
+  }
 
   getCurrentUser() {
     try {
@@ -315,7 +315,7 @@ class AuthService {
 
       const user = JSON.parse(userStr);
       const SESSION_TIMEOUT = 2 * 60 * 60 * 1000;
-      
+
       if (Date.now() - user.lastActivity > SESSION_TIMEOUT) {
         this.logout();
         return null;
@@ -375,7 +375,7 @@ class AuthService {
       throw error;
     }
   }
-  
+
   async refreshToken() {
     try {
       const user = this.getCurrentUser();
@@ -414,32 +414,32 @@ class AuthService {
       }
 
       console.log('Checking server at:', API_URL);
-      
+
       const response = await api.get('/health', {
         timeout: 3000, // 타임아웃을 3초로 단축
         validateStatus: (status) => status < 500 // 5xx 에러만 실제 에러로 처리
       });
-      
+
       return response.data?.status === 'ok' || response.status === 200;
     } catch (error) {
       console.error('Server connection check failed:', error);
-      
+
       // 네트워크 에러나 타임아웃은 더 구체적인 메시지 제공
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
         throw new Error('서버 응답 시간이 초과되었습니다.');
       }
-      
+
       if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
         throw new Error('네트워크 연결을 확인해주세요.');
       }
-      
+
       throw this._handleError(error);
     }
   }
 
   _handleError(error) {
     if (error.isNetworkError) return error;
-    
+
     if (axios.isAxiosError(error)) {
       if (!error.response) {
         return new Error('서버와 통신할 수 없습니다. 네트워크 연결을 확인해주세요.');
