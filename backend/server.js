@@ -66,7 +66,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // 기본 수집기 활성화 (CPU, 메모리 등)
 client.collectDefaultMetrics({
-  prefix: 'app_',
+  prefix: 'my_app_',
   timeout: 5000
 });
 
