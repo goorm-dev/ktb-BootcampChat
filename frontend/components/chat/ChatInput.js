@@ -528,6 +528,7 @@ const ChatInput = forwardRef(({
             }}
           />
           <Button
+            type='submit'
             color="primary"
             size="md"
             onClick={handleSubmit}
