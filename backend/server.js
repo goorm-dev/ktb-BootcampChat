@@ -7,7 +7,9 @@ const socketIO = require('socket.io');
 const path = require('path');
 const { router: roomsRouter, initializeSocket } = require('./routes/api/rooms');
 const routes = require('./routes');
+
 const promBundle = require('express-prom-bundle');
+const client = require('prom-client');
 
 const app = express();
 const server = http.createServer(app);
@@ -61,6 +63,12 @@ if (process.env.NODE_ENV === 'development') {
     next();
   });
 }
+
+// 기본 수집기 활성화 (CPU, 메모리 등)
+client.collectDefaultMetrics({
+  prefix: 'app_',
+  timeout: 5000
+});
 
 // Prometheus 메트릭
 const metricsMiddleware = promBundle({
