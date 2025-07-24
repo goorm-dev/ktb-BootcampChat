@@ -1,6 +1,6 @@
 // services/sessionService.js
 
-const redisSessionClient = require('../utils/redis/redisSessionCluster');
+const redisClient = require('../utils/redis/redisSessionCluster');
 const crypto = require('crypto');
 
 class SessionService {
