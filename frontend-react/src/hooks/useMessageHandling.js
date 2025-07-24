@@ -126,21 +126,20 @@ export const useMessageHandling = (socketRef, currentUser, roomId, handleSession
           content: messageData.content || '' // 파일과 함께 보낸 텍스트
         });
 
-      //  const finalFile = uploadResponse.data.file;
-
-      //  socketRef.current.emit('chatMessage', {
-      //    room: roomId,
-      //    type: 'file',
-      //    content: messageData.content || '',
-      //    fileData: {
-      //      _id: uploadResponse.data.file._id,
-      //      filename: uploadResponse.data.file.filename,
-      //      originalname: uploadResponse.data.file.originalname,
-      //      mimetype: uploadResponse.data.file.mimetype,
-      //      size: uploadResponse.data.file.size,
-      //      url: finalFile.url
-      //    }
-      //  });
+       const finalFile = uploadResponse.data.file; 
+        socketRef.current.emit('chatMessage', {
+          room: roomId,
+          type: 'file',
+          content: messageData.content || '',
+          fileData: { // 서버에서 받은 최종 파일 정보를 포함
+            _id: finalFile._id,
+            filename: finalFile.filename,
+            originalname: finalFile.originalname,
+            mimetype: finalFile.mimetype,
+            size: finalFile.size,
+            url: finalFile.url // !!! 이 부분이 중요합니다.
+          }
+        });
 
        setFilePreview(null);
        setMessage('');

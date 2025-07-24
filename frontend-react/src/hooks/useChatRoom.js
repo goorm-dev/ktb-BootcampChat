@@ -346,6 +346,21 @@ export const useChatRoom = () => {
       }
     });
 
+    socketRef.current.on('messageUpdated', (updatedMessage) => {
+      if (!mountedRef.current || !updatedMessage?._id) return;
+      console.log('Received message update:', updatedMessage);
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === updatedMessage._id ? { ...msg, ...updatedMessage } : msg
+        )
+      );
+      // 처리된 메시지 ID에 추가하여 중복을 방지합니다.
+      processedMessageIds.current.add(updatedMessage._id);
+    });
+
+
+
+
     // 이전 메시지 이벤트
     socketRef.current.on('previousMessages', (response) => {
       if (!mountedRef.current || messageProcessingRef.current) return;

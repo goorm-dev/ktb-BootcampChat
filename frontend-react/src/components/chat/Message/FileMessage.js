@@ -30,6 +30,7 @@ const FileMessage = ({
 
   // 서버가 소켓 메시지로 보내준 최종 CloudFront URL을 그대로 사용합니다.
   const previewUrl = msg.file?.url;
+  console.log(previewUrl);
 
   if (!msg?.file) {
     console.error('File data is missing:', msg);
@@ -42,7 +43,7 @@ const FileMessage = ({
   }).replace(/\./g, '년').replace(/\s/g, ' ').replace('일 ', '일 ');
 
   const getFileIcon = () => {
-    const mimetype = msg.file?.mimetype || '';
+    const mimetype = msg.file?.mimeType || '';
     const iconProps = { className: "w-5 h-5 flex-shrink-0" };
 
     if (mimetype.startsWith('image/')) return <Image {...iconProps} color="#00C853" />;
@@ -77,7 +78,7 @@ const FileMessage = ({
     }
     const link = document.createElement('a');
     link.href = previewUrl;
-    link.download = getDecodedFilename(msg.file.originalname);
+    link.download = getDecodedFilename(msg.file.originalName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -93,6 +94,9 @@ const FileMessage = ({
   };
 
   const renderImagePreview = (originalname) => {
+    console.log(previewUrl);
+    console.log(originalname);
+    console.log("ㅇㄴㅁㄹㅇㄹㄴㅇㅇ");
     // [핵심 수정]
     // previewUrl이 없는 경우(파일 처리 중) 로딩 상태를 보여줍니다.
     if (!previewUrl) {
@@ -118,9 +122,14 @@ const FileMessage = ({
   };
   
   const renderFilePreview = () => {
-    const mimetype = msg.file?.mimetype || '';
-    const originalname = getDecodedFilename(msg.file?.originalname || 'Unknown File');
+    const mimetype = msg.file?.mimeType || '';
+    const originalname = getDecodedFilename(msg.file?.originalName || 'Unknown File');
     const size = fileService.formatFileSize(msg.file?.size || 0);
+
+    console.log(originalname);
+    console.log(size);
+    console.log("ㅇㄴㅁㄹㅇㄹㄴㅇㅇ");
+
 
     const FileActions = () => (
       <div className="file-actions mt-2 pt-2 border-t border-gray-700">
