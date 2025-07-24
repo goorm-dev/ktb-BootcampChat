@@ -34,13 +34,13 @@ jobs:
         working-directory: frontend
         run: npm install --legacy-peer-deps
 
+      - name: Create .env.local
+        working-directory: frontend
+        run: echo "${{ secrets.ENV_FRONTEND_DEV }}" > .env.local
+
       - name: Build Next.js project
         working-directory: frontend
-        run: npm run build && npm run export
-
-      - name: Create .env.production
-        working-directory: frontend
-        run: echo "${{ secrets.ENV_FRONTEND_PROD }}" > .env.production
+        run: npm run build
 
       - name: Archive build as ZIP
         run: |
