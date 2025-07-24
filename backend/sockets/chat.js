@@ -29,6 +29,7 @@ module.exports = function(io) {
     });
   };
 
+  // 원래 코드에 로그만 찍은 버전
   // 메시지 일괄 로드 함수 개선
   const loadMessages = async (socket, roomId, before, limit = BATCH_SIZE) => {
     const timeoutPromise = new Promise((_, reject) => {
@@ -36,15 +37,16 @@ module.exports = function(io) {
         reject(new Error('Message loading timed out'));
       }, MESSAGE_LOAD_TIMEOUT);
     });
-
+  
     try {
-      // 쿼리 구성
       const query = { room: roomId };
       if (before) {
         query.timestamp = { $lt: new Date(before) };
       }
-
-      // 메시지 로드 with profileImage
+  
+      // 🔽 시간 측정 시작
+      const start = Date.now();
+  
       const messages = await Promise.race([
         Message.find(query)
           .populate('sender', 'name email profileImage')
@@ -57,15 +59,17 @@ module.exports = function(io) {
           .lean(),
         timeoutPromise
       ]);
-
-      // 결과 처리
+  
+      // 🔽 시간 측정 끝
+      const end = Date.now();
+      console.log(`[⏱️ QUERY LOG] roomId=${roomId}, count=${messages.length}, time=${end - start}ms`);
+  
       const hasMore = messages.length > limit;
       const resultMessages = messages.slice(0, limit);
-      const sortedMessages = resultMessages.sort((a, b) => 
+      const sortedMessages = resultMessages.sort((a, b) =>
         new Date(a.timestamp) - new Date(b.timestamp)
       );
-
-      // 읽음 상태 비동기 업데이트
+  
       if (sortedMessages.length > 0 && socket.user) {
         const messageIds = sortedMessages.map(msg => msg._id);
         Message.updateMany(
@@ -85,7 +89,7 @@ module.exports = function(io) {
           console.error('Read status update error:', error);
         });
       }
-
+  
       return {
         messages: sortedMessages,
         hasMore,
@@ -109,7 +113,112 @@ module.exports = function(io) {
       }
       throw error;
     }
-  };
+  };  
+  
+  // const loadMessages = async (socket, roomId, before, limit = BATCH_SIZE) => {
+  //   const timeoutPromise = new Promise((_, reject) => {
+  //     setTimeout(() => {
+  //       reject(new Error('Message loading timed out'));
+  //     }, MESSAGE_LOAD_TIMEOUT);
+  //   });
+  
+  //   try {
+  //     const matchQuery = { room: roomId, isDeleted: false };
+  //     if (before) {
+  //       matchQuery.timestamp = { $lt: new Date(before) };
+  //     }
+  
+  //     const start = Date.now();
+  
+  //     const messages = await Promise.race([
+  //       Message.aggregate([
+  //         { $match: matchQuery },
+  //         { $sort: { timestamp: -1 } },
+  //         { $limit: limit + 1 },
+  //         // sender 조인
+  //         {
+  //           $lookup: {
+  //             from: 'users', // 컬렉션명 (소문자 + 복수형, Mongoose 모델명 기준)
+  //             localField: 'sender',
+  //             foreignField: '_id',
+  //             as: 'sender'
+  //           }
+  //         },
+  //         { $unwind: { path: '$sender', preserveNullAndEmptyArrays: true } },
+  //         { 
+  //           $project: {
+  //             'sender.password': 0,
+  //             'sender.encryptedEmail': 0,
+  //             'sender.__v': 0
+  //           }
+  //         },
+  //         // file 조인
+  //         {
+  //           $lookup: {
+  //             from: 'files',
+  //             localField: 'file',
+  //             foreignField: '_id',
+  //             as: 'file'
+  //           }
+  //         },
+  //         { $unwind: { path: '$file', preserveNullAndEmptyArrays: true } }
+  //       ]),
+  //       timeoutPromise
+  //     ]);
+  
+  //     const end = Date.now();
+  //     console.log(`[🔍 AGGREGATE LOG] roomId=${roomId}, messages=${messages.length}, time=${end - start}ms`);
+  
+  //     const hasMore = messages.length > limit;
+  //     const resultMessages = messages.slice(0, limit);
+  //     const sortedMessages = resultMessages.sort((a, b) =>
+  //       new Date(a.timestamp) - new Date(b.timestamp)
+  //     );
+  
+  //     if (sortedMessages.length > 0 && socket.user) {
+  //       const messageIds = sortedMessages.map(msg => msg._id);
+  //       Message.updateMany(
+  //         {
+  //           _id: { $in: messageIds },
+  //           'readers.userId': { $ne: socket.user.id }
+  //         },
+  //         {
+  //           $push: {
+  //             readers: {
+  //               userId: socket.user.id,
+  //               readAt: new Date()
+  //             }
+  //           }
+  //         }
+  //       ).exec().catch(error => {
+  //         console.error('Read status update error:', error);
+  //       });
+  //     }
+  
+  //     return {
+  //       messages: sortedMessages,
+  //       hasMore,
+  //       oldestTimestamp: sortedMessages[0]?.timestamp || null
+  //     };
+  //   } catch (error) {
+  //     if (error.message === 'Message loading timed out') {
+  //       logDebug('message load timeout', {
+  //         roomId,
+  //         before,
+  //         limit
+  //       });
+  //     } else {
+  //       console.error('Load messages error:', {
+  //         error: error.message,
+  //         stack: error.stack,
+  //         roomId,
+  //         before,
+  //         limit
+  //       });
+  //     }
+  //     throw error;
+  //   }
+  // };
 
   // 재시도 로직을 포함한 메시지 로드 함수
   const loadMessagesWithRetry = async (socket, roomId, before, retryCount = 0) => {
