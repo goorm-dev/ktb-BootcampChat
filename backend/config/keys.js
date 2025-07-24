@@ -12,7 +12,7 @@ module.exports = {
   passwordSalt: process.env.PASSWORD_SALT || DEFAULT_PASSWORD_SALT,
   redisHost: process.env.REDIS_HOST || 'localhost',
   redisPort: process.env.REDIS_PORT || 6379,
-  redisCluster: process.env.REDIS_CLUSTER || 'false',
+  redisNodes: process.env.REDIS_NODES,
   openaiApiKey: process.env.OPENAI_API_KEY,
   vectorDbEndpoint: process.env.VECTOR_DB_ENDPOINT,
 };
