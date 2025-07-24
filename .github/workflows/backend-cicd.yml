@@ -8,7 +8,7 @@ on:
     paths:
       - 'backend/**'
       - 'scripts/**'
-      - '.github/workflows/backend-api-cicd.yml'
+      - '.github/workflows/backend-cicd.yml'
   pull_request:
     branches: [ jacky ]
     paths:
@@ -26,7 +26,7 @@ env:
   GITHUB_REPO: https://github.com/100-hours-a-week/8-ktb-chat.git
   GITHUB_BRANCH: jacky
   # ASG 관련 설정 - 사용자 요청에 따라 변경
-  LAUNCH_TEMPLATE_NAME: pumati-load-test-backend-20250724001044978300000001
+  LAUNCH_TEMPLATE_NAME: pumati-load-test-backend-20250724073402992900000003
   ASG_NAME: pumati-load-test-backend-asg
 
 jobs:
