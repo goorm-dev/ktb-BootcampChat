@@ -124,7 +124,7 @@ const authController = {
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: '이메일 또는 비밀번호가 올바르지 않습니다.'
+          message: '1 - 이메일 또는 비밀번호가 올바르지 않습니다.'
         });
       }
 
@@ -133,7 +133,7 @@ const authController = {
       if (!isMatch) {
         return res.status(401).json({
           success: false,
-          message: '이메일 또는 비밀번호가 올바르지 않습니다.'
+          message: '2 - 이메일 또는 비밀번호가 올바르지 않습니다.'
         });
       }
 
@@ -328,6 +328,65 @@ const authController = {
       res.status(500).json({
         success: false,
         message: '로그아웃 처리 중 오류가 발생했습니다.'
+      });
+    }
+  },
+
+  async changePassword(req, res) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user?.id;
+  
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: '인증 정보가 누락되었습니다.'
+        });
+      }
+  
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.'
+        });
+      }
+  
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: '새 비밀번호는 6자 이상이어야 합니다.'
+        });
+      }
+  
+      const user = await User.findById(userId).select('+password');
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: '사용자를 찾을 수 없습니다.'
+        });
+      }
+  
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: '현재 비밀번호가 일치하지 않습니다.'
+        });
+      }
+  
+      user.password = newPassword;
+      await user.save();
+  
+      res.json({
+        success: true,
+        message: '비밀번호가 성공적으로 변경되었습니다.'
+      });
+  
+    } catch (error) {
+      console.error('Change password error:', error);
+      res.status(500).json({
+        success: false,
+        message: '비밀번호 변경 중 오류가 발생했습니다.'
       });
     }
   },

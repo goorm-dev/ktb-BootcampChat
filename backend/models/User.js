@@ -121,8 +121,10 @@ UserSchema.post('save', function(doc, next) {
 // 비밀번호 비교 메서드
 UserSchema.methods.matchPassword = async function(enteredPassword) {
   try {
+    console.log(`입력된 비번 : ${enteredPassword}`);
     const user = await this.constructor.findById(this._id).select('+password');
     if (!user || !user.password) {
+      console.log('유저가 조회되지 않았거나 비밀번호가 존재하지 않는 경우임 -> Return false')
       return false;
     }
     return await bcrypt.compare(enteredPassword, user.password);

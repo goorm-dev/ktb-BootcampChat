@@ -161,6 +161,7 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
+    console.log(`new pwd : ${newPassword}`)
     user.name = name ? name.trim() : user.name;
     if (newPassword) {
       user.password = newPassword;
