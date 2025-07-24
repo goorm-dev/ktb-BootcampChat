@@ -14,6 +14,10 @@ const sessionNodes = [
   {
     port: process.env.REDIS_3_HOST_PORT || 7003,
     host: process.env.REDIS_3_HOST || '127.0.0.1'
+  },
+  {
+    port: process.env.REDIS_4_HOST_PORT || 7004,
+    host: process.env.REDIS_4_HOST || '127.0.0.1'
   }
 ].filter(node => node.host && node.port); // 유효한 노드만 필터링
 

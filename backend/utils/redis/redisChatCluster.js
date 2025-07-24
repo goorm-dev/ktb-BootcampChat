@@ -14,6 +14,10 @@ const chatNodes = [
   {
     port: process.env.REDIS_3_REPLICA_PORT || 7007,
     host: process.env.REDIS_3_REPLICA || '127.0.0.1'
+  },
+  {
+    port: process.env.REDIS_4_REPLICA_PORT || 7008,
+    host: process.env.REDIS_4_REPLICA || '127.0.0.1'
   }
 ].filter(node => node.host && node.port);
 
