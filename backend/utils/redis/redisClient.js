@@ -1,6 +1,8 @@
-// backend/utils/redisClient.js
+// backend/utils/redis/redisClient.js
+// 기존 redisClient.js를 이 위치로 이동 (내용은 그대로 유지)
+
 const Redis = require('redis');
-const { redisHost, redisPort, redisPassword } = require('../config/keys');
+const { redisHost, redisPort, redisPassword } = require('../../config/keys');
 
 class MockRedisClient {
   constructor() {
@@ -50,6 +52,10 @@ class MockRedisClient {
       return 1;
     }
     return 0;
+  }
+
+  async ping() {
+    return 'PONG';
   }
 
   async quit() {
@@ -229,6 +235,18 @@ class RedisClient {
       return await this.client.expire(key, seconds);
     } catch (error) {
       console.error('Redis expire error:', error);
+      throw error;
+    }
+  }
+
+  async ping() {
+    try {
+      if (!this.isConnected) {
+        await this.connect();
+      }
+      return await this.client.ping();
+    } catch (error) {
+      console.error('Redis ping error:', error);
       throw error;
     }
   }

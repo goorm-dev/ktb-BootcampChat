@@ -6,6 +6,7 @@ const authRoutes = require('./api/auth');
 const userRoutes = require('./api/users');
 const { router: roomsRouter } = require('./api/rooms');
 const fileRoutes = require('./api/files');
+const adminRoutes = require('./api/admin');
 
 // API documentation route
 router.get('/', (req, res) => {
@@ -27,12 +28,14 @@ router.get('/', (req, res) => {
       users: '/users',
       rooms: '/rooms',
       files: '/files',
-      ai: '/ai'
+      ai: '/ai',
+      admin: '/admin'
     }
   });
 });
 
 // Mount routes
+router.use('/admin', adminRoutes);
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/rooms', roomsRouter);  // roomsRouter로 변경

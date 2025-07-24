@@ -4,7 +4,7 @@ const User = require('../models/User');
 const File = require('../models/File');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/keys');
-const redisClient = require('../utils/redisClient');
+const redisClient = require('../utils/redis/redisChatCluster');
 const SessionService = require('../services/sessionService');
 const aiService = require('../services/aiService');
 
