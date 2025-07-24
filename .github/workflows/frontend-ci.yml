@@ -1,10 +1,8 @@
-# 프론트엔드 CI 파이프라인
-# Next.js Docker 이미지 빌드 및 S3 업로드
 name: Frontend CI
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, jacky ]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
@@ -13,294 +11,62 @@ on:
     paths:
       - 'frontend/**'
 
-# 환경 변수 설정
-env:
-  AWS_REGION: ap-northeast-2
-  S3_BUCKET: 8-ktb-chat-common
-  IMAGE_NAME: ktb-chat-frontend
-  
 jobs:
-  # 코드 품질 검사 및 빌드 테스트
-  test:
+  deploy:
+    name: Deploy Next.js frontend to S3
     runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-northeast-2
+      PROJECT_NAME: frontend
+      BUILD_DIR: frontend/out
+
     steps:
-    - name: 코드 체크아웃
-      uses: actions/checkout@v4
+      - name: Checkout source code
+        uses: actions/checkout@v3
 
-    - name: Node.js 설정
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: 'frontend/package-lock.json'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
-    - name: 의존성 설치
-      working-directory: ./frontend
-      run: npm ci
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
 
-    - name: 코드 린팅 (ESLint)
-      working-directory: ./frontend
-      run: |
-        # ESLint가 설치되어 있다면 실행, 없다면 스킵
-        if npm list eslint >/dev/null 2>&1; then
-          npm run lint
-        else
-          echo "ESLint not configured, skipping..."
-        fi
-      continue-on-error: true
+      - name: Create .env.local
+        working-directory: frontend
+        run: echo "${{ secrets.ENV_FRONTEND_DEV }}" > .env.local
 
-    - name: 타입 체크 (TypeScript)
-      working-directory: ./frontend
-      run: |
-        # TypeScript가 설치되어 있다면 타입 체크 실행
-        if npm list typescript >/dev/null 2>&1; then
-          npx tsc --noEmit
-        else
-          echo "TypeScript not configured, skipping..."
-        fi
-      continue-on-error: true
+      - name: Build Next.js project
+        working-directory: frontend
+        run: npm run build
 
-    - name: 단위 테스트 실행
-      working-directory: ./frontend
-      run: |
-        # 테스트 스크립트가 있다면 실행, 없다면 스킵
-        if npm run | grep -q "test"; then
-          npm test
-        else
-          echo "No test script found, skipping..."
-        fi
-      continue-on-error: true
+      - name: Archive build as ZIP
+        run: |
+          zip -r $PROJECT_NAME-$(date +%Y%m%d-%H%M%S).zip $BUILD_DIR
+          export ZIP_NAME=$(ls *.zip)
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
-    - name: Next.js 빌드 테스트
-      working-directory: ./frontend
-      run: |
-        echo "🔨 Next.js 빌드 테스트 시작..."
-        
-        # 환경변수 설정 (빌드용)
-        export NEXT_PUBLIC_API_URL=http://localhost:5000
-        export NEXT_PUBLIC_ENCRYPTION_KEY=test-encryption-key
-        export NEXT_PUBLIC_PASSWORD_SALT=test-password-salt
-        
-        # Next.js 빌드 실행
-        npm run build
-        
-        echo "✅ Next.js 빌드 테스트 완료"
+      - name: Upload ZIP to archive bucket (8-ktb-chat-cloudfront)
+        run: |
+          aws s3 cp $ZIP_NAME s3://8-ktb-chat-cloudfront/$ZIP_NAME
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-  # Docker 이미지 빌드 및 S3 업로드
-  build-and-upload:
-    needs: test
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: 코드 체크아웃
-      uses: actions/checkout@v4
-      
-    - name: AWS 자격증명 설정
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Sync build to deploy bucket (chat.goorm-ktb-008.goorm.team)
+        run: |
+          aws s3 sync $BUILD_DIR s3://chat.goorm-ktb-008.goorm.team --delete
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-    - name: Docker Buildx 설정
-      uses: docker/setup-buildx-action@v3
-
-    - name: 빌드 메타데이터 생성
-      id: meta
-      run: |
-        # Git 커밋 해시의 짧은 버전 생성
-        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-        
-        # 브랜치 이름 정규화 (슬래시를 하이픈으로 변경)
-        BRANCH_NAME=$(echo ${{ github.ref_name }} | sed 's/\//-/g')
-        
-        # 타임스탬프 생성
-        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-        
-        # 이미지 태그 생성
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          TAG="latest"
-          VERSION_TAG="${TIMESTAMP}-${SHORT_SHA}"
-        else
-          TAG="${BRANCH_NAME}-${SHORT_SHA}"
-          VERSION_TAG="${BRANCH_NAME}-${TIMESTAMP}-${SHORT_SHA}"
-        fi
-        
-        echo "tag=${TAG}" >> $GITHUB_OUTPUT
-        echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
-        echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-        echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
-
-    - name: Docker 이미지 빌드
-      working-directory: ./frontend
-      run: |
-        echo "🔨 Docker 이미지 빌드 시작..."
-        
-        # 빌드 인자 설정
-        BUILD_ARGS=""
-        BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_API_URL=\${NEXT_PUBLIC_API_URL:-http://localhost:5000}"
-        BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_ENCRYPTION_KEY=\${NEXT_PUBLIC_ENCRYPTION_KEY:-default-key}"
-        BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_PASSWORD_SALT=\${NEXT_PUBLIC_PASSWORD_SALT:-default-salt}"
-        
-        # 프로덕션 이미지 빌드
-        docker build \
-          --target production \
-          $BUILD_ARGS \
-          --tag ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }} \
-          --tag ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version_tag }} \
-          --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
-          --label "org.opencontainers.image.revision=${{ github.sha }}" \
-          --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-          . || {
-          echo "❌ Docker 빌드 실패"
-          exit 1
-        }
-          
-        echo "✅ Docker 이미지 빌드 완료"
-        
-        # 빌드된 이미지 확인
-        docker images | grep ${{ env.IMAGE_NAME }}
-
-    - name: Docker 이미지 테스트
-      run: |
-        echo "🧪 Docker 이미지 테스트 시작..."
-        
-        # 컨테이너 실행 테스트
-        docker run --name test-frontend-container -d \
-          -p 13000:3000 \
-          -e NEXT_PUBLIC_API_URL=http://localhost:5000 \
-          ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
-        
-        # 컨테이너 시작 대기
-        echo "컨테이너 시작 대기 중... (15초)"
-        sleep 15
-        
-        # 컨테이너 상태 확인
-        if docker ps | grep -q test-frontend-container; then
-          echo "✅ 컨테이너가 정상적으로 실행되고 있습니다"
-          
-          # 헬스체크 확인 (옵션)
-          echo "  컨테이너 로그 (마지막 10줄):"
-          docker logs --tail 10 test-frontend-container 2>/dev/null || echo "  로그를 가져올 수 없습니다"
-          
-          # 포트 테스트 (옵션)
-          if command -v curl &> /dev/null; then
-            echo "  포트 연결 테스트 중..."
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:13000 | grep -q "200\|404\|301\|302"; then
-              echo "✅ 웹 서버 응답 정상"
-            else
-              echo "⚠️  웹 서버 응답 확인 불가 (하지만 컨테이너는 실행 중)"
-            fi
-          fi
-        else
-          echo "❌ 컨테이너 실행 실패"
-          echo "컨테이너 로그:"
-          docker logs test-frontend-container
-          docker rm -f test-frontend-container > /dev/null 2>&1 || true
-          exit 1
-        fi
-        
-        # 테스트 컨테이너 정리
-        docker stop test-frontend-container > /dev/null 2>&1
-        docker rm test-frontend-container > /dev/null 2>&1
-        
-        echo "✅ 이미지 테스트 완료"
-
-    - name: Docker 이미지를 TAR 파일로 저장
-      run: |
-        echo "📦 Docker 이미지를 TAR 파일로 저장 중..."
-        
-        # 이미지를 tar 파일로 저장
-        docker save \
-          ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }} \
-          ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version_tag }} \
-          | gzip > frontend-${{ steps.meta.outputs.version_tag }}.tar.gz
-        
-        # 파일 크기 확인
-        ls -lh frontend-${{ steps.meta.outputs.version_tag }}.tar.gz
-        
-        echo "✅ TAR 파일 생성 완료"
-
-    - name: S3에 Docker 이미지 업로드
-      run: |
-        echo "☁️ S3에 Docker 이미지 업로드 시작..."
-        
-        # S3 버킷 존재 확인
-        if ! aws s3 ls s3://${{ env.S3_BUCKET }} >/dev/null 2>&1; then
-          echo "❌ S3 버킷이 존재하지 않습니다: ${{ env.S3_BUCKET }}"
-          exit 1
-        fi
-        
-        # S3에 업로드 (프론트엔드 전용 폴더)
-        aws s3 cp frontend-${{ steps.meta.outputs.version_tag }}.tar.gz \
-          s3://${{ env.S3_BUCKET }}/frontend/images/frontend-${{ steps.meta.outputs.version_tag }}.tar.gz \
-          --metadata "commit-sha=${{ github.sha }},build-timestamp=${{ steps.meta.outputs.timestamp }},branch=${{ github.ref_name }}"
-        
-        # latest 태그인 경우 latest 파일도 업로드
-        if [[ "${{ steps.meta.outputs.tag }}" == "latest" ]]; then
-          aws s3 cp frontend-${{ steps.meta.outputs.version_tag }}.tar.gz \
-            s3://${{ env.S3_BUCKET }}/frontend/images/frontend-latest.tar.gz \
-            --metadata "commit-sha=${{ github.sha }},build-timestamp=${{ steps.meta.outputs.timestamp }},branch=${{ github.ref_name }}"
-        fi
-        
-        echo "✅ S3 업로드 완료"
-
-    - name: 빌드 정보 S3에 업로드
-      run: |
-        echo "📄 빌드 정보 파일 생성 및 업로드..."
-        
-        # 빌드 정보 JSON 파일 생성
-        cat > build-info.json << EOF
-        {
-          "buildTimestamp": "${{ steps.meta.outputs.timestamp }}",
-          "commitSha": "${{ github.sha }}",
-          "shortSha": "${{ steps.meta.outputs.short_sha }}",
-          "branch": "${{ github.ref_name }}",
-          "tag": "${{ steps.meta.outputs.tag }}",
-          "versionTag": "${{ steps.meta.outputs.version_tag }}",
-          "repository": "${{ github.repository }}",
-          "workflow": "${{ github.workflow }}",
-          "runId": "${{ github.run_id }}",
-          "imageName": "${{ env.IMAGE_NAME }}",
-          "imageSize": "$(stat -c%s frontend-${{ steps.meta.outputs.version_tag }}.tar.gz) bytes",
-          "framework": "Next.js",
-          "nodeVersion": "18"
-        }
-        EOF
-        
-        # S3에 빌드 정보 업로드 (프론트엔드 전용 폴더)
-        aws s3 cp build-info.json \
-          s3://${{ env.S3_BUCKET }}/frontend/build-info/frontend-${{ steps.meta.outputs.version_tag }}.json
-        
-        # latest인 경우 latest 빌드 정보도 업로드
-        if [[ "${{ steps.meta.outputs.tag }}" == "latest" ]]; then
-          aws s3 cp build-info.json \
-            s3://${{ env.S3_BUCKET }}/frontend/build-info/frontend-latest.json
-        fi
-
-    - name: 정리 작업
-      if: always()
-      run: |
-        echo "🧹 임시 파일 정리..."
-        rm -f frontend-${{ steps.meta.outputs.version_tag }}.tar.gz
-        rm -f build-info.json
-        
-        # Docker 이미지 정리
-        docker rmi ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }} || true
-        docker rmi ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version_tag }} || true
-
-    - name: 결과 요약
-      run: |
-        echo "## 🎉 프론트엔드 CI 빌드 완료" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📋 빌드 정보" >> $GITHUB_STEP_SUMMARY
-        echo "- **커밋**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **브랜치**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **이미지 태그**: ${{ steps.meta.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **버전 태그**: ${{ steps.meta.outputs.version_tag }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **S3 버킷**: ${{ env.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **프레임워크**: Next.js" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📦 S3 업로드 경로" >> $GITHUB_STEP_SUMMARY
-        echo "- 이미지: \`s3://${{ env.S3_BUCKET }}/frontend/images/frontend-${{ steps.meta.outputs.version_tag }}.tar.gz\`" >> $GITHUB_STEP_SUMMARY
-        echo "- 빌드 정보: \`s3://${{ env.S3_BUCKET }}/frontend/build-info/frontend-${{ steps.meta.outputs.version_tag }}.json\`" >> $GITHUB_STEP_SUMMARY 
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E2UUSZ0MG179D8 \
+            --paths "/*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
