@@ -2,7 +2,6 @@
 import OpenAI from 'openai';
 import { MESSAGE_PROMPTS } from '../data/message-prompts';
 import * as dotenv from 'dotenv';
-
 dotenv.config();
 
 export class MessageService {

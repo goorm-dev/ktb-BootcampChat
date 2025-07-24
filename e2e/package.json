@@ -6,21 +6,29 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "load:test": "artillery run artillery/artillery.yml",
+    "load:report": "artillery run --output artillery/report.json artillery/artillery.yml && artillery report artillery/report.json",
+    "load:quick": "artillery quick --count 20 --num 10 http://localhost:3000",
+    "load:debug": "DEBUG=playwright:browser artillery run artillery/artillery.yml --dotenv .env"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
-    "@types/node": "^20.17.7",
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^20.19.9",
+    "artillery": "^2.0.21",
     "http-server": "^14.1.1",
-    "typescript": "^5.7.2"
+    "playwright": "^1.54.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   },
   "main": "index.js",
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.8",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "openai": "^4.73.1",
-    "playwright": "^1.49.0"
+    "uuid": "^11.1.0"
   }
 }

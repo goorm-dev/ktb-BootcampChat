@@ -1,33 +1,15 @@
-import { Page } from '@playwright/test';
-import { AIService } from '../services/ai-service';
-import { MessageService } from '../services/message-service';
-import { TEST_PROMPTS } from '../data/ai-prompts';
-import { MESSAGE_PROMPTS } from '../data/message-prompts';
-import { TEST_USERS, AI_TEST_USERS, UserCredential } from '../data/credentials';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-interface UserCredentials {
-  name: string;
-  email: string;
-  password: string;
-}
+const { Page } = require('@playwright/test');
+const { AIService } = require('../services/ai-service');
+const { MessageService } = require('../services/message-service');
+const { TEST_PROMPTS } = require('../data/ai-prompts');
+const { MESSAGE_PROMPTS } = require('../data/message-prompts');
+const { TEST_USERS, AI_TEST_USERS } = require('../data/credentials');
 
-interface LoginCredentials {
-  email: string;
-  password: string;
-}
 
-// 채팅방 찾기 및 입장을 위한 인터페이스 정의
-interface RoomInfo {
-  id: string;
-  name: string;
-  hasPassword: boolean;
-}
-
-export class TestHelpers {
-  private aiService: AIService;
-  private messageService: MessageService;
-  private existingRooms: Set<string> = new Set();
-
+class TestHelpers {
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY || '';
     this.aiService = new AIService({
@@ -35,6 +17,7 @@ export class TestHelpers {
       model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
     });
     this.messageService = new MessageService(apiKey);
+    this.existingRooms = new Set();
   }
 
   generateRoomName(prefix = 'Test') {
@@ -42,15 +25,15 @@ export class TestHelpers {
     return `${prefix}-${randomId}`;
   }
 
-  getTestUser(index: number): UserCredential {
+  getTestUser(index) {
     return TEST_USERS[index % TEST_USERS.length];
   }
 
-  getAITestUser(type: 'gpt' | 'claude'): UserCredential {
+  getAITestUser(type) {
     return type === 'gpt' ? AI_TEST_USERS[0] : AI_TEST_USERS[1];
   }
 
-  generateUserCredentials(index: number) {
+  generateUserCredentials(index) {
     const timestamp = Date.now();
     return {
       name: `Test User ${index}`,
@@ -59,7 +42,7 @@ export class TestHelpers {
     };
   }
 
-  async loginAndEnterRoom(page: Page) {
+  async loginAndEnterRoom(page) {
     const credentials = this.generateUserCredentials(1);
     await this.registerUser(page, credentials);
     const roomName = this.generateRoomName();
@@ -67,7 +50,7 @@ export class TestHelpers {
     return { credentials, roomName };
   }
 
-  async registerUser(page: Page, credentials: UserCredentials) {
+  async registerUser(page, credentials) {
     try {
       await page.goto('/register');
       await page.waitForLoadState('networkidle');
@@ -109,7 +92,7 @@ export class TestHelpers {
     }
   }
 
-  async login(page: Page, credentials: LoginCredentials) {
+  async login(page, credentials) {
     try {
       await page.goto('/');
       await page.waitForLoadState('networkidle');
@@ -133,7 +116,7 @@ export class TestHelpers {
     }
   }
 
-  async logout(page: Page) {
+  async logout(page) {
     try {
       await page.waitForSelector('[data-toggle="dropdown"]', { 
         state: 'visible',
@@ -162,7 +145,7 @@ export class TestHelpers {
     }
   }
 
-  async findSimilarRoom(page: Page, prefix: string): Promise<string | null> {
+  async findSimilarRoom(page, prefix) {
     try {
       await page.goto('/chat-rooms');
       await page.waitForLoadState('networkidle');
@@ -249,7 +232,7 @@ export class TestHelpers {
     }
   }
 
-  async joinOrCreateRoom(page: Page, prefix: string): Promise<string> {
+  async joinOrCreateRoom(page, prefix) {
     try {
       // 90% vs 10% 확률 결정
       const shouldJoinExisting = Math.random() < 0.9;
@@ -334,7 +317,7 @@ export class TestHelpers {
     }
   }
 
-  async createRoom(page: Page, roomName: string, password?: string): Promise<void> {
+  async createRoom(page, roomName, password) {
     try {
       console.log('Creating new room:', roomName);
 
@@ -495,14 +478,14 @@ export class TestHelpers {
   }
 
   // 비밀번호 처리 개선
-  private async handleRoomPassword(page: Page, password: string, timeout: number) {
+  async _handleRoomPasswordWithTimeout(page, password, timeout) {
     await page.waitForSelector('input[name="password"]', {
       state: 'visible',
       timeout
     });
 
     await Promise.all([
-      page.waitForNavigation({ 
+      page.waitForNavigation({
         timeout,
         waitUntil: ['load', 'domcontentloaded', 'networkidle']
       }),
@@ -512,11 +495,11 @@ export class TestHelpers {
   }
 
   // 연결 상태 확인 메서드
-  private async waitForConnection(page: Page, timeout: number): Promise<boolean> {
+  async _waitForConnection(page, timeout) {
     try {
       await page.waitForFunction(
         () => {
-          const socket = (window as any).io;
+          const socket = (window).io;
           return socket && socket.connected;
         },
         { timeout }
@@ -528,7 +511,7 @@ export class TestHelpers {
   }
 
   // 채팅방 UI 검증
-  private async verifyRoomLoaded(page: Page, timeout: number) {
+  async _verifyRoomLoaded(page, timeout) {
     const elements = [
       '.chat-room-title',
       '.chat-messages',
@@ -536,7 +519,7 @@ export class TestHelpers {
     ];
 
     await Promise.all(
-      elements.map(selector => 
+      elements.map(selector =>
         page.waitForSelector(selector, {
           state: 'visible',
           timeout
@@ -545,7 +528,7 @@ export class TestHelpers {
     );
   }
   
-  async joinRoomByURLParam(page: Page, roomId: string, password?: string) {
+  async joinRoomByURLParam(page, roomId, password) {
     try {
       const currentUrl = page.url();
       const currentRoomId = new URLSearchParams(new URL(currentUrl).search).get('room');
@@ -669,12 +652,12 @@ export class TestHelpers {
   }
 
   // 페이지 상태 정보 수집을 위한 헬퍼 메서드
-  private async getPageState(page: Page) {
+  async getPageState(page) {
     try {
       return await page.evaluate(() => ({
         url: window.location.href,
         readyState: document.readyState,
-        socketConnected: !!(window as any).io?.connected,
+        socketConnected: !!(window).io?.connected,
         elements: {
           title: !!document.querySelector('.chat-room-title'),
           messages: !!document.querySelector('.chat-messages'),
@@ -689,7 +672,7 @@ export class TestHelpers {
     }
   }
   
-  async sendMessage(page: Page, message: string, parameters?: Record<string, string>) {
+  async sendMessage(page, message, parameters) {
     try {
       const finalMessage = await this.messageService.generateMessage(message, parameters);
       const inputSelector = '.chat-input-textarea';
@@ -747,7 +730,7 @@ export class TestHelpers {
     }
   }
 
-  async sendAIMessage(page: Page, message: string, aiType: AIType = 'wayneAI') {
+  async sendAIMessage(page, message, aiType = 'wayneAI') {
     try {
       await page.waitForSelector('.chat-input-textarea', {
         state: 'visible',
@@ -770,7 +753,7 @@ export class TestHelpers {
     }
   }
 
-  async addReaction(page: Page, messageSelector: string, emojiIndex: number = 0) {
+  async addReaction(page, messageSelector, emojiIndex = 0) {
     try {
       await page.hover(messageSelector);
       await page.click('.action-button');
@@ -784,7 +767,7 @@ export class TestHelpers {
     }
   }
 
-  async uploadFile(page: Page, filePath: string, fileType: string) {
+  async uploadFile(page, filePath, fileType) {
     try {
       const fileInput = await page.waitForSelector('input[type="file"]', {
         timeout: 30000,
@@ -823,7 +806,7 @@ export class TestHelpers {
     }
   }
 
-  async simulateConversation(pages: Page[], messages: string[], delayMin: number = 1000, delayMax: number = 3000) {
+  async simulateConversation(pages, messages, delayMin = 1000, delayMax = 3000) {
     for (const message of messages) {
       try {
         const randomPage = pages[Math.floor(Math.random() * pages.length)];
@@ -838,7 +821,7 @@ export class TestHelpers {
     }
   }
 
-  async getConversationHistory(page: Page) {
+  async getConversationHistory(page) {
     try {
       await page.waitForSelector('.message-content', {
         timeout: 30000,
@@ -859,7 +842,7 @@ export class TestHelpers {
     }
   }
 
-  async waitForMessageDelivery(page: Page, messageContent: string, timeout: number = 30000) {
+  async waitForMessageDelivery(page, messageContent, timeout = 30000) {
     try {
       await page.waitForFunction(
         (text) => {
@@ -876,7 +859,7 @@ export class TestHelpers {
     }
   }
 
-  async verifyRoomState(page: Page) {
+  async verifyRoomState(page) {
     try {
       const state = {
         title: await page.locator('.chat-room-title').textContent(),
@@ -895,7 +878,7 @@ export class TestHelpers {
   }
 
   // 비밀번호 처리를 위한 헬퍼 메서드
-  private async handleRoomPassword(page: Page, password?: string) {
+  async handleRoomPassword(page, password) {
     if (password) {
       await page.waitForSelector('input[name="password"]', {
         state: 'visible',
@@ -907,7 +890,7 @@ export class TestHelpers {
   }
 
   // 채팅방 로드 대기를 위한 헬퍼 메서드
-  private async waitForRoomLoad(page: Page) {
+  async waitForRoomLoad(page) {
     // 채팅방 UI 로드 확인
     await page.waitForSelector('.chat-container', {
       state: 'visible',
@@ -922,14 +905,18 @@ export class TestHelpers {
   }
 
   // 에러 스크린샷을 위한 헬퍼 메서드
-  private async takeErrorScreenshot(page: Page, prefix: string) {
+  async takeErrorScreenshot(page, prefix) {
     try {
-      await page.screenshot({ 
+      await page.screenshot({
         path: `test-results/${prefix}-error-${Date.now()}.png`,
-        fullPage: true 
+        fullPage: true
       });
     } catch (screenshotError) {
       console.error('Screenshot failed:', screenshotError);
     }
   }
 }
+
+module.exports = {
+  TestHelpers
+};

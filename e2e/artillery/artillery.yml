@@ -1,0 +1,57 @@
+config:
+  target: "http://localhost:3000"  # 실제 서비스 URL로 변경
+  phases:
+    # 단계적 부하 증가
+    - duration: 60      # 1분 동안
+      arrivalRate: 2    # 초당 2명의 사용자로 시작
+      name: "Warm up"
+    - duration: 120     # 2분 동안
+      arrivalRate: 5    # 초당 5명의 사용자
+      name: "Ramp up"
+    - duration: 180     # 3분 동안
+      arrivalRate: 10   # 초당 10명의 사용자
+      name: "Peak load"
+    - duration: 60      # 1분 동안
+      arrivalRate: 2    # 초당 2명으로 감소
+      name: "Cool down"
+  
+  processor: "./scenarios.js"
+  
+  engines:
+    playwright:
+      launchOptions:
+        headless: true  # 부하 테스트는 headless 모드 필수
+        args: 
+          - '--no-sandbox'
+          - '--disable-setuid-sandbox'
+          - '--disable-dev-shm-usage'
+          - '--disable-accelerated-2d-canvas'
+          - '--no-first-run'
+          - '--no-zygote'
+          - '--disable-gpu'
+      contextOptions:
+        ignoreHTTPSErrors: true
+        viewport:
+          width: 1280
+          height: 720
+
+scenarios:
+  - name: "일반 메시징"
+    engine: playwright
+    flowFunction: "messagingFlow"
+    weight: 40  # 40% 확률
+
+  - name: "AI 대화"
+    engine: playwright
+    flowFunction: "debateFlow"
+    weight: 30  # 30% 확률
+
+  - name: "실시간 테스트"  
+    engine: playwright
+    flowFunction: "realtimeFlow"  
+    weight: 20  # 20% 확률
+
+  - name: "파일 업로드"
+    engine: playwright
+    flowFunction: "fileUploadFlow"
+    weight: 10  # 10% 확률
