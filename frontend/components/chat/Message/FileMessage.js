@@ -171,11 +171,30 @@ const FileMessage = ({
         throw new Error('인증 정보가 없습니다.');
       }
 
-      const previewUrl = fileService.getPreviewUrl(msg.file, true);
-
+      const [error, setError] = useState(null);
+      const [previewUrl, setPreviewUrl] = useState('');
+    
+      useEffect(() => {
+        if (msg?.file) {
+          const url = fileService.getPreviewUrl(msg.file, true);
+          setPreviewUrl(url);
+          console.debug('Preview URL generated:', {
+            filename: msg.file.filename,
+            url
+          });
+        }
+        console.log(previewUrl)
+      }, [msg?.file]);
+    
+      if (!msg?.file) {
+        console.error('File data is missing:', msg);
+        return null;
+      }
+      // const previewUrl = fileService.getPreviewUrl(msg.file, true);
+      
       return (
         <div className="bg-transparent-pattern">
-          <img 
+          {previewUrl ? (<img 
             src={previewUrl}
             alt={originalname}
             className="object-cover rounded-sm"
@@ -192,7 +211,7 @@ const FileMessage = ({
               setError('이미지를 불러올 수 없습니다.');
             }}
             loading="lazy"
-          />
+          />) : (<p>이미지 불러오는 중</p>)}
         </div>
       );
     } catch (error) {
