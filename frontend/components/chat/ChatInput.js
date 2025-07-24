@@ -114,6 +114,15 @@ const ChatInput = forwardRef(({
         setMessage('');
         setFiles([]);
 
+        // Reset textarea height after submission
+        setTimeout(() => {
+          if (messageInputRef?.current) {
+            messageInputRef.current.style.height = 'auto';
+            messageInputRef.current.style.height = '40px';
+            messageInputRef.current.style.overflowY = 'hidden';
+          }
+        }, 0);
+
       } catch (error) {
         console.error('File submit error:', error);
         setUploadError(error.message);
@@ -124,8 +133,17 @@ const ChatInput = forwardRef(({
         content: message.trim()
       });
       setMessage('');
+      
+      // Reset textarea height after submission
+      setTimeout(() => {
+        if (messageInputRef?.current) {
+          messageInputRef.current.style.height = 'auto';
+          messageInputRef.current.style.height = '40px';
+          messageInputRef.current.style.overflowY = 'hidden';
+        }
+      }, 0);
     }
-  }, [files, message, onSubmit, setMessage]);
+  }, [files, message, onSubmit, setMessage, messageInputRef]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -381,7 +399,8 @@ const ChatInput = forwardRef(({
     let newSelectionEnd;
 
     if (markdown.includes('\n')) {
-      newText = message.substring(0, start) +
+      newText =
+        message.substring(0, start) +
                 markdown.replace('\n\n', '\n' + selectedText + '\n') +
                 message.substring(end);
       if (selectedText) {
@@ -394,20 +413,27 @@ const ChatInput = forwardRef(({
         newSelectionEnd = newCursorPos;
       }
     } else if (markdown.endsWith(' ')) {
-      newText = message.substring(0, start) +
-                markdown + selectedText +
+      newText =
+        message.substring(0, start) +
+        markdown +
+        selectedText +
                 message.substring(end);
       newCursorPos = start + markdown.length + selectedText.length;
       newSelectionStart = newCursorPos;
       newSelectionEnd = newCursorPos;
     } else {
-      newText = message.substring(0, start) +
-                markdown + selectedText + markdown +
-                message.substring(end);
       if (selectedText) {
+        newText =
+          message.substring(0, start) +
+          markdown +
+          selectedText +
+          markdown +
+          message.substring(end);
         newSelectionStart = start + markdown.length;
         newSelectionEnd = newSelectionStart + selectedText.length;
       } else {
+        newText =
+          message.substring(0, start) + markdown + message.substring(end);
         newSelectionStart = start + markdown.length;
         newSelectionEnd = newSelectionStart;
       }

@@ -17,11 +17,12 @@ test.describe('인증 테스트', () => {
     await expect(page.locator('.chat-rooms-card')).toBeVisible({ timeout: 30000 });
 
     // 채팅방 목록 헤더 텍스트 확인 (Card.Title 사용)
-    await expect(page.locator('h5')).toHaveText('채팅방 목록');
+    await expect(page.getByRole('button', { name: '채팅방 목록' })).toBeVisible();
     
     // 연결 상태 확인
-    await expect(page.locator('.text-success')).toBeVisible();
-    await expect(page.locator('.text-success')).toHaveText('연결됨');
+    // await expect(page.locator('.text-success')).toBeVisible();
+    // await expect(page.locator('.text-success')).toHaveText('연결됨');
+    await expect(page.getByText('연결됨')).toBeVisible();
   });
 
 //   test('로그인 실패 케이스', async ({ page }) => {
