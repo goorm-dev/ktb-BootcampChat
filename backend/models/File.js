@@ -41,6 +41,7 @@ const FileSchema = new Schema({
   },
   url: {
       type: String,
+      default: '',
   },
 }, { timestamps: true });
 
