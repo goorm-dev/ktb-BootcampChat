@@ -41,6 +41,7 @@ router.get('/health', async (req, res) => {
     const latency = Math.round((seconds * 1000) + (nanoseconds / 1000000));
 
     const status = {
+      status: isMongoConnected ? 'ok' : 'error',
       success: true,
       timestamp: new Date().toISOString(),
       services: {
