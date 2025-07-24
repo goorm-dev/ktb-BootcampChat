@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import socketService from '../services/socket';
 import authService from '../services/authService';
 import { Toast } from '../components/Toast';
+import axiosInstance from "../services/axios";
 
 export const useRoomHandling = (
   socketRef,
@@ -63,7 +64,7 @@ export const useRoomHandling = (
     } catch (error) {
       console.error('Token refresh failed:', error);
     }
-    
+
     if (mountedRef.current) {
       await authService.logout();
       router.replace('/?redirect=' + router.asPath);
@@ -271,7 +272,7 @@ export const useRoomHandling = (
 
         const handleSuccess = (response) => {
           cleanup();
-          
+
           if (!response || !Array.isArray(response.messages)) {
             if (retryCount < MAX_MESSAGE_RETRY_ATTEMPTS) {
               console.log(`Invalid message format, retrying (${retryCount + 1}/${MAX_MESSAGE_RETRY_ATTEMPTS})...`);
@@ -346,8 +347,24 @@ export const useRoomHandling = (
       return setupPromiseRef.current;
     }
 
+    const roomId = router.query.room;
+    const password = localStorage.getItem(`room-password:${roomId}`);
+    if (!password) return;
+
     setupPromiseRef.current = (async () => {
       try {
+        const res = await axiosInstance.post(
+          `/api/rooms/${roomId}/join`,
+          {
+            password,
+          },
+          {
+            timeout: 5000
+          }
+        );
+
+        if (res.status !== 200) return;
+
         initializingRef.current = true;
         setLoading(true);
         setError(null);
@@ -360,13 +377,13 @@ export const useRoomHandling = (
         // 2. Fetch Room Data
         console.log('Fetching room data...');
         const roomData = await fetchRoomData(router.query.room);
-        
+
         // Ensure current user is included in participants for display
         if (currentUser && roomData.participants) {
-          const isUserInParticipants = roomData.participants.some(p => 
+          const isUserInParticipants = roomData.participants.some(p =>
             p._id === currentUser.id || p.id === currentUser.id
           );
-          
+
           if (!isUserInParticipants) {
             roomData.participants = [
               ...roomData.participants,
@@ -379,7 +396,7 @@ export const useRoomHandling = (
             ];
           }
         }
-        
+
         setRoom(roomData);
 
         // 3. Setup Event Listeners
@@ -392,7 +409,7 @@ export const useRoomHandling = (
         if (mountedRef.current && socketRef.current?.connected) {
           console.log('Joining room...');
           await joinRoom(router.query.room);
-          
+
           console.log('Loading initial messages...');
           await loadInitialMessages(router.query.room);
         }
@@ -406,12 +423,12 @@ export const useRoomHandling = (
 
       } catch (error) {
         console.error('Room setup error:', error);
-        
+
         if (mountedRef.current) {
           const errorMessage = error.message.includes('시간 초과') ?
             '채팅방 연결 시간이 초과되었습니다.' :
             error.message || '채팅방 연결에 실패했습니다.';
-            
+
           setError(errorMessage);
           cleanup();
 
@@ -427,7 +444,7 @@ export const useRoomHandling = (
           setLoading(false);
           initializingRef.current = false;
         }
-        
+
         clearAllTimeouts();
         setupPromiseRef.current = null;
       }
@@ -481,7 +498,7 @@ export const useRoomHandling = (
     };
 
     window.addEventListener('online', handleOnline);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
     };

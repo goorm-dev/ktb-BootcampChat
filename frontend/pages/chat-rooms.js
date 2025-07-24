@@ -599,6 +599,7 @@ function ChatRoomsComponent() {
       );
 
       if (response.data.success) {
+        localStorage.setItem(`room-password:${roomId}`, password);
         router.push(`/chat?room=${roomId}`);
       }
     } catch (error) {
