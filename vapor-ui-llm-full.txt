@@ -1508,7 +1508,7 @@ Vapor TextInput은 Radix 기능을 기반으로 구축되어 일부 웹 접근�
 ```tsx
 <TextInput>
     <TextInput.Label>Label</TextInput.Label>
-    <TextInput.Field />
+    <TextInput. />
 </TextInput>
 ```
 

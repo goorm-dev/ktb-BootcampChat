@@ -236,6 +236,15 @@ axiosInstance.interceptors.response.use(
 
     // 401 에러 처리
     if (status === 401) {
+      const errorMessage = errorData?.message || '';
+      const skipRefreshKeywords = ['비밀번호', '입장'];
+
+      // 비밀번호 오류 등의 경우 refreshToken을 시도하지 않음
+      if (skipRefreshKeywords.some(keyword => errorMessage.includes(keyword))) {
+        console.warn('401 error without token refresh:', errorMessage);
+        return; // refresh 생략하고 아래 enhancedError throw
+      }
+
       try {
         const refreshed = await authService.refreshToken();
         if (refreshed) {

@@ -11,6 +11,9 @@ import axiosInstance from '../services/axios';
 import { withAuth } from '../middleware/withAuth';
 import { Toast } from '../components/Toast';
 
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal';
+import { TextInput } from '@vapor-ui/core';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const CONNECTION_STATUS = {
@@ -180,6 +183,10 @@ function ChatRoomsComponent() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [joiningRoom, setJoiningRoom] = useState(false);
 
+  //비밀번호 입력 방
+  const [password, setPassword] = useState('');
+  const [passwordRoomId, setPasswordRoomId] = useState(0);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   // Refs
   const socketRef = useRef(null);
   const tableContainerRef = useRef(null);
@@ -558,45 +565,66 @@ function ChatRoomsComponent() {
     };
   }, [currentUser, handleAuthError]);
 
-  const handleJoinRoom = async (roomId) => {
-    if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
+  const handleJoinRoom = (roomId, hasPassword) => {
+    if(hasPassword) {
+      setShowPasswordModal(true);
+      setPasswordRoomId(roomId);
+    } else{
+      joinRoom(roomId);
+    }
+  }
+    const joinRoom = async(roomId, password=null) =>{
+      if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
+        setError({
+          title: '채팅방 입장 실패',
+          message: '서버와 연결이 끊어져 있습니다.',
+          type: 'danger'
+        });
+        return;
+      }
+
+      setJoiningRoom(true);
+
+      try {
+        const response = await axiosInstance.post(`/api/rooms/${roomId}/join`, {
+          password
+        }, {
+          timeout: 5000
+        });
+        
+        
+        if (response?.data?.success) {
+          router.push(`/chat?room=${roomId}`);
+        }
+      } catch (error) {
+        console.error('Room join error:', error);
+        
+        let errorMessage = '입장에 실패했습니다.';
+        if (error.response?.status === 404) {
+          errorMessage = '채팅방을 찾을 수 없습니다.';
+        } else if (error.response?.status === 403) {
+          errorMessage = '채팅방 입장 권한이 없습니다.';
+        } else if (error.response?.status === 401) {
+          errorMessage = '비밀번호가 틀립니다.';
       setError({
-        title: '채팅방 입장 실패',
-        message: '서버와 연결이 끊어져 있습니다.',
+        title: '비밀번호 오류',
+        message: errorMessage,
         type: 'danger'
       });
       return;
+        } 
+        
+        setError({
+          title: '채팅방 입장 실패',
+          message: error.response?.data?.message || errorMessage,
+          type: 'danger'
+        });
+      } finally {
+        setJoiningRoom(false);
+      }
     }
 
-    setJoiningRoom(true);
 
-    try {
-      const response = await axiosInstance.post(`/api/rooms/${roomId}/join`, {}, {
-        timeout: 5000
-      });
-      
-      if (response.data.success) {
-        router.push(`/chat?room=${roomId}`);
-      }
-    } catch (error) {
-      console.error('Room join error:', error);
-      
-      let errorMessage = '입장에 실패했습니다.';
-      if (error.response?.status === 404) {
-        errorMessage = '채팅방을 찾을 수 없습니다.';
-      } else if (error.response?.status === 403) {
-        errorMessage = '채팅방 입장 권한이 없습니다.';
-      }
-      
-      setError({
-        title: '채팅방 입장 실패',
-        message: error.response?.data?.message || errorMessage,
-        type: 'danger'
-      });
-    } finally {
-      setJoiningRoom(false);
-    }
-  };
 
   const renderRoomsTable = () => {
     if (!rooms || rooms.length === 0) return null;
@@ -645,7 +673,7 @@ function ChatRoomsComponent() {
                   color="primary"
                   variant="outline"
                   size="md"
-                  onClick={() => handleJoinRoom(room._id)}
+                  onClick={() => handleJoinRoom(room._id, room.hasPassword)}
                   disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
                 >
                   입장
@@ -661,6 +689,29 @@ function ChatRoomsComponent() {
 
   return (
     <div className="auth-container">
+      <Modal
+        isOpen={showPasswordModal}
+        title="비밀번호를 입력하세요."
+        onClose={() => setShowPasswordModal(false)}
+      >
+        <ModalBody>
+            <TextInput.Root 
+              type="password" 
+              id="passwordInput"
+              placeholder="비밀번호를 입력하세요"
+              value={password}
+              onValueChange={setPassword}
+            >
+              <TextInput.Label htmlFor='passwordInput'/>
+              <TextInput.Field />
+          </TextInput.Root>
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={() => {
+            joinRoom(passwordRoomId, password);
+            }}>확인</Button>
+        </ModalFooter>
+      </Modal>
       <Card.Root className="chat-rooms-card">
         
         <Card.Body className="card-body">
