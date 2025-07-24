@@ -3,6 +3,9 @@ import { CameraIcon, CloseOutlineIcon } from '@vapor-ui/icons';
 import { Button, Text, Callout, IconButton } from '@vapor-ui/core';
 import authService from '../services/authService';
 import PersistentAvatar from './common/PersistentAvatar';
+import FileService from "../services/fileService";
+import axiosInstance from "../services/axios";
+import fileService from "../services/fileService";
 
 const ProfileImageUpload = ({ currentImage, onImageChange }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -13,8 +16,8 @@ const ProfileImageUpload = ({ currentImage, onImageChange }) => {
   // 프로필 이미지 URL 생성
   const getProfileImageUrl = (imagePath) => {
     if (!imagePath) return null;
-    return imagePath.startsWith('http') ? 
-      imagePath : 
+    return imagePath.startsWith('http') ?
+      imagePath :
       `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
   };
 
@@ -46,42 +49,43 @@ const ProfileImageUpload = ({ currentImage, onImageChange }) => {
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
 
-      // 현재 사용자의 인증 정보 가져오기
-      const user = authService.getCurrentUser();
-      if (!user?.token) {
-        throw new Error('인증 정보가 없습니다.');
-      }
-
+      const newFile = await fileService.uploadFileWithS3PresignedUrl(file);
       // FormData 생성
-      const formData = new FormData();
-      formData.append('profileImage', file);
+      // const formData = new FormData();
+      // formData.append('profileImage', file);
+      //
+      // // 파일 업로드 요청
+      // const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile-image`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'x-auth-token': user.token,
+      //     'x-session-id': user.sessionId
+      //   },
+      //   body: formData
+      // });
+      //
+      // if (!response.ok) {
+      //   const errorData = await response.json();
+      //   throw new Error(errorData.message || '이미지 업로드에 실패했습니다.');
+      // }
+      //
+      // const data = await response.json();
 
-      // 파일 업로드 요청
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile-image`, {
-        method: 'POST',
-        headers: {
-          'x-auth-token': user.token,
-          'x-session-id': user.sessionId
-        },
-        body: formData
-      });
+      const url = newFile.data.file.url;
+      const response = await axiosInstance.post('/api/users/profile-image', {
+        url: url
+      })
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '이미지 업로드에 실패했습니다.');
-      }
-
-      const data = await response.json();
-      
       // 로컬 스토리지의 사용자 정보 업데이트
+      const user = authService.getCurrentUser();
       const updatedUser = {
         ...user,
-        profileImage: data.imageUrl
+        profileImage: url
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
 
       // 부모 컴포넌트에 변경 알림
-      onImageChange(data.imageUrl);
+      onImageChange(url);
 
       // 전역 이벤트 발생
       window.dispatchEvent(new Event('userProfileUpdate'));
@@ -90,7 +94,7 @@ const ProfileImageUpload = ({ currentImage, onImageChange }) => {
       console.error('Image upload error:', error);
       setError(error.message);
       setPreviewUrl(getProfileImageUrl(currentImage));
-      
+
       // 기존 objectUrl 정리
       if (previewUrl && previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
@@ -173,7 +177,7 @@ const ProfileImageUpload = ({ currentImage, onImageChange }) => {
           className="mx-auto mb-2"
           showInitials={true}
         />
-        
+
         <div className="mt-2">
           <Button
             variant="outline"

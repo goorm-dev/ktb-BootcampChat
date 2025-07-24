@@ -215,12 +215,12 @@ class FileService {
         mimetype: file.type,
       })
 
-      const { url, key, s3Url } = res.data
+      const { presignedUrl, key, cloudFrontUrl } = res.data
 
-      console.log(url)
+      console.log(presignedUrl)
 
       // 2. S3 업로드
-      await axios.put(url, {
+      await axios.put(presignedUrl, {
         headers: { "Content-Type": file.type },
         body: file,
         cancelToken: source.token,
@@ -232,7 +232,7 @@ class FileService {
         originalname: file.name,
         mimetype: file.type,
         size: file.size,
-        s3Url
+        cloudFrontUrl
       })
 
       this.activeUploads.delete(file.name);
@@ -253,7 +253,7 @@ class FileService {
           ...newFile,
           file: {
             file,
-            url: s3Url
+            url: cloudFrontUrl
           }
         }
       };
