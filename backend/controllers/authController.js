@@ -1,13 +1,15 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const redis = require('../utils/redisClient')
 const { jwtSecret } = require('../config/keys');
+const { nanoid } = require('nanoid');
 const SessionService = require('../services/sessionService');
 
 const authController = {
   async register(req, res) {
     try {
       console.log('Register request received:', req.body);
-      
+
       const { name, email, password } = req.body;
 
       // Input validation
@@ -33,26 +35,40 @@ const authController = {
       }
       
       // Check existing user
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
+      const existingUser = await redis.hGetAll(`user:${email}`);
+      if (Object.keys(existingUser).length !== 0) {
         return res.status(409).json({
           success: false,
           message: '이미 등록된 이메일입니다.'
         });
       }
-      
+
+      const id = Date.now();
       // Create user
-      const user = new User({
+      const user = {
         name,
         email,
-        password
+        password,
+        id
+      };
+
+      await redis.hSet(`user:${email}`, {
+        name: name,
+        email: email,
+        password: password,
+        id: Date.now()
       });
 
-      await user.save();
-      console.log('User created:', user._id);
+      await redis.hSet(`user:${id}`, {
+        name: name,
+        email: email,
+        password: password,
+        id: Date.now()
+      })
+      console.log('User created:', user.id);
 
       // Create session with metadata
-      const sessionInfo = await SessionService.createSession(user._id, {
+      const sessionInfo = await SessionService.createSession(user.id, {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
         deviceInfo: req.headers['user-agent'],
@@ -66,7 +82,7 @@ const authController = {
       // Generate token with additional claims
       const token = jwt.sign(
         { 
-          user: { id: user._id },
+          user: { id: user.id, email: user.email },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -83,7 +99,7 @@ const authController = {
         token,
         sessionId: sessionInfo.sessionId,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email
         }
@@ -120,8 +136,8 @@ const authController = {
       }
 
       // 사용자 조회
-      const user = await User.findOne({ email }).select('+password');
-      if (!user) {
+      const user = await redis.hGetAll(`user:${email}`);
+      if (!user || Object.keys(user).length === 0) {
         return res.status(401).json({
           success: false,
           message: '이메일 또는 비밀번호가 올바르지 않습니다.'
@@ -129,8 +145,7 @@ const authController = {
       }
 
       // 비밀번호 확인
-      const isMatch = await user.matchPassword(password);
-      if (!isMatch) {
+      if (user.password !== password) {
         return res.status(401).json({
           success: false,
           message: '이메일 또는 비밀번호가 올바르지 않습니다.'
@@ -140,7 +155,7 @@ const authController = {
       // 기존 세션 확인 시도
       let existingSession = null;
       try {
-        existingSession = await SessionService.getActiveSession(user._id);
+        existingSession = await SessionService.getActiveSession(user.id);
       } catch (sessionError) {
         console.error('Session check error:', sessionError);
       }
@@ -176,7 +191,7 @@ const authController = {
                 try {
                   if (data.token === existingSession.token) {
                     // 기존 세션 종료 및 소켓 연결 해제
-                    await SessionService.removeSession(user._id, existingSession.sessionId);
+                    await SessionService.removeSession(user.id, existingSession.sessionId);
                     io.to(existingSession.socketId).emit('session_terminated', {
                       reason: 'new_login',
                       message: '다른 기기에서 로그인하여 현재 세션이 종료되었습니다.'
@@ -222,12 +237,12 @@ const authController = {
           }
         } else {
           // Socket.IO 연결이 없는 경우 자동으로 기존 세션 종료
-          await SessionService.removeAllUserSessions(user._id);
+          await SessionService.removeAllUserSessions(user.id);
         }
       }
 
       // 새 세션 생성
-      const sessionInfo = await SessionService.createSession(user._id, {
+      const sessionInfo = await SessionService.createSession(user.id, {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
         deviceInfo: req.headers['user-agent'],
@@ -244,7 +259,7 @@ const authController = {
       // JWT 토큰 생성
       const token = jwt.sign(
         { 
-          user: { id: user._id },
+          user: { id: user.id, email: user.email },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -266,7 +281,7 @@ const authController = {
         token,
         sessionId: sessionInfo.sessionId,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           profileImage: user.profileImage
@@ -347,7 +362,7 @@ const authController = {
 
       // JWT 토큰 검증
       const decoded = jwt.verify(token, jwtSecret);
-      
+
       if (!decoded?.user?.id || !decoded?.sessionId) {
         return res.status(401).json({
           success: false,
@@ -364,8 +379,8 @@ const authController = {
       }
 
       // 사용자 정보 조회
-      const user = await User.findById(decoded.user.id);
-      if (!user) {
+      const user = await redis.hGetAll(`user:${decoded.user.email}`)
+      if (!user || Object.keys(user).length === 0) {
         return res.status(404).json({
           success: false,
           message: '사용자를 찾을 수 없습니다.'
@@ -373,7 +388,7 @@ const authController = {
       }
 
       // 세션 검증
-      const validationResult = await SessionService.validateSession(user._id, sessionId);
+      const validationResult = await SessionService.validateSession(user.id, sessionId);
       if (!validationResult.isValid) {
         console.log('Invalid session:', validationResult);
         return res.status(401).json({
@@ -384,9 +399,9 @@ const authController = {
       }
 
       // 세션 갱신
-      await SessionService.refreshSession(user._id, sessionId);
+      await SessionService.refreshSession(user.id, sessionId);
 
-      console.log('Token verification successful for user:', user._id);
+      console.log('Token verification successful for user:', user.id);
 
       // 프로필 업데이트 필요 여부 확인
       if (validationResult.needsProfileRefresh) {
@@ -396,7 +411,7 @@ const authController = {
       res.json({
         success: true,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           profileImage: user.profileImage
@@ -438,8 +453,10 @@ const authController = {
         });
       }
 
-      const user = await User.findById(req.user.id);
-      if (!user) {
+      const user = await redis.hGetAll(`user:${req.user.email}`);
+      console.log('Redis user:', user);
+
+      if (!user || Object.keys(user).length === 0) {
         return res.status(404).json({
           success: false,
           message: '사용자를 찾을 수 없습니다.'
@@ -447,10 +464,10 @@ const authController = {
       }
 
       // 이전 세션 제거
-      await SessionService.removeSession(user._id, oldSessionId);
+      await SessionService.removeSession(user.id, oldSessionId);
 
       // 새 세션 생성
-      const sessionInfo = await SessionService.createSession(user._id, {
+      const sessionInfo = await SessionService.createSession(user.id, {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
         deviceInfo: req.headers['user-agent'],
@@ -464,7 +481,7 @@ const authController = {
       // 새로운 JWT 토큰 생성
       const token = jwt.sign(
         { 
-          user: { id: user._id },
+          user: { id: user.id, useEmail: user.email },
           sessionId: sessionInfo.sessionId,
           iat: Math.floor(Date.now() / 1000)
         },
@@ -481,7 +498,7 @@ const authController = {
         token,
         sessionId: sessionInfo.sessionId,
         user: {
-          _id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           profileImage: user.profileImage

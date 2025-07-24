@@ -4,11 +4,24 @@ const User = require('../models/User');
 const File = require('../models/File');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/keys');
-const redisClient = require('../utils/redisClient');
+const redis = require('../utils/redisClient');
 const SessionService = require('../services/sessionService');
-const aiService = require('../services/aiService');
+const aiService = require('../services/aiService').default;
+const amqp = require('amqplib');
+let mqChannel = null;
+async function getMQChannel() {
+  if (!mqChannel) {
+    const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+    mqChannel = await conn.createChannel();
+    await mqChannel.assertQueue('chat-messages', { durable: true });
+  }
+  return mqChannel;
+}
 
-module.exports = function(io) {
+let ioInstance = null;
+
+function setSocketIO(io) {
+  ioInstance = io;
   const connectedUsers = new Map();
   const streamingSessions = new Map();
   const userRooms = new Map();
@@ -213,13 +226,13 @@ module.exports = function(io) {
         return next(new Error(validationResult.message || 'Invalid session'));
       }
 
-      const user = await User.findById(decoded.user.id);
-      if (!user) {
+      const user = await redis.hGetAll(`user:${decoded.user.id}`)
+      if (!user || Object.keys(user).length === 0) {
         return next(new Error('User not found'));
       }
 
       socket.user = {
-        id: user._id.toString(),
+        id: user.id.toString(),
         name: user.name,
         email: user.email,
         sessionId: sessionId,
@@ -289,37 +302,86 @@ module.exports = function(io) {
           throw new Error('Unauthorized');
         }
 
-        // 권한 체크
-        const room = await Room.findOne({
-          _id: roomId,
-          participants: socket.user.id
-        });
-
+        // [1] 권한 체크: 방 참가자인지 redis에서 검사
+        const room = await redis.hGetAll(`room:${roomId}`);
         if (!room) {
+          throw new Error('채팅방이 존재하지 않습니다.');
+        }
+        const participants = Array.isArray(room.participants)
+            ? room.participants
+            : JSON.parse(room.participants || '[]');
+        if (!participants.includes(socket.user.id)) {
           throw new Error('채팅방 접근 권한이 없습니다.');
         }
 
+        // [2] 중복 로딩 방지
         if (messageQueues.get(queueKey)) {
-          logDebug('message load skipped - already loading', {
-            roomId,
-            userId: socket.user.id
-          });
+          logDebug('message load skipped - already loading', { roomId, userId: socket.user.id });
           return;
         }
-
         messageQueues.set(queueKey, true);
         socket.emit('messageLoadStart');
 
-        const result = await loadMessagesWithRetry(socket, roomId, before);
-        
+        // [3] 메시지 로딩 (before = timestamp, 없으면 최신부터)
+        // 메시지 list: chat:messages:{roomId} ← ["{msgObj1}", "{msgObj2}", ...]
+        // 역순(최신이 뒤)에 저장되어 있다고 가정
+
+        // 페이지네이션 파라미터
+        const PAGE_SIZE = 30;
+        const messagesKey = `chat:messages:${roomId}`;
+
+        // 모든 메시지 목록 가져오기 (리스트 길이)
+        const totalMessages = await redis.lLen(messagesKey);
+
+        let start, end;
+        if (!before) {
+          // 최신 메시지
+          end = totalMessages - 1;
+          start = Math.max(0, end - PAGE_SIZE + 1);
+        } else {
+          // before보다 이전의 메시지 slice
+          // Redis에 메시지를 시간 역순으로 저장했다면 beforeTimestamp보다 작은 메시지 index 계산 필요
+          // → 모든 메시지 fetch 후 필터링 or timestamp index를 따로 관리해야 효율적 (여기선 단순화)
+          const allMessages = await redis.lRange(messagesKey, 0, totalMessages - 1);
+          let idx = allMessages.findIndex(msgStr => {
+            try {
+              const msg = JSON.parse(msgStr);
+              return msg && msg.timestamp === before;
+            } catch {
+              return false;
+            }
+          });
+          if (idx === -1) idx = allMessages.length;
+          end = idx - 1;
+          start = Math.max(0, end - PAGE_SIZE + 1);
+        }
+
+        // 메시지 slice 로딩
+        const messageStrings = await redis.lRange(messagesKey, start, end);
+        const messages = messageStrings
+            .map(s => {
+              try { return JSON.parse(s); } catch { return null; }
+            })
+            .filter(m => m);
+
+        // 정방향 정렬
+        messages.sort((a, b) => a.timestamp - b.timestamp);
+
+        const oldestTimestamp = messages.length > 0 ? messages[0].timestamp : null;
+        const hasMore = start > 0;
+
         logDebug('previous messages loaded', {
           roomId,
-          messageCount: result.messages.length,
-          hasMore: result.hasMore,
-          oldestTimestamp: result.oldestTimestamp
+          messageCount: messages.length,
+          hasMore,
+          oldestTimestamp
         });
 
-        socket.emit('previousMessagesLoaded', result);
+        socket.emit('previousMessagesLoaded', {
+          messages,
+          hasMore,
+          oldestTimestamp
+        });
 
       } catch (error) {
         console.error('Fetch previous messages error:', error);
@@ -337,83 +399,97 @@ module.exports = function(io) {
     // 채팅방 입장 처리 개선
     socket.on('joinRoom', async (roomId) => {
       try {
-        if (!socket.user) {
-          throw new Error('Unauthorized');
-        }
+        if (!socket.user) throw new Error('Unauthorized');
 
-        // 이미 해당 방에 참여 중인지 확인
+        // 1. 이미 해당 방에 참여 중인지 확인 (userRooms Map 사용)
         const currentRoom = userRooms.get(socket.user.id);
         if (currentRoom === roomId) {
-          logDebug('already in room', {
-            userId: socket.user.id,
-            roomId
-          });
+          logDebug('already in room', { userId: socket.user.id, roomId });
           socket.emit('joinRoomSuccess', { roomId });
           return;
         }
 
-        // 기존 방에서 나가기
+        // 2. 기존 방에서 나가기
         if (currentRoom) {
-          logDebug('leaving current room', { 
-            userId: socket.user.id, 
-            roomId: currentRoom 
-          });
+          logDebug('leaving current room', { userId: socket.user.id, roomId: currentRoom });
           socket.leave(currentRoom);
           userRooms.delete(socket.user.id);
-          
+
           socket.to(currentRoom).emit('userLeft', {
             userId: socket.user.id,
             name: socket.user.name
           });
+
+          // Redis에서도 participants 업데이트
+          let prevRoom = await redis.hGetAll(`room:${currentRoom}`);
+          if (prevRoom && prevRoom.participants) {
+            let prevList = JSON.parse(prevRoom.participants);
+            prevList = prevList.filter(id => id !== socket.user.id);
+            await redis.hSet(`room:${currentRoom}`, { participants: JSON.stringify(prevList) });
+          }
         }
 
-        // 채팅방 참가 with profileImage
-        const room = await Room.findByIdAndUpdate(
-          roomId,
-          { $addToSet: { participants: socket.user.id } },
-          { 
-            new: true,
-            runValidators: true 
-          }
-        ).populate('participants', 'name email profileImage');
+        // 3. Redis에서 방 정보와 참가자 업데이트
+        const room = await redis.hGetAll(`room:${roomId}`);
+        if (!room) throw new Error('채팅방을 찾을 수 없습니다.');
 
-        if (!room) {
-          throw new Error('채팅방을 찾을 수 없습니다.');
+        let participants = Array.isArray(room.participants)
+            ? room.participants
+            : JSON.parse(room.participants || '[]');
+        if (!participants.includes(socket.user.id)) {
+          participants.push(socket.user.id);
+          await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
         }
 
         socket.join(roomId);
         userRooms.set(socket.user.id, roomId);
 
-        // 입장 메시지 생성
-        const joinMessage = new Message({
+        const participantArr = await Promise.all(
+            participants.map(async pid => {
+              const u = await redis.hGetAll(`user:${pid}`);
+              return u && Object.keys(u).length > 0
+                  ? { id: u.userId || pid, name: u.name, email: u.email, profileImage: u.profileImage || '' }
+                  : { id: pid, name: '알 수 없음', email: '', profileImage: '' };
+            })
+        );
+
+        // 5. 입장 메시지 Redis에 저장
+        const joinMessage = {
           room: roomId,
           content: `${socket.user.name}님이 입장하였습니다.`,
           type: 'system',
-          timestamp: new Date()
-        });
-        
-        await joinMessage.save();
+          timestamp: Date.now()
+        };
+        await redis.rPush(`chat:messages:${roomId}`, JSON.stringify(joinMessage));
 
-        // 초기 메시지 로드
-        const messageLoadResult = await loadMessages(socket, roomId);
-        const { messages, hasMore, oldestTimestamp } = messageLoadResult;
+        // 6. 초기 메시지 로드 (이전 방식의 loadMessages를 Redis 기반으로 대체)
+        const PAGE_SIZE = 30;
+        const total = await redis.lLen(`chat:messages:${roomId}`);
+        const start = Math.max(0, total - PAGE_SIZE);
+        const end = total - 1;
+        const msgStrs = await redis.lRange(`chat:messages:${roomId}`, start, end);
+        const messages = msgStrs.map(s => {
+          try { return JSON.parse(s); } catch { return null; }
+        }).filter(Boolean);
+        const oldestTimestamp = messages.length > 0 ? messages[0].timestamp : null;
+        const hasMore = start > 0;
 
-        // 활성 스트리밍 메시지 조회
+        // 7. 활성 스트리밍 메시지 (로직 동일)
         const activeStreams = Array.from(streamingSessions.values())
-          .filter(session => session.room === roomId)
-          .map(session => ({
-            _id: session.messageId,
-            type: 'ai',
-            aiType: session.aiType,
-            content: session.content,
-            timestamp: session.timestamp,
-            isStreaming: true
-          }));
+            .filter(session => session.room === roomId)
+            .map(session => ({
+              _id: session.messageId,
+              type: 'ai',
+              aiType: session.aiType,
+              content: session.content,
+              timestamp: session.timestamp,
+              isStreaming: true
+            }));
 
-        // 이벤트 발송
+        // 8. 이벤트 발송
         socket.emit('joinRoomSuccess', {
           roomId,
-          participants: room.participants,
+          participants: participantArr,
           messages,
           hasMore,
           oldestTimestamp,
@@ -421,7 +497,7 @@ module.exports = function(io) {
         });
 
         io.to(roomId).emit('message', joinMessage);
-        io.to(roomId).emit('participantsUpdate', room.participants);
+        io.to(roomId).emit('participantsUpdate', participantArr);
 
         logDebug('user joined room', {
           userId: socket.user.id,
@@ -441,113 +517,118 @@ module.exports = function(io) {
     // 메시지 전송 처리
     socket.on('chatMessage', async (messageData) => {
       try {
-        if (!socket.user) {
-          throw new Error('Unauthorized');
-        }
-
-        if (!messageData) {
-          throw new Error('메시지 데이터가 없습니다.');
-        }
+        if (!socket.user) throw new Error('Unauthorized');
+        if (!messageData) throw new Error('메시지 데이터가 없습니다.');
 
         const { room, type, content, fileData } = messageData;
+        if (!room) throw new Error('채팅방 정보가 없습니다.');
 
-        if (!room) {
-          throw new Error('채팅방 정보가 없습니다.');
-        }
-
-        // 채팅방 권한 확인
-        const chatRoom = await Room.findOne({
-          _id: room,
-          participants: socket.user.id
-        });
-
-        if (!chatRoom) {
+        // 1. 채팅방 권한 체크 (Redis)
+        const chatRoom = await redis.hGetAll(`room:${room}`);
+        if (!chatRoom) throw new Error('채팅방이 존재하지 않습니다.');
+        const participants = Array.isArray(chatRoom.participants)
+            ? chatRoom.participants
+            : JSON.parse(chatRoom.participants || '[]');
+        if (!participants.includes(socket.user.id)) {
           throw new Error('채팅방 접근 권한이 없습니다.');
         }
 
-        // 세션 유효성 재확인
+        // 2. 세션 유효성 확인 (세션 서비스 유지)
         const sessionValidation = await SessionService.validateSession(
-          socket.user.id, 
-          socket.user.sessionId
+            socket.user.id,
+            socket.user.sessionId
         );
-        
         if (!sessionValidation.isValid) {
           throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
         }
 
-        // AI 멘션 확인
+        // 3. AI 멘션 추출
         const aiMentions = extractAIMentions(content);
-        let message;
 
         logDebug('message received', {
-          type,
-          room,
+          type, room,
           userId: socket.user.id,
           hasFileData: !!fileData,
           hasAIMentions: aiMentions.length
         });
 
-        // 메시지 타입별 처리
+        // 4. 메시지 오브젝트 생성 및 저장
+        let messageObj;
         switch (type) {
-          case 'file':
+          case 'file': {
             if (!fileData || !fileData._id) {
               throw new Error('파일 데이터가 올바르지 않습니다.');
             }
 
-            const file = await File.findOne({
-              _id: fileData._id,
-              user: socket.user.id
-            });
-
-            if (!file) {
-              throw new Error('파일을 찾을 수 없거나 접근 권한이 없습니다.');
+            // 파일 정보: DB 사용시 유지, 파일 메타만 Redis 저장하려면 별도 처리
+            let fileMeta = null;
+            if (File && File.findOne) {
+              const file = await File.findOne({
+                _id: fileData._id,
+                user: socket.user.id
+              });
+              if (!file) throw new Error('파일을 찾을 수 없거나 접근 권한이 없습니다.');
+              fileMeta = {
+                _id: file._id,
+                filename: file.filename,
+                originalname: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size
+              };
+            } else {
+              // File 모델이 없으면 fileMeta를 fileData에서 받아오기
+              fileMeta = fileData;
             }
 
-            message = new Message({
+            messageObj = {
               room,
-              sender: socket.user.id,
+              sender: {
+                _id: socket.user.id,
+                name: socket.user.name,
+                email: socket.user.email,
+                profileImage: socket.user.profileImage
+              },
               type: 'file',
-              file: file._id,
+              file: fileMeta,
               content: content || '',
-              timestamp: new Date(),
+              timestamp: Date.now(),
               reactions: {},
-              metadata: {
-                fileType: file.mimetype,
-                fileSize: file.size,
-                originalName: file.originalname
-              }
-            });
+              metadata: fileMeta
+            };
             break;
+          }
 
-          case 'text':
+          case 'text': {
             const messageContent = content?.trim() || messageData.msg?.trim();
-            if (!messageContent) {
-              return;
-            }
+            if (!messageContent) return;
 
-            message = new Message({
+            messageObj = {
               room,
-              sender: socket.user.id,
+              sender: {
+                _id: socket.user.id,
+                name: socket.user.name,
+                email: socket.user.email,
+                profileImage: socket.user.profileImage
+              },
               content: messageContent,
               type: 'text',
-              timestamp: new Date(),
+              timestamp: Date.now(),
               reactions: {}
-            });
+            };
             break;
+          }
 
           default:
             throw new Error('지원하지 않는 메시지 타입입니다.');
         }
 
-        await message.save();
-        await message.populate([
-          { path: 'sender', select: 'name email profileImage' },
-          { path: 'file', select: 'filename originalname mimetype size' }
-        ]);
+        // 5. 메시지 Redis에 저장 (append)
+        await redis.rPush(`chat:messages:${room}`, JSON.stringify(messageObj));
 
-        io.to(room).emit('message', message);
+        // 6. 메시지 브로드캐스트
+        io.to(room).emit('message', messageObj);
 
-        // AI 멘션이 있는 경우 AI 응답 생성
+        // 7. AI 멘션 응답 처리
         if (aiMentions.length > 0) {
           for (const ai of aiMentions) {
             const query = content.replace(new RegExp(`@${ai}\\b`, 'g'), '').trim();
@@ -555,11 +636,11 @@ module.exports = function(io) {
           }
         }
 
+        // 8. 세션 활동 갱신
         await SessionService.updateLastActivity(socket.user.id);
 
         logDebug('message processed', {
-          messageId: message._id,
-          type: message.type,
+          type: messageObj.type,
           room
         });
 
@@ -579,65 +660,67 @@ module.exports = function(io) {
           throw new Error('Unauthorized');
         }
 
-        // 실제로 해당 방에 참여 중인지 먼저 확인
+        // 실제로 해당 방에 참여 중인지 먼저 확인 (메모리 관리 userRooms)
         const currentRoom = userRooms?.get(socket.user.id);
         if (!currentRoom || currentRoom !== roomId) {
           console.log(`User ${socket.user.id} is not in room ${roomId}`);
           return;
         }
 
-        // 권한 확인
-        const room = await Room.findOne({
-          _id: roomId,
-          participants: socket.user.id
-        }).select('participants').lean();
-
+        // Redis에서 권한 및 참가자 확인
+        const room = await redis.hGetAll(`room:${roomId}`);
         if (!room) {
-          console.log(`Room ${roomId} not found or user has no access`);
+          console.log(`Room ${roomId} not found`);
+          return;
+        }
+        let participants = Array.isArray(room.participants)
+            ? room.participants
+            : JSON.parse(room.participants || '[]');
+
+        if (!participants.includes(socket.user.id)) {
+          console.log(`User ${socket.user.id} has no access to room ${roomId}`);
           return;
         }
 
         socket.leave(roomId);
         userRooms.delete(socket.user.id);
 
-        // 퇴장 메시지 생성 및 저장
-        const leaveMessage = await Message.create({
+        // 퇴장 메시지 생성 및 Redis 저장
+        const leaveMessage = {
           room: roomId,
           content: `${socket.user.name}님이 퇴장하였습니다.`,
           type: 'system',
-          timestamp: new Date()
-        });
+          timestamp: Date.now()
+        };
+        await redis.rPush(`chat:messages:${roomId}`, JSON.stringify(leaveMessage));
 
-        // 참가자 목록 업데이트 - profileImage 포함
-        const updatedRoom = await Room.findByIdAndUpdate(
-          roomId,
-          { $pull: { participants: socket.user.id } },
-          { 
-            new: true,
-            runValidators: true
-          }
-        ).populate('participants', 'name email profileImage');
+        // 참가자 목록에서 유저 제거
+        participants = participants.filter(id => id !== socket.user.id);
+        await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
 
-        if (!updatedRoom) {
-          console.log(`Room ${roomId} not found during update`);
-          return;
-        }
+        const participantArr = await Promise.all(
+            participants.map(async pid => {
+              const u = await redis.hGetAll(`user:${pid}`);
+              return u && Object.keys(u).length > 0
+                  ? { id: u.userId || pid, name: u.name, email: u.email, profileImage: u.profileImage || '' }
+                  : { id: pid, name: '알 수 없음', email: '', profileImage: '' };
+            })
+        );
 
-        // 스트리밍 세션 정리
+        // 스트리밍 세션/메시지 큐 등 정리
         for (const [messageId, session] of streamingSessions.entries()) {
           if (session.room === roomId && session.userId === socket.user.id) {
             streamingSessions.delete(messageId);
           }
         }
 
-        // 메시지 큐 정리
         const queueKey = `${roomId}:${socket.user.id}`;
         messageQueues.delete(queueKey);
         messageLoadRetries.delete(queueKey);
 
         // 이벤트 발송
         io.to(roomId).emit('message', leaveMessage);
-        io.to(roomId).emit('participantsUpdate', updatedRoom.participants);
+        io.to(roomId).emit('participantsUpdate', participantArr);
 
         console.log(`User ${socket.user.id} left room ${roomId} successfully`);
 
@@ -648,7 +731,7 @@ module.exports = function(io) {
         });
       }
     });
-    
+
     // 연결 해제 처리
     socket.on('disconnect', async (reason) => {
       if (!socket.user) return;
@@ -659,17 +742,18 @@ module.exports = function(io) {
           connectedUsers.delete(socket.user.id);
         }
 
+        // 메모리 상 room info/세션/큐 모두 정리
         const roomId = userRooms.get(socket.user.id);
         userRooms.delete(socket.user.id);
 
         // 메시지 큐 정리
         const userQueues = Array.from(messageQueues.keys())
-          .filter(key => key.endsWith(`:${socket.user.id}`));
+            .filter(key => key.endsWith(`:${socket.user.id}`));
         userQueues.forEach(key => {
           messageQueues.delete(key);
           messageLoadRetries.delete(key);
         });
-        
+
         // 스트리밍 세션 정리
         for (const [messageId, session] of streamingSessions.entries()) {
           if (session.userId === socket.user.id) {
@@ -677,29 +761,40 @@ module.exports = function(io) {
           }
         }
 
-        // 현재 방에서 자동 퇴장 처리
+        // 현재 방에서 자동 퇴장 처리 (MongoDB → Redis로 변경)
         if (roomId) {
           // 다른 디바이스로 인한 연결 종료가 아닌 경우에만 처리
           if (reason !== 'client namespace disconnect' && reason !== 'duplicate_login') {
-            const leaveMessage = await Message.create({
-              room: roomId,
-              content: `${socket.user.name}님이 연결이 끊어졌습니다.`,
-              type: 'system',
-              timestamp: new Date()
-            });
+            // 1. 참가자 목록에서 제거
+            const room = await redis.hGetAll(`room:${roomId}`);
+            if (room) {
+              let participants = Array.isArray(room.participants)
+                  ? room.participants
+                  : JSON.parse(room.participants || '[]');
+              participants = participants.filter(id => id !== socket.user.id);
+              await redis.hSet(`room:${roomId}`, { participants: JSON.stringify(participants) });
 
-            const updatedRoom = await Room.findByIdAndUpdate(
-              roomId,
-              { $pull: { participants: socket.user.id } },
-              { 
-                new: true,
-                runValidators: true 
-              }
-            ).populate('participants', 'name email profileImage');
+              // 2. 퇴장 메시지 생성 및 Redis에 저장
+              const leaveMessage = {
+                room: roomId,
+                content: `${socket.user.name}님이 연결이 끊어졌습니다.`,
+                type: 'system',
+                timestamp: Date.now()
+              };
+              await redis.rPush(`chat:messages:${roomId}`, JSON.stringify(leaveMessage));
 
-            if (updatedRoom) {
+              const participantArr = await Promise.all(
+                  participants.map(async pid => {
+                    const u = await redis.hGetAll(`user:${pid}`);
+                    return u && Object.keys(u).length > 0
+                        ? { id: u.userId || pid, name: u.name, email: u.email, profileImage: u.profileImage || '' }
+                        : { id: pid, name: '알 수 없음', email: '', profileImage: '' };
+                  })
+              );
+
+              // 4. 소켓 이벤트 전파
               io.to(roomId).emit('message', leaveMessage);
-              io.to(roomId).emit('participantsUpdate', updatedRoom.participants);
+              io.to(roomId).emit('participantsUpdate', participantArr);
             }
           }
         }
@@ -772,7 +867,8 @@ module.exports = function(io) {
           }
         );
 
-        socket.to(roomId).emit('messagesRead', {
+        // 모든 인스턴스에 읽음 상태 브로드캐스트
+        io.to(roomId).emit('messagesRead', {
           userId: socket.user.id,
           messageIds
         });
@@ -971,4 +1067,14 @@ module.exports = function(io) {
   }
 
   return io;
+}
+
+function getSocketIO() {
+  if (!ioInstance) throw new Error('Socket.IO 인스턴스가 설정되지 않았습니다.');
+  return ioInstance;
+}
+
+module.exports = {
+  setSocketIO,
+  getSocketIO
 };

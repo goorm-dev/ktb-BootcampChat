@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { upload } = require('../middleware/upload');
 const path = require('path');
 const fs = require('fs').promises;
+const redis = require('../utils/redisClient');
 
 // 회원가입
 exports.register = async (req, res) => {
@@ -56,8 +57,8 @@ exports.register = async (req, res) => {
     }
 
     // 사용자 중복 확인
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    const existingUser = await redis.hGetAll(`user:${email}`);
+    if (existingUser || Object.keys(existingUser).length !== 0) {
       return res.status(409).json({
         success: false,
         message: '이미 가입된 이메일입니다.'
@@ -80,7 +81,7 @@ exports.register = async (req, res) => {
       success: true,
       message: '회원가입이 완료되었습니다.',
       user: {
-        id: newUser._id,
+        id: newUser.id,
         name: newUser.name,
         email: newUser.email,
         profileImage: newUser.profileImage
@@ -99,8 +100,9 @@ exports.register = async (req, res) => {
 // 프로필 조회
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
+    const user = await redis.hGetAll(`user:${req.user.email}`);
+    console.log('req.user.email:', req.user.email);
+    if (!user || Object.keys(user).length === 0) {
       return res.status(404).json({
         success: false,
         message: '사용자를 찾을 수 없습니다.'
@@ -110,7 +112,7 @@ exports.getProfile = async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         profileImage: user.profileImage
@@ -138,25 +140,25 @@ exports.updateProfile = async (req, res) => {
     //   });
     // }
 
-    const user = await User.findById(req.user.id);
-    if (!user) {
+    const existingUser = await redis.hGetAll(`user:${req.user.email}`);
+    console.log('req.user.email:', req.user.email);
+    if (!existingUser || Object.keys(existingUser).length === 0) {
       return res.status(404).json({
         success: false,
         message: '사용자를 찾을 수 없습니다.'
       });
     }
 
-    user.name = name?.trim() ?? user.name;
-    await user.save();
+    await redis.hSet(`user:${req.user.email}`, 'name', name.trim());
 
     res.json({
       success: true,
       message: '프로필이 업데이트되었습니다.',
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        profileImage: user.profileImage
+        id: existingUser.id,
+        name: name,
+        email: existingUser.email,
+        profileImage: existingUser.profileImage
       }
     });
 
@@ -244,8 +246,8 @@ exports.uploadProfileImage = async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user.id);
-    if (!user) {
+    const user = await redis.hGetAll(`user:${req.user.email}`);
+    if (!user || Object.keys(user).length === 0) {
       // 업로드된 파일 삭제
       await fs.unlink(req.file.path);
       return res.status(404).json({
@@ -267,8 +269,7 @@ exports.uploadProfileImage = async (req, res) => {
 
     // 새 이미지 경로 저장
     const imageUrl = `/uploads/${req.file.filename}`;
-    user.profileImage = imageUrl;
-    await user.save();
+    await redis.hSet(`user:${req.user.email}`, 'profileImage', imageUrl);
 
     res.json({
       success: true,
@@ -296,8 +297,8 @@ exports.uploadProfileImage = async (req, res) => {
 // 프로필 이미지 삭제
 exports.deleteProfileImage = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
+    const user = await redis.hGetAll(`user:${req.user.email}`);
+    if (!user || Object.keys(user).length === 0) {
       return res.status(404).json({
         success: false,
         message: '사용자를 찾을 수 없습니다.'
@@ -313,8 +314,7 @@ exports.deleteProfileImage = async (req, res) => {
         console.error('Profile image delete error:', error);
       }
 
-      user.profileImage = '';
-      await user.save();
+      await redis.hSet(`user:${req.user.email}`, 'profileImage', '');
     }
 
     res.json({
@@ -334,8 +334,8 @@ exports.deleteProfileImage = async (req, res) => {
 // 회원 탈퇴
 exports.deleteAccount = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
+    const user = await redis.hGetAll(`user:${req.user.email}`);
+    if (!user || Object.keys(user).length === 0) {
       return res.status(404).json({
         success: false,
         message: '사용자를 찾을 수 없습니다.'
@@ -353,7 +353,7 @@ exports.deleteAccount = async (req, res) => {
       }
     }
 
-    await user.deleteOne();
+    await redis.del(`user:${req.user.email}`);
 
     res.json({
       success: true,

@@ -7,6 +7,7 @@ const fs = require('fs');
 const { promisify } = require('util');
 const crypto = require('crypto');
 const { uploadDir } = require('../middleware/upload');
+const redis = require('../utils/redisClient');
 
 const fsPromises = {
   writeFile: promisify(fs.writeFile),
@@ -35,11 +36,10 @@ const getFileFromRequest = async (req) => {
     const filename = req.params.filename;
     const token = req.headers['x-auth-token'] || req.query.token;
     const sessionId = req.headers['x-session-id'] || req.query.sessionId;
-    
+
     if (!filename) {
       throw new Error('Invalid filename');
     }
-
     if (!token || !sessionId) {
       throw new Error('Authentication required');
     }
@@ -51,27 +51,51 @@ const getFileFromRequest = async (req) => {
 
     await fsPromises.access(filePath, fs.constants.R_OK);
 
-    const file = await File.findOne({ filename: filename });
-    if (!file) {
-      throw new Error('File not found in database');
+    // [1] 파일 메타데이터 Redis에서 조회
+    const file = await redis.hGetAll(`file:${filename}`);
+    if (!file || Object.keys(file).length === 0) {
+      throw new Error('File not found in storage');
     }
 
-    // 채팅방 권한 검증을 위한 메시지 조회
-    const message = await Message.findOne({ file: file._id });
+    // [2] 파일이 포함된 메시지 정보 얻기
+    // file.messageId에 메시지ID(또는 roomId 등) 저장한다고 가정
+    // (혹은 chat:messages:{roomId}에서 파일이 첨부된 메시지 탐색)
+    let message = null;
+    if (file.messageId) {
+      // 메시지ID로 메시지 정보 Redis에서 바로 조회(별도 저장했을 경우)
+      message = await redis.hGetAll(`message:${file.messageId}`);
+    } else if (file.roomId) {
+      // 파일이 roomId만 저장되어 있으면, 해당 방의 메시지 중 해당 파일 포함 메시지 탐색
+      const allMessages = await redis.lRange(`chat:messages:${file.roomId}`, 0, -1);
+      for (const msgStr of allMessages) {
+        try {
+          const msg = JSON.parse(msgStr);
+          if (msg.file && (msg.file.filename === filename || msg.file._id === file._id)) {
+            message = msg;
+            break;
+          }
+        } catch (e) {}
+      }
+    }
+
     if (!message) {
       throw new Error('File message not found');
     }
 
-    // 사용자가 해당 채팅방의 참가자인지 확인
-    const room = await Room.findOne({
-      _id: message.room,
-      participants: req.user.id
-    });
-
-    if (!room) {
+    // [3] 방 참가자 검증
+    const roomId = message.room || file.roomId;
+    const room = await redis.hGetAll(`room:${roomId}`);
+    if (!room || !room.participants) {
+      throw new Error('Room not found');
+    }
+    const participants = Array.isArray(room.participants)
+        ? room.participants
+        : JSON.parse(room.participants || '[]');
+    if (!participants.includes(req.user.id)) {
       throw new Error('Unauthorized access');
     }
 
+    // file(메타)와 filePath 반환
     return { file, filePath };
   } catch (error) {
     console.error('getFileFromRequest error:', {
