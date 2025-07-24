@@ -36,7 +36,7 @@ const authController = {
       
       // Check existing user
       const existingUser = await redis.hGetAll(`user:${email}`);
-      if (Object.keys(existingUser).length !== 0) {
+      if (!existingUser || Object.keys(existingUser).length !== 0) {
         return res.status(409).json({
           success: false,
           message: '이미 등록된 이메일입니다.'
@@ -56,14 +56,14 @@ const authController = {
         name: name,
         email: email,
         password: password,
-        id: Date.now()
+        id: id
       });
 
       await redis.hSet(`user:${id}`, {
         name: name,
         email: email,
         password: password,
-        id: Date.now()
+        id: id
       })
       console.log('User created:', user.id);
 
