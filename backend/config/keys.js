@@ -14,4 +14,7 @@ module.exports = {
   redisPort: process.env.REDIS_PORT,
   openaiApiKey: process.env.OPENAI_API_KEY,
   vectorDbEndpoint: process.env.VECTOR_DB_ENDPOINT,
+  s3Bucket: process.env.S3_BUCKET,
+  s3AccessKey: process.env.S3_ACCESS_KEY,
+  s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY
 };

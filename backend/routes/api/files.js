@@ -31,4 +31,10 @@ router.delete('/:id',
   fileController.deleteFile
 );
 
+// presigned 발급
+router.post("/presigned-url",
+  auth,
+  fileController.getPresignedUrl
+);
+
 module.exports = router;

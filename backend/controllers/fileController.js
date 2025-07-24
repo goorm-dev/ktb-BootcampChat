@@ -8,6 +8,17 @@ const { promisify } = require('util');
 const crypto = require('crypto');
 const { uploadDir } = require('../middleware/upload');
 const redis = require('../utils/redisClient');
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
+const s3 = new S3Client({
+  region: "ap-northeast-2", // 한국 리전 예시
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+  },
+});
+const BUCKET = process.env.S3_BUCKET;
 
 const fsPromises = {
   writeFile: promisify(fs.writeFile),
@@ -106,60 +117,127 @@ const getFileFromRequest = async (req) => {
   }
 };
 
-exports.uploadFile = async (req, res) => {
+exports.getPresignedUrl = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: '파일이 선택되지 않았습니다.'
-      });
+    const { filename, mimetype } = req.body;
+    if (!filename || !mimetype) {
+      return res.status(400).json({ success: false, message: "filename, mimetype 필요" });
     }
 
-    const safeFilename = generateSafeFilename(req.file.originalname);
-    const currentPath = req.file.path;
-    const newPath = path.join(uploadDir, safeFilename);
+    // S3에 저장할 object key (파일명)
+    const key = generateSafeFilename(filename);
 
-    const file = new File({
-      filename: safeFilename,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      user: req.user.id,
-      path: newPath
+    // Presigned URL 발급 (PUT용)
+    const command = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      ContentType: mimetype,
     });
 
-    await file.save();
-    await fsPromises.rename(currentPath, newPath);
+    const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 5 }); // 5분 유효
+
+    // 응답
+    res.json({
+      success: true,
+      url: presignedUrl,
+      key: key, // 프론트가 업로드 후 다시 보내야 하는 값
+      s3Url: `https://${BUCKET}.s3.amazonaws.com/${key}` // 파일의 실제 S3 URL
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Presigned URL 발급 실패" });
+  }
+};
+
+exports.uploadFile = async (req, res) => {
+  try {
+    const { filename, originalname, mimetype, size, s3Url } = req.body;
+    if (!filename || !originalname || !s3Url) {
+      return res.status(400).json({ success: false, message: "필수값 누락" });
+    }
+
+    // Redis에 파일 정보 저장 (hash)
+    await redis.hSet(`file:${filename}`, {
+      filename,
+      originalname,
+      mimetype,
+      size,
+      s3Url,
+      uploadedAt: Date.now(),
+    });
 
     res.status(200).json({
       success: true,
       message: '파일 업로드 성공',
       file: {
-        _id: file._id,
         filename: file.filename,
         originalname: file.originalname,
         mimetype: file.mimetype,
         size: file.size,
-        uploadDate: file.uploadDate
+        uploadAt: file.uploadDate
       }
     });
-
-  } catch (error) {
-    console.error('File upload error:', error);
-    if (req.file?.path) {
-      try {
-        await fsPromises.unlink(req.file.path);
-      } catch (unlinkError) {
-        console.error('Failed to delete uploaded file:', unlinkError);
-      }
-    }
-    res.status(500).json({
-      success: false,
-      message: '파일 업로드 중 오류가 발생했습니다.',
-      error: error.message
-    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: "파일 정보 저장 실패" });
   }
 };
+
+// exports.uploadFile = async (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({
+//         success: false,
+//         message: '파일이 선택되지 않았습니다.'
+//       });
+//     }
+//
+//     const safeFilename = generateSafeFilename(req.file.originalname);
+//     const currentPath = req.file.path;
+//     const newPath = path.join(uploadDir, safeFilename);
+//
+//     const file = new File({
+//       filename: safeFilename,
+//       originalname: req.file.originalname,
+//       mimetype: req.file.mimetype,
+//       size: req.file.size,
+//       user: req.user.id,
+//       path: newPath
+//     });
+//
+//     await file.save();
+//     await fsPromises.rename(currentPath, newPath);
+//
+//     res.status(200).json({
+//       success: true,
+//       message: '파일 업로드 성공',
+//       file: {
+//         _id: file._id,
+//         filename: file.filename,
+//         originalname: file.originalname,
+//         mimetype: file.mimetype,
+//         size: file.size,
+//         uploadDate: file.uploadDate
+//       }
+//     });
+//
+//   } catch (error) {
+//     console.error('File upload error:', error);
+//     if (req.file?.path) {
+//       try {
+//         await fsPromises.unlink(req.file.path);
+//       } catch (unlinkError) {
+//         console.error('Failed to delete uploaded file:', unlinkError);
+//       }
+//     }
+//     res.status(500).json({
+//       success: false,
+//       message: '파일 업로드 중 오류가 발생했습니다.',
+//       error: error.message
+//     });
+//   }
+// };
 
 exports.downloadFile = async (req, res) => {
   try {
