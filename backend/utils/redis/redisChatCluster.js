@@ -4,16 +4,16 @@ const BaseRedisCluster = require('./baseCluster');
 // 채팅 클러스터 노드 설정
 const chatNodes = [
   {
-    port: process.env.REDIS_CHAT_PORT_1 || 7006,
-    host: process.env.REDIS_CHAT_HOST_1 || '127.0.0.1'
+    port: process.env.REDIS_1_REPLICA_PORT || 7005,
+    host: process.env.REDIS_1_REPLICA || '127.0.0.1'
   },
   {
-    port: process.env.REDIS_CHAT_PORT_2 || 7004,
-    host: process.env.REDIS_CHAT_HOST_2 || '127.0.0.1'
+    port: process.env.REDIS_2_REPLICA_PORT || 7006,
+    host: process.env.REDIS_2_REPLICA || '127.0.0.1'
   },
   {
-    port: process.env.REDIS_CHAT_PORT_3 || 7005,
-    host: process.env.REDIS_CHAT_HOST_3 || '127.0.0.1'
+    port: process.env.REDIS_3_REPLICA_PORT || 7007,
+    host: process.env.REDIS_3_REPLICA || '127.0.0.1'
   }
 ].filter(node => node.host && node.port);
 

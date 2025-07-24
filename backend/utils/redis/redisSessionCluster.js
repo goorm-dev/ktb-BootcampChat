@@ -4,16 +4,16 @@ const BaseRedisCluster = require('./baseCluster');
 // 세션 클러스터 노드 설정
 const sessionNodes = [
   {
-    port: process.env.REDIS_SESSION_PORT_1 || 7003,
-    host: process.env.REDIS_SESSION_HOST_1 || '127.0.0.1'
+    port: process.env.REDIS_1_HOST_PORT || 7001,
+    host: process.env.REDIS_1_HOST || '127.0.0.1'
   },
   {
-    port: process.env.REDIS_SESSION_PORT_2 || 7001,
-    host: process.env.REDIS_SESSION_HOST_2 || '127.0.0.1'
+    port: process.env.REDIS_2_HOST_PORT || 7002,
+    host: process.env.REDIS_2_HOST || '127.0.0.1'
   },
   {
-    port: process.env.REDIS_SESSION_PORT_3 || 7002,
-    host: process.env.REDIS_SESSION_HOST_3 || '127.0.0.1'
+    port: process.env.REDIS_3_HOST_PORT || 7003,
+    host: process.env.REDIS_3_HOST || '127.0.0.1'
   }
 ].filter(node => node.host && node.port); // 유효한 노드만 필터링
 
