@@ -1,9 +1,6 @@
 import React from 'react';
-import { 
-  AlertCircle, 
-  WifiOff 
-} from 'lucide-react';
 import { Button, Text, Callout, Card, Badge, Avatar } from '@vapor-ui/core';
+import {  ErrorCircleIcon as AlertCircle, NetworkIcon as WifiOff } from '@vapor-ui/icons';
 import { Flex, Box, HStack } from '../components/ui/Layout';
 import { withAuth } from '../middleware/withAuth';
 import { useChatRoom } from '../hooks/useChatRoom';
