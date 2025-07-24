@@ -3,7 +3,6 @@ npm-debug.log
 .git
 .gitignore
 README.md
-.env
 .nyc_output
 coverage
 .eslintrc.js

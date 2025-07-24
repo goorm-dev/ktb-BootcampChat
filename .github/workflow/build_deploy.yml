@@ -45,6 +45,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Create frontend .env file
+        working-directory: frontend
+        run: |
+          echo "${{ secrets.ENV_FE }}" > .env.production
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -78,6 +83,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create backend .env file
+        working-directory: backend
+        run: |
+          echo "${{ secrets.ENV_BE }}" > .env
+          
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
