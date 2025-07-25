@@ -377,10 +377,11 @@ class RedisClient {
 
 
   async keys(pattern) {
+    if (!this.isConnected) await this.connect();
     if (this.useMock) {
       return this.client.keys(pattern);
     }
-    return await this.client.keys(pattern);
+    return this.client.keys(pattern);
   }
 }
 // 환경 변수 예시

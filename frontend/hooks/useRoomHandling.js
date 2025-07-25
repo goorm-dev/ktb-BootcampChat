@@ -389,7 +389,6 @@ export const useRoomHandling = (
               ...roomData.participants,
               {
                 id: currentUser.id,
-                id: currentUser.id,
                 name: currentUser.name,
                 email: currentUser.email
               }
