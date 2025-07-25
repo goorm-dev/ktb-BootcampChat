@@ -9,6 +9,9 @@ const socketIO = require('socket.io');
 const path = require('path');
 const { router: roomsRouter, initializeSocket } = require('./routes/api/rooms');
 const routes = require('./routes');
+const { startupChecks } = require('./utils/startup');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('redis');
 
 const promBundle = require('express-prom-bundle');
 const client = require('prom-client');
@@ -92,8 +95,66 @@ app.get('/health', (req, res) => {
 // API 라우트 마운트
 app.use('/api', routes);
 
+// 환경변수에서 Redis 클러스터 노드 구성
+const redisClusterNodes = [
+  // Master 노드들
+  { host: process.env.REDIS_1_HOST, port: parseInt(process.env.REDIS_1_HOST_PORT) },
+  { host: process.env.REDIS_2_HOST, port: parseInt(process.env.REDIS_2_HOST_PORT) },
+  { host: process.env.REDIS_3_HOST, port: parseInt(process.env.REDIS_3_HOST_PORT) },
+  { host: process.env.REDIS_4_HOST, port: parseInt(process.env.REDIS_4_HOST_PORT) },
+  // Replica 노드들
+  { host: process.env.REDIS_1_REPLICA, port: parseInt(process.env.REDIS_1_REPLICA_PORT) },
+  { host: process.env.REDIS_2_REPLICA, port: parseInt(process.env.REDIS_2_REPLICA_PORT) },
+  { host: process.env.REDIS_3_REPLICA, port: parseInt(process.env.REDIS_3_REPLICA_PORT) },
+  { host: process.env.REDIS_4_REPLICA, port: parseInt(process.env.REDIS_4_REPLICA_PORT) }
+];
+
+const redisClusterOptions = {
+  rootNodes: redisClusterNodes,
+  defaults: {
+    password: process.env.REDIS_PASSWORD,
+  },
+  options: {
+    redisOptions: {
+      connectTimeout: 10000,
+      lazyConnect: true,
+      maxRetriesPerRequest: 3,
+      retryDelayOnFailover: 100,
+      enableReadyCheck: false,
+      enableOfflineQueue: false
+    }
+  }
+};
+
+// Socket.IO용 Redis 클라이언트 생성
+const pubClient = createClient({
+  cluster: redisClusterOptions
+});
+
+const subClient = pubClient.duplicate();
+
+// 연결 이벤트 핸들러
+pubClient.on('error', (err) => {
+  console.error('PubClient Redis Cluster Error:', err);
+});
+
+subClient.on('error', (err) => {
+  console.error('SubClient Redis Cluster Error:', err);
+});
+
+pubClient.on('connect', () => {
+  console.log('PubClient connected to Redis cluster');
+});
+
+subClient.on('connect', () => {
+  console.log('SubClient connected to Redis cluster');
+});
+
 // Socket.IO 설정
-const io = socketIO(server, { cors: corsOptions });
+const io = socketIO(server, { 
+  cors: corsOptions,
+  adapter: createAdapter(pubClient, subClient)
+});
 require('./sockets/chat')(io);
 
 // Socket.IO 객체 전달
@@ -121,12 +182,30 @@ app.use((err, req, res, next) => {
 
 // 서버 시작
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB Connected');
+    
+    // Redis 클러스터 초기화 체크
+    await startupChecks();
+    
+    // Redis 클러스터 연결
+    await Promise.all([
+      pubClient.connect(),
+      subClient.connect()
+    ]);
+    
+    console.log('Redis cluster connected for Socket.IO adapter');
+    console.log('Cluster nodes:', redisClusterNodes.map(node => `${node.host}:${node.port}`));
+    
+    // 소켓 초기화
+    require('./sockets/chat')(io);
+    initializeSocket(io);
+    
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log('Environment:', process.env.NODE_ENV);
       console.log('API Base URL:', `http://0.0.0.0:${PORT}/api`);
+      console.log('Redis Cluster configured with 8 nodes');
     });
   })
   .catch(err => {

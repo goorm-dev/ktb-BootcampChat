@@ -5,13 +5,168 @@ const File = require('../models/File');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/keys');
 const redisClient = require('../utils/redis/redisChatCluster');
+const socketRedis = require('../utils/redis/socketCluster');
 const SessionService = require('../services/sessionService');
 const aiService = require('../services/aiService');
 
 module.exports = function(io) {
-  const connectedUsers = new Map();
-  const streamingSessions = new Map();
-  const userRooms = new Map();
+  // Redis 연결 확인 및 재연결 로직
+  const ensureRedisConnection = async () => {
+    try {
+      if (!socketRedis.isOpen) {
+        console.log('Reconnecting to Redis cluster...');
+        await socketRedis.connect();
+      }
+      return true;
+    } catch (error) {
+      console.error('Redis reconnection failed:', error);
+      return false;
+    }
+  };
+
+  // 분산 상태 관리 함수들
+  const setConnectedUser = async (userId, socketId) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.hSet(`socketio:users:${userId}`, 'socketId', socketId);
+      await socketRedis.hSet(`socketio:users:${userId}`, 'connectedAt', Date.now());
+      await socketRedis.expire(`socketio:users:${userId}`, 3600); // 1시간 TTL
+    } catch (error) {
+      console.error('Failed to set connected user in cluster:', error);
+    }
+  };
+
+  const getConnectedUser = async (userId) => {
+    try {
+      await ensureRedisConnection();
+      return await socketRedis.hGet(`socketio:users:${userId}`, 'socketId');
+    } catch (error) {
+      console.error('Failed to get connected user from cluster:', error);
+      return null;
+    }
+  };
+
+  const removeConnectedUser = async (userId) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.del(`socketio:users:${userId}`);
+    } catch (error) {
+      console.error('Failed to remove connected user from cluster:', error);
+    }
+  };
+
+  const setUserRoom = async (userId, roomId) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.hSet(`socketio:rooms:${userId}`, 'currentRoom', roomId);
+      await socketRedis.hSet(`socketio:rooms:${userId}`, 'joinedAt', Date.now());
+      await socketRedis.expire(`socketio:rooms:${userId}`, 3600); // 1시간 TTL
+    } catch (error) {
+      console.error('Failed to set user room in cluster:', error);
+    }
+  };
+
+  const getUserRoom = async (userId) => {
+    try {
+      await ensureRedisConnection();
+      return await socketRedis.hGet(`socketio:rooms:${userId}`, 'currentRoom');
+    } catch (error) {
+      console.error('Failed to get user room from cluster:', error);
+      return null;
+    }
+  };
+
+  const removeUserRoom = async (userId) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.del(`socketio:rooms:${userId}`);
+    } catch (error) {
+      console.error('Failed to remove user room from cluster:', error);
+    }
+  };
+
+  // 스트리밍 세션 관리
+  const setStreamingSession = async (messageId, sessionData) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.hSet(`socketio:streaming:${messageId}`, 'data', JSON.stringify(sessionData));
+      await socketRedis.expire(`socketio:streaming:${messageId}`, 3600); // 1시간 TTL
+    } catch (error) {
+      console.error('Failed to set streaming session in cluster:', error);
+    }
+  };
+
+  const getStreamingSession = async (messageId) => {
+    try {
+      await ensureRedisConnection();
+      const data = await socketRedis.hGet(`socketio:streaming:${messageId}`, 'data');
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error('Failed to get streaming session from cluster:', error);
+      return null;
+    }
+  };
+
+  const removeStreamingSession = async (messageId) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.del(`socketio:streaming:${messageId}`);
+    } catch (error) {
+      console.error('Failed to remove streaming session from cluster:', error);
+    }
+  };
+
+  // 방별 활성 사용자 목록 관리
+  const addUserToRoom = async (roomId, userId, userInfo) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.hSet(`socketio:room_users:${roomId}`, userId, JSON.stringify({
+        ...userInfo,
+        joinedAt: Date.now()
+      }));
+      await socketRedis.expire(`socketio:room_users:${roomId}`, 3600); // 1시간 TTL
+    } catch (error) {
+      console.error('Failed to add user to room in cluster:', error);
+    }
+  };
+
+  const removeUserFromRoom = async (roomId, userId) => {
+    try {
+      await ensureRedisConnection();
+      await socketRedis.hDel(`socketio:room_users:${roomId}`, userId);
+    } catch (error) {
+      console.error('Failed to remove user from room in cluster:', error);
+    }
+  };
+
+  const getRoomUsers = async (roomId) => {
+    try {
+      await ensureRedisConnection();
+      const users = await socketRedis.hGetAll(`socketio:room_users:${roomId}`);
+      const result = {};
+      for (const [userId, userInfo] of Object.entries(users)) {
+        result[userId] = JSON.parse(userInfo);
+      }
+      return result;
+    } catch (error) {
+      console.error('Failed to get room users from cluster:', error);
+      return {};
+    }
+  };
+
+  // 주기적 헬스체크
+  setInterval(async () => {
+    try {
+      await socketRedis.ping();
+    } catch (error) {
+      console.warn('Redis cluster ping failed:', error.message);
+    }
+  }, 30000); // 30초마다
+
+  // 기존 메모리 기반 상태를 주석 처리
+  // const connectedUsers = new Map();
+  // const streamingSessions = new Map();
+  // const userRooms = new Map();
   const messageQueues = new Map();
   const messageLoadRetries = new Map();
   const BATCH_SIZE = 30;  // 한 번에 로드할 메시지 수
@@ -198,7 +353,7 @@ module.exports = function(io) {
       }
 
       // 이미 연결된 사용자인지 확인
-      const existingSocketId = connectedUsers.get(decoded.user.id);
+      const existingSocketId = await getConnectedUser(decoded.user.id);
       if (existingSocketId) {
         const existingSocket = io.sockets.sockets.get(existingSocketId);
         if (existingSocket) {
@@ -244,7 +399,7 @@ module.exports = function(io) {
     }
   });
   
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     let pingTimeout;
 
     logDebug('socket connected', {
@@ -267,31 +422,35 @@ module.exports = function(io) {
 
     // 중복 로그인 감지
     if (socket.user) {
-      const previousSocketId = connectedUsers.get(socket.user.id);
-      if (previousSocketId && previousSocketId !== socket.id) {
-        const previousSocket = io.sockets.sockets.get(previousSocketId);
-        if (previousSocket) {
-          // 이전 연결에 중복 로그인 알림
-          previousSocket.emit('duplicate_login', {
-            type: 'new_login_attempt',
-            deviceInfo: socket.handshake.headers['user-agent'],
-            ipAddress: socket.handshake.address,
-            timestamp: Date.now()
-          });
-
-          // 이전 연결 종료 처리
-          setTimeout(() => {
-            previousSocket.emit('session_ended', {
-              reason: 'duplicate_login',
-              message: '다른 기기에서 로그인하여 현재 세션이 종료되었습니다.'
+      try {
+        const previousSocketId = await getConnectedUser(socket.user.id);
+        if (previousSocketId && previousSocketId !== socket.id) {
+          const previousSocket = io.sockets.sockets.get(previousSocketId);
+          if (previousSocket) {
+            // 이전 연결에 중복 로그인 알림
+            previousSocket.emit('duplicate_login', {
+              type: 'new_login_attempt',
+              deviceInfo: socket.handshake.headers['user-agent'],
+              ipAddress: socket.handshake.address,
+              timestamp: Date.now()
             });
-            previousSocket.disconnect(true);
-          }, DUPLICATE_LOGIN_TIMEOUT);
-        }
-      }
 
-      // 새로운 연결 정보 등록
-      connectedUsers.set(socket.user.id, socket.id);
+            // 이전 연결 종료 처리
+            setTimeout(() => {
+              previousSocket.emit('session_ended', {
+                reason: 'duplicate_login',
+                message: '다른 기기에서 로그인하여 현재 세션이 종료되었습니다.'
+              });
+              previousSocket.disconnect(true);
+            }, DUPLICATE_LOGIN_TIMEOUT);
+          }
+        }
+
+        // 새로운 연결 정보 등록
+        await setConnectedUser(socket.user.id, socket.id);
+      } catch (error) {
+        console.error('Error handling user connection:', error);
+      }
     }
 
     // 기존 연결 성공 정보 전송
@@ -305,40 +464,57 @@ module.exports = function(io) {
     // 재연결 시 이전 방 복구
     socket.on("reconnect", async () => {
       if (socket.user) {
-        const currentRoom = userRooms.get(socket.user.id);
-        if (currentRoom) {
-          socket.join(currentRoom);
-          const room = await Room.findById(currentRoom).populate(
-            "participants",
-            "name email profileImage"
-          );
-          if (room) {
-            socket.emit("joinRoomSuccess", {
-              roomId: currentRoom,
-              participants: room.participants,
-              socketConnected: true,
-            });
+        try {
+          const currentRoom = await getUserRoom(socket.user.id);
+          if (currentRoom) {
+            socket.join(currentRoom);
+            const room = await Room.findById(currentRoom).populate(
+              "participants",
+              "name email profileImage"
+            );
+            if (room) {
+              socket.emit("joinRoomSuccess", {
+                roomId: currentRoom,
+                participants: room.participants,
+                socketConnected: true,
+              });
+            }
           }
+        } catch (error) {
+          console.error('Error during reconnect:', error);
         }
       }
     });
 
     // 최초 접속 시 방 참여 처리
     if (socket.user) {
-      const currentRoom = userRooms.get(socket.user.id);
-      if (currentRoom) {
-        socket.join(currentRoom);
-        socket.emit("joinRoomSuccess", {
-          roomId: currentRoom,
-          socketConnected: true,
-        });
-      }
+      (async () => {
+        try {
+          const currentRoom = await getUserRoom(socket.user.id);
+          if (currentRoom) {
+            socket.join(currentRoom);
+            socket.emit("joinRoomSuccess", {
+              roomId: currentRoom,
+              socketConnected: true,
+            });
+          }
+        } catch (error) {
+          console.error('Error during initial room join:', error);
+        }
+      })();
     }
 
     // 연결 종료 시 cleanup
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async (reason) => {
       if (socket.user?.id) {
-        connectedUsers.delete(socket.user.id);
+        try {
+          const connectedSocketId = await getConnectedUser(socket.user.id);
+          if (connectedSocketId === socket.id) {
+            await removeConnectedUser(socket.user.id);
+          }
+        } catch (error) {
+          console.error('Error during disconnect cleanup:', error);
+        }
       }
       clearTimeout(pingTimeout);
       console.log(`User disconnected: ${socket.user?.id}`);
@@ -406,7 +582,7 @@ module.exports = function(io) {
         }
 
         // 이미 해당 방에 참여 중인지 확인
-        const currentRoom = userRooms.get(socket.user.id);
+        const currentRoom = await getUserRoom(socket.user.id);
         if (currentRoom === roomId) {
           logDebug('already in room', {
             userId: socket.user.id,
@@ -423,7 +599,8 @@ module.exports = function(io) {
             roomId: currentRoom 
           });
           socket.leave(currentRoom);
-          userRooms.delete(socket.user.id);
+          await removeUserRoom(socket.user.id);
+          await removeUserFromRoom(currentRoom, socket.user.id);
           
           socket.to(currentRoom).emit('userLeft', {
             userId: socket.user.id,
@@ -446,7 +623,12 @@ module.exports = function(io) {
         }
 
         socket.join(roomId);
-        userRooms.set(socket.user.id, roomId);
+        await setUserRoom(socket.user.id, roomId);
+        await addUserToRoom(roomId, socket.user.id, {
+          name: socket.user.name,
+          email: socket.user.email,
+          profileImage: socket.user.profileImage
+        });
 
         // 입장 메시지 생성
         const joinMessage = new Message({
@@ -463,16 +645,12 @@ module.exports = function(io) {
         const { messages, hasMore, oldestTimestamp } = messageLoadResult;
 
         // 활성 스트리밍 메시지 조회
-        const activeStreams = Array.from(streamingSessions.values())
-          .filter(session => session.room === roomId)
-          .map(session => ({
-            _id: session.messageId,
-            type: 'ai',
-            aiType: session.aiType,
-            content: session.content,
-            timestamp: session.timestamp,
-            isStreaming: true
-          }));
+        const activeStreams = [];
+        try {
+          // Redis에서 활성 스트리밍 세션 조회 로직은 필요시 구현
+        } catch (error) {
+          console.error('Failed to get active streams:', error);
+        }
 
         // 이벤트 발송
         socket.emit('joinRoomSuccess', {
@@ -644,7 +822,7 @@ module.exports = function(io) {
         }
 
         // 실제로 해당 방에 참여 중인지 먼저 확인
-        const currentRoom = userRooms?.get(socket.user.id);
+        const currentRoom = await getUserRoom(socket.user.id);
         if (!currentRoom || currentRoom !== roomId) {
           console.log(`User ${socket.user.id} is not in room ${roomId}`);
           return;
@@ -662,7 +840,8 @@ module.exports = function(io) {
         }
 
         socket.leave(roomId);
-        userRooms.delete(socket.user.id);
+        await removeUserRoom(socket.user.id);
+        await removeUserFromRoom(roomId, socket.user.id);
 
         // 퇴장 메시지 생성 및 저장
         const leaveMessage = await Message.create({
@@ -688,11 +867,7 @@ module.exports = function(io) {
         }
 
         // 스트리밍 세션 정리
-        for (const [messageId, session] of streamingSessions.entries()) {
-          if (session.room === roomId && session.userId === socket.user.id) {
-            streamingSessions.delete(messageId);
-          }
-        }
+        // Redis 기반으로 구현 필요시 추가
 
         // 메시지 큐 정리
         const queueKey = `${roomId}:${socket.user.id}`;
@@ -719,12 +894,13 @@ module.exports = function(io) {
 
       try {
         // 해당 사용자의 현재 활성 연결인 경우에만 정리
-        if (connectedUsers.get(socket.user.id) === socket.id) {
-          connectedUsers.delete(socket.user.id);
+        const connectedSocketId = await getConnectedUser(socket.user.id);
+        if (connectedSocketId === socket.id) {
+          await removeConnectedUser(socket.user.id);
         }
 
-        const roomId = userRooms.get(socket.user.id);
-        userRooms.delete(socket.user.id);
+        const roomId = await getUserRoom(socket.user.id);
+        await removeUserRoom(socket.user.id);
 
         // 메시지 큐 정리
         const userQueues = Array.from(messageQueues.keys())
@@ -734,13 +910,8 @@ module.exports = function(io) {
           messageLoadRetries.delete(key);
         });
         
-        // 스트리밍 세션 정리
-        for (const [messageId, session] of streamingSessions.entries()) {
-          if (session.userId === socket.user.id) {
-            streamingSessions.delete(messageId);
-          }
-        }
-
+        // 스트리밍 세션 정리 - Redis 기반으로 필요시 구현
+        
         // 현재 방에서 자동 퇴장 처리
         if (roomId) {
           // 다른 디바이스로 인한 연결 종료가 아닌 경우에만 처리
@@ -762,6 +933,7 @@ module.exports = function(io) {
             ).populate('participants', 'name email profileImage');
 
             if (updatedRoom) {
+              await removeUserFromRoom(roomId, socket.user.id);
               io.to(roomId).emit('message', leaveMessage);
               io.to(roomId).emit('participantsUpdate', updatedRoom.participants);
             }
@@ -908,7 +1080,7 @@ module.exports = function(io) {
     const timestamp = new Date();
 
     // 스트리밍 세션 초기화
-    streamingSessions.set(messageId, {
+    await setStreamingSession(messageId, {
       room,
       aiType: aiName,
       content: '',
@@ -944,10 +1116,11 @@ module.exports = function(io) {
         onChunk: async (chunk) => {
           accumulatedContent += chunk.currentChunk || '';
           
-          const session = streamingSessions.get(messageId);
+          const session = await getStreamingSession(messageId);
           if (session) {
             session.content = accumulatedContent;
             session.lastUpdate = Date.now();
+            await setStreamingSession(messageId, session);
           }
 
           io.to(room).emit('aiMessageChunk', {
@@ -962,7 +1135,7 @@ module.exports = function(io) {
         },
         onComplete: async (finalContent) => {
           // 스트리밍 세션 정리
-          streamingSessions.delete(messageId);
+          await removeStreamingSession(messageId);
 
           // AI 메시지 저장
           const aiMessage = await Message.create({
@@ -999,8 +1172,8 @@ module.exports = function(io) {
             generationTime: Date.now() - timestamp
           });
         },
-        onError: (error) => {
-          streamingSessions.delete(messageId);
+        onError: async (error) => {
+          await removeStreamingSession(messageId);
           console.error('AI response error:', error);
           
           io.to(room).emit('aiMessageError', {
@@ -1017,7 +1190,7 @@ module.exports = function(io) {
         }
       });
     } catch (error) {
-      streamingSessions.delete(messageId);
+      await removeStreamingSession(messageId);
       console.error('AI service error:', error);
       
       io.to(room).emit('aiMessageError', {

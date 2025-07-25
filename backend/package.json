@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.2.1",
     "@vapor-ui/core": "^0.3.1",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.4.0",
