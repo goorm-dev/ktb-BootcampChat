@@ -242,7 +242,7 @@ class RedisClient {
     if (this.useMock) return this.client.setEx(key, seconds, value);
 
     let stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-    return await this.client.set(key, seconds, stringValue);
+    return this.client.setex(key, seconds, stringValue);
   }
 
   async del(key) {
@@ -272,13 +272,13 @@ class RedisClient {
   async hGet(key, field) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.hGet(key, field);
-    return await this.client.hget(key, field);
+    return this.client.hget(key, field);
   }
 
   async hGetAll(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.hGetAll(key);
-    return await this.client.hgetall(key);
+    return this.client.hgetall(key);
   }
   async hmset(key, data) {
     if (!this.isConnected) await this.connect();
@@ -293,7 +293,7 @@ class RedisClient {
   async sMembers(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.sMembers(key);
-    return await this.client.smembers(key);
+    return this.client.smembers(key);
   }
   async sRem(key, ...members) {
     if (!this.isConnected) await this.connect();
@@ -303,22 +303,22 @@ class RedisClient {
   async sCard(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.sCard(key);
-    return await this.client.scard(key);
+    return this.client.scard(key);
   }
   async rPush(key, ...values) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.rPush(key, ...values);
-    return await this.client.rpush(key, ...values);
+    return this.client.rpush(key, ...values);
   }
   async lRange(key, start, end) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.lRange(key, start, end);
-    return await this.client.lrange(key, start, end);
+    return this.client.lrange(key, start, end);
   }
   async lLen(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.lLen(key);
-    return await this.client.lLen(key);
+    return this.client.llen(key);
   }
 
 
@@ -349,7 +349,7 @@ class RedisClient {
       this.client.store.set(key, { value: JSON.stringify(arr), expires: null });
       return arr.length;
     }
-    return await this.client.lPush(key, value);
+    return this.client.lpush(key, value);
   }
 
   async lTrim(key, start, stop) {
@@ -366,13 +366,13 @@ class RedisClient {
       this.client.store.set(key, { value: JSON.stringify(arr), expires: null });
       return 'OK';
     }
-    return await this.client.lTrim(key, start, stop);
+    return this.client.ltrim(key, start, stop);
   }
 
   async lSet(key, index, value) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.lSet(key, index, value);
-    return await this.client.lSet(key, index, value);
+    return this.client.lset(key, index, value);
   }
 
 
