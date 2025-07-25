@@ -1,6 +1,5 @@
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
 require('dotenv').config({ path: envFile });
-require('./scheduler/scheduler');
 
 const express = require('express');
 const cors = require('cors');
