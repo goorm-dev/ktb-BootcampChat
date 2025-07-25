@@ -109,29 +109,24 @@ const redisClusterNodes = [
   { host: process.env.REDIS_4_REPLICA, port: parseInt(process.env.REDIS_4_REPLICA_PORT) }
 ];
 
-const redisClusterOptions = {
-  rootNodes: redisClusterNodes,
-  defaults: {
-    password: process.env.REDIS_PASSWORD,
-  },
-  options: {
-    redisOptions: {
-      connectTimeout: 10000,
-      lazyConnect: true,
-      maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
-      enableReadyCheck: false,
-      enableOfflineQueue: false
-    }
-  }
-};
+console.log('Redis Cluster Nodes Configuration:', redisClusterNodes);
 
-// Socket.IO용 Redis 클라이언트 생성
+// Socket.IO용 Redis 클라이언트 생성 (클러스터 모드)
 const pubClient = createClient({
-  cluster: redisClusterOptions
+  socket: {
+    host: redisClusterNodes[0].host,
+    port: redisClusterNodes[0].port,
+  },
+  password: process.env.REDIS_PASSWORD,
 });
 
-const subClient = pubClient.duplicate();
+const subClient = createClient({
+  socket: {
+    host: redisClusterNodes[0].host,
+    port: redisClusterNodes[0].port,
+  },
+  password: process.env.REDIS_PASSWORD,
+});
 
 // 연결 이벤트 핸들러
 pubClient.on('error', (err) => {

@@ -68,27 +68,15 @@ if (clusterNodes.length === 0) {
 
 console.log('Socket Redis Cluster Nodes:', clusterNodes.map(node => `${node.host}:${node.port}`));
 
-const redisClusterConfig = {
-  rootNodes: clusterNodes,
-  defaults: {
-    password: process.env.REDIS_PASSWORD,
-  },
-  options: {
-    redisOptions: {
-      connectTimeout: 15000,
-      lazyConnect: true,
-      maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 200,
-      enableReadyCheck: false,
-      enableOfflineQueue: false,
-      commandTimeout: 5000,
-      enableAutoPipelining: true
-    }
-  }
-};
+// 첫 번째 노드를 사용하여 단일 연결 생성 (Socket.IO Adapter용)
+const firstNode = clusterNodes[0];
 
 const socketStateClient = createClient({
-  cluster: redisClusterConfig
+  socket: {
+    host: firstNode.host,
+    port: firstNode.port,
+  },
+  password: process.env.REDIS_PASSWORD,
 });
 
 socketStateClient.on('error', (err) => {
@@ -96,8 +84,8 @@ socketStateClient.on('error', (err) => {
 });
 
 socketStateClient.on('connect', () => {
-  console.log('Socket state Redis cluster connected');
-  console.log('Active cluster nodes:', clusterNodes.length);
+  console.log(`Socket state Redis connected to ${firstNode.host}:${firstNode.port}`);
+  console.log('Available cluster nodes:', clusterNodes.length);
 });
 
 socketStateClient.on('reconnecting', () => {
