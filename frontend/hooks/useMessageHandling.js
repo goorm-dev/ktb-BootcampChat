@@ -129,7 +129,8 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
            filename: uploadResponse.data.file.filename,
            originalname: uploadResponse.data.file.originalname,
            mimetype: uploadResponse.data.file.mimetype,
-           size: uploadResponse.data.file.size
+           size: uploadResponse.data.file.size,
+           url: uploadResponse.data.file.url,
          }
        });
 
