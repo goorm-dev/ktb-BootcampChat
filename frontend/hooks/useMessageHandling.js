@@ -124,7 +124,8 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
          type: 'file',
          content: messageData.content || '',
          fileData: {
-           id: uploadResponse.data.file.id,
+           // id: uploadResponse.data.file.id,
+           id: uploadResponse.data.fileId,
            filename: uploadResponse.data.file.filename,
            originalname: uploadResponse.data.file.originalname,
            mimetype: uploadResponse.data.file.mimetype,
