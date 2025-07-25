@@ -1,11 +1,6 @@
 const mongoose = require('mongoose');
 
 const MessageSchema = new mongoose.Schema({
-  id: {   // 고유키를 id로!
-    type: String,   // 또는 ObjectId, Number 등 원하는 타입
-    required: true,
-    unique: true
-  },
   room: { 
     type: String, 
     required: [true, '채팅방 ID는 필수입니다.'],
@@ -93,8 +88,6 @@ const MessageSchema = new mongoose.Schema({
     virtuals: true,
     getters: true 
   }
-}, {
-  _id: false
 });
 
 // 복합 인덱스 설정

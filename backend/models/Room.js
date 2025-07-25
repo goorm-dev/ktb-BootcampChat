@@ -2,11 +2,6 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const RoomSchema = new mongoose.Schema({
-  id: {   // 고유키를 id로!
-    type: String,   // 또는 ObjectId, Number 등 원하는 타입
-    required: true,
-    unique: true
-  },
   name: {
     type: String,
     required: true,
