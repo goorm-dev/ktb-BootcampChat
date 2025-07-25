@@ -165,6 +165,7 @@ const TableWrapper = ({ children, onScroll, loadingMore, hasMore, rooms }) => {
 
 function ChatRoomsComponent() {
   const router = useRouter();
+  const [search, setSearch] = useState('');
   const [rooms, setRooms] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -284,7 +285,7 @@ function ChatRoomsComponent() {
     }
   }, [getRetryDelay]);
 
-  const fetchRooms = useCallback(async (isLoadingMore = false) => {
+  const fetchRooms = useCallback(async (isLoadingMore = false, keyword= search) => {
     if (!currentUser?.token || isLoadingRef.current) {
       console.log('Fetch prevented:', { 
         hasToken: !!currentUser?.token, 
@@ -312,6 +313,7 @@ function ChatRoomsComponent() {
 
       const response = await axiosInstance.get('/api/rooms', {
         params: {
+          search: keyword,
           page: isLoadingMore ? pageIndex : 0,
           pageSize,
           sortField: sorting[0]?.id,
@@ -361,7 +363,8 @@ function ChatRoomsComponent() {
     sorting,
     isInitialLoad,
     attemptConnection,
-    handleFetchError
+    handleFetchError,
+      search
   ]);
 
   const handleLoadMore = useCallback(async () => {
@@ -741,6 +744,24 @@ function ChatRoomsComponent() {
         <Card.Body className="card-body">
           <Stack gap="300" align="center">
             <Text typography="heading3">채팅방 목록</Text>
+
+            <TextInput.Root>
+              <TextInput.Field
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const keyword = e.currentTarget.value;
+                      setSearch(keyword);      // 상태 반영
+                      setPageIndex(0);
+                      fetchRooms(false, keyword); // 직접 검색어 전달
+                    }
+                  }}
+                  placeholder="채팅방 이름으로 검색"
+                  style={{ width: '100%', maxWidth: '320px' }}
+              />
+            </TextInput.Root>
+
             <HStack gap="200">
               <Badge
                 color={
