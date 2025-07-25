@@ -16,9 +16,9 @@ const PersistentAvatar = forwardRef(({
   // getProfileImageUrl 함수 memoization
   const getProfileImageUrl = useCallback((imagePath) => {
     if (!imagePath) return null;
-    return imagePath.startsWith('http') ? 
-      imagePath : 
-      `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+    return imagePath.startsWith('http') ?
+      imagePath :
+      `${imagePath}`;
   }, []);
 
   // 프로필 이미지 URL 처리
@@ -47,7 +47,7 @@ const PersistentAvatar = forwardRef(({
         console.error('Profile update handling error:', error);
       }
     };
-    
+
     window.addEventListener('userProfileUpdate', handleProfileUpdate);
     return () => {
       window.removeEventListener('userProfileUpdate', handleProfileUpdate);
