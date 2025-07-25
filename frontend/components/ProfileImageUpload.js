@@ -18,7 +18,7 @@ const ProfileImageUpload = ({ currentImage, onImageChange }) => {
     if (!imagePath) return null;
     return imagePath.startsWith('http') ?
       imagePath :
-      `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+      `${imagePath}`;
   };
 
   // 컴포넌트 마운트 시 이미지 설정
