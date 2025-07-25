@@ -4,6 +4,11 @@ const { encryptionKey, passwordSalt } = require('../config/keys');
 const crypto = require('crypto');
 
 const UserSchema = new mongoose.Schema({
+  id: {   // 고유키를 id로!
+    type: String,   // 또는 ObjectId, Number 등 원하는 타입
+    required: true,
+    unique: true
+  },
   name: {
     type: String,
     required: [true, '이름은 필수 입력 항목입니다.'],
