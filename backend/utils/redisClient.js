@@ -1,6 +1,5 @@
-// backend/utils/redisClient.js
-const Redis = require('redis');
-const { redisHost, redisPort } = require('../config/keys');
+const IORedis = require('ioredis');
+const { redisHost, redisPort, redisNodes } = require('../config/keys');
 
 class MockRedisClient {
   constructor() {
@@ -29,16 +28,8 @@ class MockRedisClient {
     try { return JSON.parse(item.value); }
     catch { return item.value; }
   }
-
-  // setEx
-  async setEx(key, seconds, value) {
-    return this.set(key, value, { ttl: seconds });
-  }
-
-  // Delete
+  async setEx(key, seconds, value) { return this.set(key, value, { ttl: seconds }); }
   async del(key) { return this.store.delete(key) ? 1 : 0; }
-
-  // Expire
   async expire(key, seconds) {
     const item = this.store.get(key);
     if (item) {
@@ -47,59 +38,37 @@ class MockRedisClient {
     }
     return 0;
   }
-
-  // Hash Set (hSet)
   async hSet(key, data, value) {
-    // hSet(key, field, value) or hSet(key, {field1: value1, field2: value2})
     let hash = this.store.get(key);
     if (!hash || typeof hash.value !== 'object') {
       hash = { value: {}, expires: null };
       this.store.set(key, hash);
     }
     if (typeof data === 'object' && value === undefined) {
-      // hSet(key, {field1: value1, field2: value2})
-      Object.entries(data).forEach(([field, val]) => {
-        hash.value[field] = val;
-      });
+      Object.entries(data).forEach(([field, val]) => { hash.value[field] = val; });
       return Object.keys(data).length;
     } else if (typeof data === 'string' && value !== undefined) {
-      // hSet(key, field, value)
       hash.value[data] = value;
       return 1;
     }
     throw new Error('Invalid hSet arguments');
   }
-
-  // Hash Get (hGet)
   async hGet(key, field) {
     const hash = this.store.get(key);
     if (!hash || typeof hash.value !== 'object') return null;
     return hash.value[field] ?? null;
   }
-
-  // Hash GetAll (hGetAll)
   async hGetAll(key) {
     const hash = this.store.get(key);
     if (!hash || typeof hash.value !== 'object') return null;
-    // Redis는 string만 반환
     const result = {};
     for (const [k, v] of Object.entries(hash.value)) {
       result[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
     }
     return result;
   }
-
-  // hmset alias for hSet (Node Redis에서 deprecate 됐지만, 일부 호환용)
-  async hmset(key, data) {
-    return this.hSet(key, data);
-  }
-
-  async quit() {
-    this.store.clear();
-    console.log('Mock Redis connection closed');
-  }
-
-  // Set Add
+  async hmset(key, data) { return this.hSet(key, data); }
+  async quit() { this.store.clear(); }
   async sAdd(key, ...members) {
     let set = this.store.get(key);
     if (!set || set.type !== 'set') {
@@ -107,41 +76,26 @@ class MockRedisClient {
       this.store.set(key, set);
     }
     let added = 0;
-    members.forEach(member => {
-      if (!set.value.has(member)) {
-        set.value.add(member);
-        added++;
-      }
-    });
+    members.forEach(member => { if (!set.value.has(member)) { set.value.add(member); added++; } });
     return added;
   }
-
-// Set Members
   async sMembers(key) {
     const set = this.store.get(key);
     if (!set || set.type !== 'set') return [];
     return Array.from(set.value);
   }
-
-// Set Remove
   async sRem(key, ...members) {
     const set = this.store.get(key);
     if (!set || set.type !== 'set') return 0;
     let removed = 0;
-    members.forEach(member => {
-      if (set.value.delete(member)) removed++;
-    });
+    members.forEach(member => { if (set.value.delete(member)) removed++; });
     return removed;
   }
-
-// Set Cardinality
   async sCard(key) {
     const set = this.store.get(key);
     if (!set || set.type !== 'set') return 0;
     return set.value.size;
   }
-
-  // MockRedisClient에 추가!
   async rPush(key, ...values) {
     let list = this.store.get(key);
     if (!list || list.type !== 'list') {
@@ -151,21 +105,33 @@ class MockRedisClient {
     list.value.push(...values);
     return list.value.length;
   }
-
   async lRange(key, start, end) {
     const list = this.store.get(key);
     if (!list || list.type !== 'list') return [];
-    // Redis lrange는 end 포함! (slice는 end-1까지)
     const arr = list.value;
     const normalizedStart = start < 0 ? arr.length + start : start;
     const normalizedEnd = end < 0 ? arr.length + end : end;
     return arr.slice(normalizedStart, normalizedEnd + 1);
   }
-
   async lLen(key) {
     const list = this.store.get(key);
     if (!list || list.type !== 'list') return 0;
     return list.value.length;
+  }
+  async lPush(key, value) {
+    let list = this.store.get(key);
+    if (!list || list.type !== 'list') {
+      list = { value: [], expires: null, type: 'list' };
+      this.store.set(key, list);
+    }
+    list.value.unshift(value);
+    return list.value.length;
+  }
+  async lTrim(key, start, stop) {
+    let list = this.store.get(key);
+    if (!list || list.type !== 'list') return 'OK';
+    list.value = list.value.slice(start, stop + 1);
+    return 'OK';
   }
 
   async lSet(key, index, value) {
@@ -198,38 +164,40 @@ class RedisClient {
 
   async connect() {
     if (this.isConnected && this.client) return this.client;
-
-    if (!redisHost || !redisPort) {
-      this.client = new MockRedisClient();
-      this.isConnected = true;
-      this.useMock = true;
-      return this.client;
-    }
-
     try {
-      this.client = Redis.createClient({
-        url: `redis://${redisHost}:${redisPort}`,
-        socket: {
+      if (redisNodes) {
+        // 클러스터 모드
+        const nodes = redisNodes.split(',').map(addr => {
+          const [host, port] = addr.split(':');
+          return { host, port: Number(port) };
+        });
+        console.log('[Redis] Connecting in CLUSTER mode to:', nodes.map(n => `${n.host}:${n.port}`).join(', '));
+        this.client = new IORedis.Cluster(nodes, {
+          redisOptions: { connectTimeout: 5000 }
+        });
+      } else if (redisHost && redisPort) {
+        // 싱글 모드
+        console.log(`[Redis] Connecting in STANDALONE mode to: ${redisHost}:${redisPort}`);
+        this.client = new IORedis({
           host: redisHost,
-          port: redisPort,
+          port: Number(redisPort),
           connectTimeout: 5000,
-          reconnectStrategy: (retries) => {
-            if (retries > this.maxRetries) {
-              this.client = new MockRedisClient();
-              this.isConnected = true;
-              this.useMock = true;
-              return false;
-            }
-            return Math.min(retries * 50, 2000);
-          }
-        }
-      });
+          retryStrategy: (times) => (times > this.maxRetries ? null : Math.min(times * 100, 2000))
+        });
+      } else {
+        console.warn('[Redis] No redisHost/redisPort/redisNodes found, using MockRedisClient');
+        this.client = new MockRedisClient();
+        this.isConnected = true;
+        this.useMock = true;
+        return this.client;
+      }
 
       this.client.on('connect', () => {
         this.isConnected = true;
+        console.log('[Redis] Connected');
       });
-
       this.client.on('error', (err) => {
+        console.error('[Redis] Error:', err);
         if (!this.useMock) {
           this.client = new MockRedisClient();
           this.isConnected = true;
@@ -237,9 +205,11 @@ class RedisClient {
         }
       });
 
-      await this.client.connect();
+      // 연결 체크 (ioredis는 connect 함수 없음)
+      await this.client.ping();
       return this.client;
     } catch (error) {
+      console.error('[Redis] Connection failed:', error.message);
       this.client = new MockRedisClient();
       this.isConnected = true;
       this.useMock = true;
@@ -272,7 +242,7 @@ class RedisClient {
     if (this.useMock) return this.client.setEx(key, seconds, value);
 
     let stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-    return await this.client.setEx(key, seconds, stringValue);
+    return await this.client.set(key, seconds, stringValue);
   }
 
   async del(key) {
@@ -292,9 +262,9 @@ class RedisClient {
 
     // node-redis v4는 hSet(key, {field: value, ...}) 또는 hSet(key, field, value) 모두 지원
     if (typeof data === 'object' && value === undefined) {
-      return await this.client.hSet(key, data);
+      return await this.client.hset(key, data);
     } else if (typeof data === 'string' && value !== undefined) {
-      return await this.client.hSet(key, data, value);
+      return await this.client.hset(key, data, value);
     }
     throw new Error('Invalid hSet arguments');
   }
@@ -302,63 +272,49 @@ class RedisClient {
   async hGet(key, field) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.hGet(key, field);
-    return await this.client.hGet(key, field);
+    return await this.client.hget(key, field);
   }
 
   async hGetAll(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.hGetAll(key);
-    return await this.client.hGetAll(key);
+    return await this.client.hgetall(key);
   }
-
-  // hmset 지원 (실제 redis에서는 hSet이 대체)
   async hmset(key, data) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.hmset(key, data);
-    // node-redis에서는 hSet이 대체
-    return await this.client.hSet(key, data);
+    return await this.client.hmset(key, data);
   }
-
-  // Set Add
   async sAdd(key, ...members) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.sAdd(key, ...members);
-    return await this.client.sAdd(key, members);
+    return await this.client.sadd(key, ...members);
   }
-
-// Set Members
   async sMembers(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.sMembers(key);
-    return await this.client.sMembers(key);
+    return await this.client.smembers(key);
   }
-
-// Set Remove
   async sRem(key, ...members) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.sRem(key, ...members);
-    return await this.client.sRem(key, members);
+    return await this.client.srem(key, ...members);
   }
-
-// Set Cardinality
   async sCard(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.sCard(key);
-    return await this.client.sCard(key);
+    return await this.client.scard(key);
   }
-
   async rPush(key, ...values) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.rPush(key, ...values);
-    return await this.client.rPush(key, values);
+    return await this.client.rpush(key, ...values);
   }
-
   async lRange(key, start, end) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.lRange(key, start, end);
-    return await this.client.lRange(key, start, end);
+    return await this.client.lrange(key, start, end);
   }
-
   async lLen(key) {
     if (!this.isConnected) await this.connect();
     if (this.useMock) return this.client.lLen(key);
@@ -427,6 +383,9 @@ class RedisClient {
     return await this.client.keys(pattern);
   }
 }
+// 환경 변수 예시
+// 운영 클러스터: REDIS_NODES=10.0.0.1:6379,10.0.0.2:6379,...
+// 개발:          REDIS_HOST=localhost REDIS_PORT=6379
 
 const redisClient = new RedisClient();
 module.exports = redisClient;
