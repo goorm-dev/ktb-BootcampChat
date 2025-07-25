@@ -57,7 +57,7 @@ const Navbar = () => {
         <Flex justify="space-between" align="center">
           {/* Logo */}
           <Box>
-            <div 
+            <div
               onClick={() => handleNavigation(currentUser ? '/chat-rooms' : '/')}
               style={{ cursor: 'pointer' }}
               role="button"
@@ -109,17 +109,17 @@ const Navbar = () => {
                 <Avatar.Root
                   size="md"
                   style={{ flexShrink: 0 }}
-                  src={currentUser.profileImage ? `${process.env.NEXT_PUBLIC_API_URL}${currentUser.profileImage}` : undefined}
+                  src={currentUser.profileImage ? `${currentUser.profileImage}` : undefined}
                 >
                   <Avatar.Image />
                   <Avatar.Fallback>{currentUser.name?.[0]?.toUpperCase()}</Avatar.Fallback>
                 </Avatar.Root>
-                
+
                 {/* Member Name */}
                 <Text typography="body2" style={{ fontWeight: 500 }}>
                   {currentUser.name}
                 </Text>
-                
+
                 {/* Profile Button */}
                 <Button
                   size="md"
@@ -127,7 +127,7 @@ const Navbar = () => {
                 >
                   프로필
                 </Button>
-                
+
                 {/* Logout Button */}
                 <Button
                   color="danger"
