@@ -150,9 +150,8 @@ const io = socketIO(server, {
   cors: corsOptions,
   adapter: createAdapter(pubClient, subClient)
 });
-require('./sockets/chat')(io);
 
-// Socket.IO 객체 전달
+// Socket.IO 객체 전달 (소켓 초기화는 나중에)
 initializeSocket(io);
 
 // 404 에러 핸들러
@@ -192,9 +191,8 @@ mongoose.connect(process.env.MONGO_URI)
     console.log('Redis cluster connected for Socket.IO adapter');
     console.log('Cluster nodes:', redisClusterNodes.map(node => `${node.host}:${node.port}`));
     
-    // 소켓 초기화
+    // 소켓 초기화 (한 번만)
     require('./sockets/chat')(io);
-    initializeSocket(io);
     
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
