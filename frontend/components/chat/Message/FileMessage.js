@@ -171,12 +171,12 @@ const FileMessage = ({
         throw new Error('인증 정보가 없습니다.');
       }
 
-      const previewUrl = fileService.getPreviewUrl(msg.file, true);
+      const previewUrl = fileService.getPreviewUrl(msg.file.url, true);
 
       return (
         <div className="bg-transparent-pattern">
           <img
-            src={previewUrl}
+            src={msg.file.url}
             alt={originalname}
             className="object-cover rounded-sm"
             onLoad={() => {
@@ -210,6 +210,7 @@ const FileMessage = ({
     const mimetype = msg.file?.mimetype || '';
     const originalname = getDecodedFilename(msg.file?.originalname || 'Unknown File');
     const size = fileService.formatFileSize(msg.file?.size || 0);
+    console.log('!!!! mimetype: ', msg);
 
     const FileActions = () => (
       <div className="file-actions mt-2 pt-2 border-t border-gray-200">

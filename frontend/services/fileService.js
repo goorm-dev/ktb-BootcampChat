@@ -251,11 +251,16 @@ class FileService {
           fileId: key,
           ...newFile,
           file: {
-            file,
+            id: key,
+            filename: completeUploadRes.data.file.filename,
+            originalname: completeUploadRes.data.file.originalname,
+            mimetype: completeUploadRes.data.file.mimetype,
+            size: completeUploadRes.data.file.size,
             url: cloudFrontUrl
           }
         }
       };
+
 
     } catch (error) {
       this.activeUploads.delete(file.name);

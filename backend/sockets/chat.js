@@ -569,25 +569,15 @@ function setSocketIO(io) {
               throw new Error('파일 데이터가 올바르지 않습니다.');
             }
 
-            // 파일 정보: DB 사용시 유지, 파일 메타만 Redis 저장하려면 별도 처리
-            let fileMeta = null;
-            if (File && File.findOne) {
-              const file = await File.findOne({
-                id: fileData.id,
-                user: socket.user.id
-              });
-              if (!file) throw new Error('파일을 찾을 수 없거나 접근 권한이 없습니다.');
-              fileMeta = {
-                id: file.id,
-                filename: file.filename,
-                originalname: file.originalname,
-                mimetype: file.mimetype,
-                size: file.size
-              };
-            } else {
-              // File 모델이 없으면 fileMeta를 fileData에서 받아오기
-              fileMeta = fileData;
-            }
+            // 클라이언트에서 받아온 fileData를 그대로 신뢰해 저장
+            const fileMeta = {
+              id: fileData.id,
+              filename: fileData.filename,
+              originalname: fileData.originalname,
+              mimetype: fileData.mimetype,
+              size: fileData.size,
+              url: fileData.url,           // S3 등 URL 필요시
+            };
 
             messageObj = {
               room,
@@ -603,8 +593,9 @@ function setSocketIO(io) {
               content: content || '',
               timestamp: Date.now(),
               reactions: {},
-              metadata: fileMeta
+              metadata: fileMeta // 필요에 따라 유지
             };
+
             break;
           }
 
