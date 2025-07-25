@@ -28,7 +28,7 @@ const Profile = () => {
     if (!imagePath) return null;
     return imagePath.startsWith('http') ?
       imagePath :
-      `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
+      `${imagePath}`;
   }, []);
 
   useEffect(() => {
