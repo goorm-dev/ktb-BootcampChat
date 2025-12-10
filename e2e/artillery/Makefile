@@ -2,7 +2,7 @@
 # Environment Variables
 ###################################
 # Artillery가 부하를 주는 대상 URL
-export BASE_URL ?= https://chat.goorm-ktb-024.goorm.teams
+export BASE_URL ?= http://localhost:3000
 
 # 대량 채팅발송 시, 발송되는 메시지 갯수
 export MASS_MESSAGE_COUNT ?= 10
