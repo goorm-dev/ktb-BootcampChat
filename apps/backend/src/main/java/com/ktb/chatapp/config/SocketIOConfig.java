@@ -1,5 +1,7 @@
 package com.ktb.chatapp.config;
 
+import static org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE;
+
 import com.corundumstudio.socketio.AuthTokenListener;
 import com.corundumstudio.socketio.SocketConfig;
 import com.corundumstudio.socketio.SocketIOServer;
@@ -18,8 +20,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Role;
-
-import static org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE;
 
 @Slf4j
 @Configuration

@@ -1,5 +1,11 @@
 package com.ktb.chatapp.websocket.socketio.handler;
 
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.JOIN_ROOM;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.JOIN_ROOM_ERROR;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.JOIN_ROOM_SUCCESS;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.MESSAGE;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.PARTICIPANTS_UPDATE;
+
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnEvent;
@@ -16,13 +22,16 @@ import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.websocket.socketio.SocketUser;
 import com.ktb.chatapp.websocket.socketio.UserRooms;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 
 /**
  * 방 입장 처리 핸들러

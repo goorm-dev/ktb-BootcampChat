@@ -2,13 +2,12 @@ package com.ktb.chatapp.service;
 
 import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.UserRepository;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
 
 @RequiredArgsConstructor
 @Service

@@ -1,5 +1,7 @@
 package com.ktb.chatapp.websocket.socketio.ai;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.ktb.chatapp.config.MongoTestContainer;
 import com.ktb.chatapp.websocket.socketio.handler.StreamingSession;
 import java.time.Duration;
@@ -17,8 +19,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * AiService 통합 테스트

@@ -1,5 +1,7 @@
 package com.ktb.chatapp.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ktb.chatapp.config.MongoTestContainer;
 import com.ktb.chatapp.repository.RateLimitRepository;
 import java.time.Duration;
@@ -11,8 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Import(MongoTestContainer.class)

@@ -1,7 +1,7 @@
 package com.ktb.chatapp.controller;
 
-import com.ktb.chatapp.dto.StandardResponse;
 import com.ktb.chatapp.dto.ProfileImageResponse;
+import com.ktb.chatapp.dto.StandardResponse;
 import com.ktb.chatapp.dto.UpdateProfileRequest;
 import com.ktb.chatapp.dto.UserResponse;
 import com.ktb.chatapp.service.UserService;
@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -26,8 +27,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.security.Principal;
 
 @Tag(name = "사용자 (Users)", description = "사용자 프로필 관리 API - 프로필 조회, 수정, 이미지 업로드, 회원 탈퇴")
 @RequiredArgsConstructor

@@ -1,5 +1,9 @@
 package com.ktb.chatapp.websocket.socketio.handler;
 
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.CHAT_MESSAGE;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.ERROR;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.MESSAGE;
+
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnEvent;
@@ -8,30 +12,34 @@ import com.ktb.chatapp.dto.FileResponse;
 import com.ktb.chatapp.dto.MessageContent;
 import com.ktb.chatapp.dto.MessageResponse;
 import com.ktb.chatapp.dto.UserResponse;
-import com.ktb.chatapp.model.*;
+import com.ktb.chatapp.model.File;
+import com.ktb.chatapp.model.Message;
+import com.ktb.chatapp.model.MessageType;
+import com.ktb.chatapp.model.Room;
+import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.FileRepository;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.RoomRepository;
 import com.ktb.chatapp.repository.UserRepository;
-import com.ktb.chatapp.util.BannedWordChecker;
-import com.ktb.chatapp.websocket.socketio.ai.AiService;
+import com.ktb.chatapp.service.RateLimitCheckResult;
+import com.ktb.chatapp.service.RateLimitService;
 import com.ktb.chatapp.service.SessionService;
 import com.ktb.chatapp.service.SessionValidationResult;
-import com.ktb.chatapp.service.RateLimitService;
-import com.ktb.chatapp.service.RateLimitCheckResult;
+import com.ktb.chatapp.util.BannedWordChecker;
 import com.ktb.chatapp.websocket.socketio.SocketUser;
+import com.ktb.chatapp.websocket.socketio.ai.AiService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 
 @Slf4j
 @Component

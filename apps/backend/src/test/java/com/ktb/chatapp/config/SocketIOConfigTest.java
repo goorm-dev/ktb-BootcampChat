@@ -1,5 +1,7 @@
 package com.ktb.chatapp.config;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.corundumstudio.socketio.SocketIOServer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -7,8 +9,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
 @TestPropertySource(properties = "socketio.enabled=false")

@@ -1,15 +1,26 @@
 package com.ktb.chatapp.websocket.socketio;
 
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.AI_MESSAGE_CHUNK;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.AI_MESSAGE_COMPLETE;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.AI_MESSAGE_ERROR;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.AI_MESSAGE_START;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.ROOM_CREATED;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.ROOM_UPDATE;
+
 import com.corundumstudio.socketio.SocketIOServer;
-import com.ktb.chatapp.event.*;
+import com.ktb.chatapp.event.AiMessageChunkEvent;
+import com.ktb.chatapp.event.AiMessageErrorEvent;
+import com.ktb.chatapp.event.AiMessageSavedEvent;
+import com.ktb.chatapp.event.AiMessageStartEvent;
+import com.ktb.chatapp.event.RoomCreatedEvent;
+import com.ktb.chatapp.event.RoomUpdatedEvent;
+import com.ktb.chatapp.event.SessionEndedEvent;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-
-import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 
 @Slf4j
 @Component

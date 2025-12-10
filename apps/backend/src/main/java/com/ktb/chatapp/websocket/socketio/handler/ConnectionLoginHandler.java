@@ -1,5 +1,9 @@
 package com.ktb.chatapp.websocket.socketio.handler;
 
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.DUPLICATE_LOGIN;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.ERROR;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.SESSION_ENDED;
+
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnDisconnect;
@@ -15,8 +19,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 
 /**
  * Socket.IO Chat Handler

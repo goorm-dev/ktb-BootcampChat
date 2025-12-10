@@ -1,5 +1,9 @@
 package com.ktb.chatapp.websocket.socketio.handler;
 
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.ERROR;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.MESSAGE_REACTION;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.MESSAGE_REACTION_UPDATE;
+
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnEvent;
@@ -13,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 
 /**
  * 메시지 리액션 처리 핸들러

@@ -1,5 +1,7 @@
 package com.ktb.chatapp.websocket.socketio.handler;
 
+import static java.util.Collections.emptyList;
+
 import com.ktb.chatapp.dto.FetchMessagesRequest;
 import com.ktb.chatapp.dto.FetchMessagesResponse;
 import com.ktb.chatapp.dto.MessageResponse;
@@ -19,8 +21,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
-
-import static java.util.Collections.emptyList;
 
 @Slf4j
 @Component

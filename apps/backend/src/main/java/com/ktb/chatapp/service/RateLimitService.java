@@ -1,5 +1,7 @@
 package com.ktb.chatapp.service;
 
+import static java.net.InetAddress.getLocalHost;
+
 import com.ktb.chatapp.model.RateLimit;
 import com.ktb.chatapp.service.ratelimit.RateLimitStore;
 import jakarta.annotation.PostConstruct;
@@ -10,8 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import static java.net.InetAddress.*;
 
 @Slf4j
 @Service

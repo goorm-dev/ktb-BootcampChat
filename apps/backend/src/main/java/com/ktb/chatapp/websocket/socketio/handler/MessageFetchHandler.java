@@ -1,5 +1,10 @@
 package com.ktb.chatapp.websocket.socketio.handler;
 
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.ERROR;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.FETCH_PREVIOUS_MESSAGES;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.MESSAGE_LOAD_START;
+import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.PREVIOUS_MESSAGES_LOADED;
+
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.annotation.OnEvent;
 import com.ktb.chatapp.dto.FetchMessagesRequest;
@@ -12,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 
 /**
  * 메시지 조회 처리 핸들러

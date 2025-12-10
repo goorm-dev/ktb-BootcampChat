@@ -1,5 +1,7 @@
 package com.ktb.chatapp.service;
 
+import static com.ktb.chatapp.model.Session.SESSION_TTL;
+
 import com.ktb.chatapp.model.Session;
 import com.ktb.chatapp.service.session.SessionStore;
 import java.time.Instant;
@@ -8,8 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.stereotype.Service;
-
-import static com.ktb.chatapp.model.Session.SESSION_TTL;
 
 @Slf4j
 @Service

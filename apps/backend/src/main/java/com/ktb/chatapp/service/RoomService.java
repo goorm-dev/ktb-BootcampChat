@@ -1,6 +1,11 @@
 package com.ktb.chatapp.service;
 
-import com.ktb.chatapp.dto.*;
+import com.ktb.chatapp.dto.CreateRoomRequest;
+import com.ktb.chatapp.dto.HealthResponse;
+import com.ktb.chatapp.dto.PageMetadata;
+import com.ktb.chatapp.dto.RoomResponse;
+import com.ktb.chatapp.dto.RoomsResponse;
+import com.ktb.chatapp.dto.UserResponse;
 import com.ktb.chatapp.event.RoomCreatedEvent;
 import com.ktb.chatapp.event.RoomUpdatedEvent;
 import com.ktb.chatapp.model.Room;

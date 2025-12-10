@@ -1,6 +1,7 @@
 package com.ktb.chatapp.model;
 
 import com.ktb.chatapp.util.EncryptionUtil;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,8 +14,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.event.AbstractMongoEventListener;
 import org.springframework.data.mongodb.core.mapping.event.BeforeConvertEvent;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 @Data
 @Builder
