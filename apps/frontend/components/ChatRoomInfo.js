@@ -27,6 +27,8 @@ const ChatRoomInfo = ({ room, connectionStatus }) => {
   const participants = room?.participants || [];
   const maxVisibleAvatars = 3;
   const remainingCount = Math.max(0, participants.length - maxVisibleAvatars);
+    console.log("participants:", participants);
+
 
   return (
     <Collapsible.Root>
@@ -47,7 +49,7 @@ const ChatRoomInfo = ({ room, connectionStatus }) => {
                 <div className="flex -space-x-2">
                   {participants.slice(0, maxVisibleAvatars).map((participant, index) => (
                     <div
-                      key={participant._id}
+                      key={participant.id}
                       className="ring-1 rounded-full"
                       style={{ zIndex: maxVisibleAvatars - index }}
                     >
@@ -111,7 +113,7 @@ const ChatRoomInfo = ({ room, connectionStatus }) => {
             <div className="max-h-64 overflow-y-auto">
               {participants.map((participant) => (
                 <HStack
-                  key={participant._id}
+                  key={participant.id}
                   gap="$200"
                   alignItems="center"
                   className="px-2 py-2 hover:bg-background-contrast-100 rounded-lg transition-colors"
