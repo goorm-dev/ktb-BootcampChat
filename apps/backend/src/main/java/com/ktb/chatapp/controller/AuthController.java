@@ -91,18 +91,15 @@ public class AuthController {
         // Handle validation errors
         ResponseEntity<?> errors = getBindingError(bindingResult);
         if (errors != null) return errors;
-        
-        // Check existing user
-        if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(StandardResponse.error("이미 등록된 이메일입니다."));
-        }
+
+        // normalize once to avoid repeat lowercasing/encrypt work
+        final String normalizedEmail = registerRequest.getEmail().toLowerCase();
 
         try {
             // Create user
             User user = User.builder()
                     .name(registerRequest.getName())
-                    .email(registerRequest.getEmail().toLowerCase())
+                    .email(normalizedEmail)
                     .password(passwordEncoder.encode(registerRequest.getPassword()))
                     .build();
 
