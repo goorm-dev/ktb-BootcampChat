@@ -1,4 +1,5 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { Box, VStack, HStack, Button, Text, Callout, Card } from '@vapor-ui/core';
 import { ErrorCircleOutlineIcon, NetworkIcon } from '@vapor-ui/icons';
 import { withAuth } from '../../contexts/AuthContext';
@@ -221,4 +222,8 @@ const ChatPage = () => {
   );
 };
 
-export default withAuth(ChatPage);
+const ChatPageWithAuth = withAuth(ChatPage);
+
+export default dynamic(() => Promise.resolve(ChatPageWithAuth), {
+  ssr: false
+});
