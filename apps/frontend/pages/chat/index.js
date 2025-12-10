@@ -260,10 +260,20 @@ function ChatRoomsComponent() {
     gcTime: 5 * 60 * 1000
   });
 
-  const rooms = useMemo(
-    () => data?.pages?.flatMap((page) => page.rooms) || [],
-    [data]
-  );
+  const rooms = useMemo(() => {
+    if (!data?.pages) return [];
+    const roomMap = new Map();
+
+    data.pages.forEach((page) => {
+      (page.rooms || []).forEach((room) => {
+        if (!roomMap.has(room._id)) {
+          roomMap.set(room._id, room);
+        }
+      });
+    });
+
+    return Array.from(roomMap.values());
+  }, [data]);
 
   const hasMore = Boolean(hasNextPage);
   const isInitialLoading = isLoading && !data;
@@ -385,10 +395,30 @@ function ChatRoomsComponent() {
   const updateRoomInCache = useCallback((updatedRoom) => {
     queryClient.setQueryData(roomsQueryKey, (existing) => {
       if (!existing?.pages) return existing;
-      const pages = existing.pages.map((page) => ({
-        ...page,
-        rooms: (page.rooms || []).map((room) => room._id === updatedRoom._id ? { ...room, ...updatedRoom } : room)
-      }));
+
+      let found = false;
+      const pages = existing.pages.map((page) => {
+        if (!page.rooms?.length) return page;
+
+        const idx = page.rooms.findIndex((room) => room._id === updatedRoom._id);
+        if (idx === -1) return page;
+
+        const current = page.rooms[idx];
+        const merged = { ...current, ...updatedRoom };
+
+        // 변경사항 없으면 동일 참조 반환하여 불필요한 re-render 방지
+        const unchanged = Object.keys(merged).every((key) => merged[key] === current[key]);
+        if (unchanged) {
+          return page;
+        }
+
+        found = true;
+        const nextRooms = [...page.rooms];
+        nextRooms[idx] = merged;
+        return { ...page, rooms: nextRooms };
+      });
+
+      if (!found) return existing;
       return { ...existing, pages };
     });
   }, [queryClient, roomsQueryKey]);
