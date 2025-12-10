@@ -44,7 +44,9 @@ async function createChatRoomAction(page, roomName) {
   await page.goto(`${BASE_URL}/chat/new`);
   await page.getByTestId('chat-room-name-input').fill(roomName);
   await page.getByTestId('create-chat-room-button').click();
-  await page.waitForURL(new RegExp(`${BASE_URL}/chat/[a-f0-9]{24}`));
+
+    await page.waitForURL(new RegExp(`${BASE_URL}/chat/[a-f0-9]{24}`));
+    console.log("Current URL:", page.url());
 }
 
 /**

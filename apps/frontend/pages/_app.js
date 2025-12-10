@@ -1,14 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { ThemeProvider } from '@vapor-ui/core';
 import '@vapor-ui/core/styles.css';
 import '../styles/globals.css';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ChatHeader from '@/components/ChatHeader';
 import ToastContainer from '@/components/Toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 3,
+        retryDelay: attemptIndex => Math.min(1000 * (2 ** attemptIndex), 5000),
+        staleTime: 30 * 1000,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true
+      }
+    }
+  }));
 
   const isErrorPage = router.pathname === '/_error';
   if (isErrorPage) {
@@ -20,11 +32,13 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <ThemeProvider defaultTheme="dark">
-      <AuthProvider>
-        {showHeader && <ChatHeader />}
-        <Component {...pageProps} />
-        <ToastContainer />
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          {showHeader && <ChatHeader />}
+          <Component {...pageProps} />
+          <ToastContainer />
+        </AuthProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }

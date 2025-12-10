@@ -26,6 +26,7 @@ function NewChatRoom() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  //방생성 함수
   const joinRoom = async (roomId, password) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rooms/${roomId}/join`, {
@@ -50,6 +51,7 @@ function NewChatRoom() {
     }
   };
 
+  //방 이름 제출 함수
   const handleSubmit = async (e) => {
     e.preventDefault();
 

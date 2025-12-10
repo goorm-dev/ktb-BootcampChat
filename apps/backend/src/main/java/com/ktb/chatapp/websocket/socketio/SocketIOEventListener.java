@@ -33,6 +33,7 @@ public class SocketIOEventListener {
         }
     }
 
+    //백엔드에서 방이 만들어진 사실을 실시간으로 알리기 위한 것
     @EventListener
     public void handleRoomCreatedEvent(RoomCreatedEvent event) {
         try {
