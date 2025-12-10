@@ -1,0 +1,560 @@
+# HELP application_ready_time_seconds Time taken for the application to be ready to service requests
+# TYPE application_ready_time_seconds gauge
+application_ready_time_seconds{application="ktb-chat-backend",main_application_class="com.ktb.chatapp.ChatAppApplication"} 11.612
+# HELP application_started_time_seconds Time taken to start the application
+# TYPE application_started_time_seconds gauge
+application_started_time_seconds{application="ktb-chat-backend",main_application_class="com.ktb.chatapp.ChatAppApplication"} 11.469
+# HELP disk_free_bytes Usable space for path
+# TYPE disk_free_bytes gauge
+disk_free_bytes{application="ktb-chat-backend",path="/home/ubuntu/ktb-chat-backend/."} 6.7059712E8
+# HELP disk_total_bytes Total space for path
+# TYPE disk_total_bytes gauge
+disk_total_bytes{application="ktb-chat-backend",path="/home/ubuntu/ktb-chat-backend/."} 7.203201024E9
+# HELP executor_active_threads The approximate number of threads that are actively executing tasks
+# TYPE executor_active_threads gauge
+executor_active_threads{application="ktb-chat-backend",name="applicationTaskExecutor"} 0.0
+# HELP executor_completed_tasks_total The approximate total number of tasks that have completed execution
+# TYPE executor_completed_tasks_total counter
+executor_completed_tasks_total{application="ktb-chat-backend",name="applicationTaskExecutor"} 0.0
+# HELP executor_pool_core_threads The core number of threads for the pool
+# TYPE executor_pool_core_threads gauge
+executor_pool_core_threads{application="ktb-chat-backend",name="applicationTaskExecutor"} 8.0
+# HELP executor_pool_max_threads The maximum allowed number of threads in the pool
+# TYPE executor_pool_max_threads gauge
+executor_pool_max_threads{application="ktb-chat-backend",name="applicationTaskExecutor"} 2.147483647E9
+# HELP executor_pool_size_threads The current number of threads in the pool
+# TYPE executor_pool_size_threads gauge
+executor_pool_size_threads{application="ktb-chat-backend",name="applicationTaskExecutor"} 0.0
+# HELP executor_queue_remaining_tasks The number of additional elements that this queue can ideally accept without blocking
+# TYPE executor_queue_remaining_tasks gauge
+executor_queue_remaining_tasks{application="ktb-chat-backend",name="applicationTaskExecutor"} 2.147483647E9
+# HELP executor_queued_tasks The approximate number of tasks that are queued for execution
+# TYPE executor_queued_tasks gauge
+executor_queued_tasks{application="ktb-chat-backend",name="applicationTaskExecutor"} 0.0
+# HELP http_server_requests_active_seconds
+# TYPE http_server_requests_active_seconds summary
+http_server_requests_active_seconds_count{application="ktb-chat-backend",exception="none",method="GET",outcome="SUCCESS",status="200",uri="UNKNOWN"} 1
+http_server_requests_active_seconds_sum{application="ktb-chat-backend",exception="none",method="GET",outcome="SUCCESS",status="200",uri="UNKNOWN"} 0.001912179
+http_server_requests_active_seconds_count{application="ktb-chat-backend",exception="none",method="POST",outcome="SUCCESS",status="200",uri="UNKNOWN"} 0
+http_server_requests_active_seconds_sum{application="ktb-chat-backend",exception="none",method="POST",outcome="SUCCESS",status="200",uri="UNKNOWN"} 0.0
+# HELP http_server_requests_active_seconds_max
+# TYPE http_server_requests_active_seconds_max gauge
+http_server_requests_active_seconds_max{application="ktb-chat-backend",exception="none",method="GET",outcome="SUCCESS",status="200",uri="UNKNOWN"} 0.001912648
+http_server_requests_active_seconds_max{application="ktb-chat-backend",exception="none",method="POST",outcome="SUCCESS",status="200",uri="UNKNOWN"} 0.0
+# HELP http_server_requests_seconds
+# TYPE http_server_requests_seconds summary
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="/api/health"} 1
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="/api/health"} 0.010958341
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="/api/rooms"} 1
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="/api/rooms"} 0.00488677
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="UNKNOWN"} 4541
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="UNKNOWN"} 2.574570834
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="404",uri="/**"} 1
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="404",uri="/**"} 0.030900937
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/actuator/prometheus"} 3789
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/actuator/prometheus"} 14.163827865
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/api/health"} 3899
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/api/health"} 4.666930261
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/api/rooms"} 336
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/api/rooms"} 14.869431192
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="CLIENT_ERROR",status="401",uri="/api/auth/login"} 1129
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="CLIENT_ERROR",status="401",uri="/api/auth/login"} 3.593707055
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="CLIENT_ERROR",status="401",uri="UNKNOWN"} 46
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="CLIENT_ERROR",status="401",uri="UNKNOWN"} 0.034414316
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/auth/register"} 1130
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/auth/register"} 295.380787033
+http_server_requests_seconds_count{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/rooms"} 323
+http_server_requests_seconds_sum{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/rooms"} 4.747107313
+# HELP http_server_requests_seconds_max
+# TYPE http_server_requests_seconds_max gauge
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="/api/health"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="/api/rooms"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="401",uri="UNKNOWN"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="CLIENT_ERROR",status="404",uri="/**"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/actuator/prometheus"} 0.006816301
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/api/health"} 7.52117E-4
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="GET",outcome="SUCCESS",status="200",uri="/api/rooms"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="CLIENT_ERROR",status="401",uri="/api/auth/login"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="CLIENT_ERROR",status="401",uri="UNKNOWN"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/auth/register"} 0.0
+http_server_requests_seconds_max{application="ktb-chat-backend",error="none",exception="none",method="POST",outcome="SUCCESS",status="201",uri="/api/rooms"} 0.0
+# HELP jvm_info JVM version info
+# TYPE jvm_info gauge
+jvm_info{application="ktb-chat-backend",runtime="OpenJDK Runtime Environment",vendor="Ubuntu",version="21.0.8+9-Ubuntu-0ubuntu124.04.1"} 1
+# HELP jvm_buffer_count_buffers An estimate of the number of buffers in the pool
+# TYPE jvm_buffer_count_buffers gauge
+jvm_buffer_count_buffers{application="ktb-chat-backend",id="direct"} 24.0
+jvm_buffer_count_buffers{application="ktb-chat-backend",id="mapped"} 0.0
+jvm_buffer_count_buffers{application="ktb-chat-backend",id="mapped - 'non-volatile memory'"} 0.0
+# HELP jvm_buffer_memory_used_bytes An estimate of the memory that the Java virtual machine is using for this buffer pool
+# TYPE jvm_buffer_memory_used_bytes gauge
+jvm_buffer_memory_used_bytes{application="ktb-chat-backend",id="direct"} 1.6889753E7
+jvm_buffer_memory_used_bytes{application="ktb-chat-backend",id="mapped"} 0.0
+jvm_buffer_memory_used_bytes{application="ktb-chat-backend",id="mapped - 'non-volatile memory'"} 0.0
+# HELP jvm_buffer_total_capacity_bytes An estimate of the total capacity of the buffers in this pool
+# TYPE jvm_buffer_total_capacity_bytes gauge
+jvm_buffer_total_capacity_bytes{application="ktb-chat-backend",id="direct"} 1.6889752E7
+jvm_buffer_total_capacity_bytes{application="ktb-chat-backend",id="mapped"} 0.0
+jvm_buffer_total_capacity_bytes{application="ktb-chat-backend",id="mapped - 'non-volatile memory'"} 0.0
+# HELP jvm_classes_loaded_classes The number of classes that are currently loaded in the Java virtual machine
+# TYPE jvm_classes_loaded_classes gauge
+jvm_classes_loaded_classes{application="ktb-chat-backend"} 17593.0
+# HELP jvm_classes_unloaded_classes_total The number of classes unloaded in the Java virtual machine
+# TYPE jvm_classes_unloaded_classes_total counter
+jvm_classes_unloaded_classes_total{application="ktb-chat-backend"} 351.0
+# HELP jvm_compilation_time_ms_total The approximate accumulated elapsed time spent in compilation
+# TYPE jvm_compilation_time_ms_total counter
+jvm_compilation_time_ms_total{application="ktb-chat-backend",compiler="HotSpot 64-Bit Tiered Compilers"} 100161.0
+# HELP jvm_gc_concurrent_phase_time_seconds Time spent in concurrent phase
+# TYPE jvm_gc_concurrent_phase_time_seconds summary
+jvm_gc_concurrent_phase_time_seconds_count{action="end of concurrent GC pause",application="ktb-chat-backend",cause="No GC",gc="G1 Concurrent GC"} 70
+jvm_gc_concurrent_phase_time_seconds_sum{action="end of concurrent GC pause",application="ktb-chat-backend",cause="No GC",gc="G1 Concurrent GC"} 0.469
+# HELP jvm_gc_concurrent_phase_time_seconds_max Time spent in concurrent phase
+# TYPE jvm_gc_concurrent_phase_time_seconds_max gauge
+jvm_gc_concurrent_phase_time_seconds_max{action="end of concurrent GC pause",application="ktb-chat-backend",cause="No GC",gc="G1 Concurrent GC"} 0.0
+# HELP jvm_gc_live_data_size_bytes Size of long-lived heap memory pool after reclamation
+# TYPE jvm_gc_live_data_size_bytes gauge
+jvm_gc_live_data_size_bytes{application="ktb-chat-backend"} 6.1067872E7
+# HELP jvm_gc_max_data_size_bytes Max size of long-lived heap memory pool
+# TYPE jvm_gc_max_data_size_bytes gauge
+jvm_gc_max_data_size_bytes{application="ktb-chat-backend"} 1.073741824E9
+# HELP jvm_gc_memory_allocated_bytes_total Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next
+# TYPE jvm_gc_memory_allocated_bytes_total counter
+jvm_gc_memory_allocated_bytes_total{application="ktb-chat-backend"} 6.7499982848E10
+# HELP jvm_gc_memory_promoted_bytes_total Count of positive increases in the size of the old generation memory pool before GC to after GC
+# TYPE jvm_gc_memory_promoted_bytes_total counter
+jvm_gc_memory_promoted_bytes_total{application="ktb-chat-backend"} 3.5422848E7
+# HELP jvm_gc_overhead An approximation of the percent of CPU time used by GC activities over the last lookback period or since monitoring began, whichever is shorter, in the range [0..1]
+# TYPE jvm_gc_overhead gauge
+jvm_gc_overhead{application="ktb-chat-backend"} 0.0
+# HELP jvm_gc_pause_seconds Time spent in GC pause
+# TYPE jvm_gc_pause_seconds summary
+jvm_gc_pause_seconds_count{action="end of minor GC",application="ktb-chat-backend",cause="G1 Evacuation Pause",gc="G1 Young Generation"} 206
+jvm_gc_pause_seconds_sum{action="end of minor GC",application="ktb-chat-backend",cause="G1 Evacuation Pause",gc="G1 Young Generation"} 1.933
+jvm_gc_pause_seconds_count{action="end of minor GC",application="ktb-chat-backend",cause="GCLocker Initiated GC",gc="G1 Young Generation"} 8
+jvm_gc_pause_seconds_sum{action="end of minor GC",application="ktb-chat-backend",cause="GCLocker Initiated GC",gc="G1 Young Generation"} 0.065
+# HELP jvm_gc_pause_seconds_max Time spent in GC pause
+# TYPE jvm_gc_pause_seconds_max gauge
+jvm_gc_pause_seconds_max{action="end of minor GC",application="ktb-chat-backend",cause="G1 Evacuation Pause",gc="G1 Young Generation"} 0.0
+jvm_gc_pause_seconds_max{action="end of minor GC",application="ktb-chat-backend",cause="GCLocker Initiated GC",gc="G1 Young Generation"} 0.0
+# HELP jvm_memory_committed_bytes The amount of memory in bytes that is committed for the Java virtual machine to use
+# TYPE jvm_memory_committed_bytes gauge
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="heap",id="G1 Eden Space"} 3.33447168E8
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="heap",id="G1 Old Gen"} 1.98180864E8
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="heap",id="G1 Survivor Space"} 5242880.0
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'non-nmethods'"} 2555904.0
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 1.5990784E7
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'profiled nmethods'"} 2.7983872E7
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="nonheap",id="Compressed Class Space"} 1.1665408E7
+jvm_memory_committed_bytes{application="ktb-chat-backend",area="nonheap",id="Metaspace"} 9.0832896E7
+# HELP jvm_memory_max_bytes The maximum amount of memory in bytes that can be used for memory management
+# TYPE jvm_memory_max_bytes gauge
+jvm_memory_max_bytes{application="ktb-chat-backend",area="heap",id="G1 Eden Space"} -1.0
+jvm_memory_max_bytes{application="ktb-chat-backend",area="heap",id="G1 Old Gen"} 1.073741824E9
+jvm_memory_max_bytes{application="ktb-chat-backend",area="heap",id="G1 Survivor Space"} -1.0
+jvm_memory_max_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'non-nmethods'"} 5828608.0
+jvm_memory_max_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 1.22916864E8
+jvm_memory_max_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'profiled nmethods'"} 1.22912768E8
+jvm_memory_max_bytes{application="ktb-chat-backend",area="nonheap",id="Compressed Class Space"} 1.073741824E9
+jvm_memory_max_bytes{application="ktb-chat-backend",area="nonheap",id="Metaspace"} -1.0
+# HELP jvm_memory_usage_after_gc The percentage of long-lived heap pool used after the last GC event, in the range [0..1]
+# TYPE jvm_memory_usage_after_gc gauge
+jvm_memory_usage_after_gc{application="ktb-chat-backend",area="heap",pool="long-lived"} 0.061249397695064545
+# HELP jvm_memory_used_bytes The amount of used memory
+# TYPE jvm_memory_used_bytes gauge
+jvm_memory_used_bytes{application="ktb-chat-backend",area="heap",id="G1 Eden Space"} 3.05135616E8
+jvm_memory_used_bytes{application="ktb-chat-backend",area="heap",id="G1 Old Gen"} 6.576604E7
+jvm_memory_used_bytes{application="ktb-chat-backend",area="heap",id="G1 Survivor Space"} 4715784.0
+jvm_memory_used_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'non-nmethods'"} 1981440.0
+jvm_memory_used_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 1.5735296E7
+jvm_memory_used_bytes{application="ktb-chat-backend",area="nonheap",id="CodeHeap 'profiled nmethods'"} 1.0543872E7
+jvm_memory_used_bytes{application="ktb-chat-backend",area="nonheap",id="Compressed Class Space"} 1.1091376E7
+jvm_memory_used_bytes{application="ktb-chat-backend",area="nonheap",id="Metaspace"} 8.9868688E7
+# HELP jvm_threads_daemon_threads The current number of live daemon threads
+# TYPE jvm_threads_daemon_threads gauge
+jvm_threads_daemon_threads{application="ktb-chat-backend"} 29.0
+# HELP jvm_threads_live_threads The current number of live threads including both daemon and non-daemon threads
+# TYPE jvm_threads_live_threads gauge
+jvm_threads_live_threads{application="ktb-chat-backend"} 39.0
+# HELP jvm_threads_peak_threads The peak live thread count since the Java virtual machine started or peak was reset
+# TYPE jvm_threads_peak_threads gauge
+jvm_threads_peak_threads{application="ktb-chat-backend"} 39.0
+# HELP jvm_threads_started_threads_total The total number of application threads started in the JVM
+# TYPE jvm_threads_started_threads_total counter
+jvm_threads_started_threads_total{application="ktb-chat-backend"} 48.0
+# HELP jvm_threads_states_threads The current number of threads
+# TYPE jvm_threads_states_threads gauge
+jvm_threads_states_threads{application="ktb-chat-backend",state="blocked"} 0.0
+jvm_threads_states_threads{application="ktb-chat-backend",state="new"} 0.0
+jvm_threads_states_threads{application="ktb-chat-backend",state="runnable"} 20.0
+jvm_threads_states_threads{application="ktb-chat-backend",state="terminated"} 0.0
+jvm_threads_states_threads{application="ktb-chat-backend",state="timed-waiting"} 17.0
+jvm_threads_states_threads{application="ktb-chat-backend",state="waiting"} 2.0
+# HELP logback_events_total Number of log events that were enabled by the effective log level
+# TYPE logback_events_total counter
+logback_events_total{application="ktb-chat-backend",level="debug"} 0.0
+logback_events_total{application="ktb-chat-backend",level="error"} 6.0
+logback_events_total{application="ktb-chat-backend",level="info"} 2266.0
+logback_events_total{application="ktb-chat-backend",level="trace"} 0.0
+logback_events_total{application="ktb-chat-backend",level="warn"} 2.0
+# HELP mongodb_driver_commands_seconds Timer of mongodb commands
+# TYPE mongodb_driver_commands_seconds summary
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="files",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 4
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="files",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.064225052
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="aggregate",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 3821
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="aggregate",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 4.648170763
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 7
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.137099525
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 402030
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 213.798487102
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 62230
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 47.275202669
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 201942
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 128.761157884
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 2
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.040285612
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 62537
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 33.718736991
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 1294
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.774566252
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 61243
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 35.814935616
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="aggregate",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 336
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="aggregate",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.360523273
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 264048
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 128.479575158
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 323
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.229872082
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 474
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.330104441
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 3
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.054185887
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="delete",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 1130
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="delete",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 1.298506212
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 125120
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 74.186940211
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 1130
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 1.071664387
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 125118
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 79.044209492
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="users",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 279740
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="users",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 143.038016108
+mongodb_driver_commands_seconds_count{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="users",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 1130
+mongodb_driver_commands_seconds_sum{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="users",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 1.588397086
+# HELP mongodb_driver_commands_seconds_max Timer of mongodb commands
+# TYPE mongodb_driver_commands_seconds_max gauge
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="files",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="aggregate",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="messages",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rate_limits",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="aggregate",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="rooms",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="createIndexes",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="delete",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="sessions",command="update",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="users",command="find",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+mongodb_driver_commands_seconds_max{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",collection="users",command="insert",database="bootcamp-chat",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017",status="SUCCESS"} 0.0
+# HELP mongodb_driver_pool_checkedout the count of connections that are currently in use
+# TYPE mongodb_driver_pool_checkedout gauge
+mongodb_driver_pool_checkedout{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017"} 0.0
+# HELP mongodb_driver_pool_checkoutfailed_total the count of failed attempts to retrieve a connection
+# TYPE mongodb_driver_pool_checkoutfailed_total counter
+mongodb_driver_pool_checkoutfailed_total{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017"} 0.0
+# HELP mongodb_driver_pool_size the current size of the connection pool, including idle and and in-use members
+# TYPE mongodb_driver_pool_size gauge
+mongodb_driver_pool_size{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017"} 9.0
+# HELP mongodb_driver_pool_waitqueuesize the current size of the wait queue for a connection from the pool
+# TYPE mongodb_driver_pool_waitqueuesize gauge
+mongodb_driver_pool_waitqueuesize{application="ktb-chat-backend",cluster_id="6925092b77a12df6867e1e2f",server_address="ip-10-0-6-145.ap-northeast-2.compute.internal:27017"} 0.0
+# HELP process_cpu_time_ns_total The "cpu time" used by the Java Virtual Machine process
+# TYPE process_cpu_time_ns_total counter
+process_cpu_time_ns_total{application="ktb-chat-backend"} 6.4618E11
+# HELP process_cpu_usage The "recent cpu usage" for the Java Virtual Machine process
+# TYPE process_cpu_usage gauge
+process_cpu_usage{application="ktb-chat-backend"} 0.002793296089385475
+# HELP process_files_max_files The maximum file descriptor count
+# TYPE process_files_max_files gauge
+process_files_max_files{application="ktb-chat-backend"} 1048576.0
+# HELP process_files_open_files The open file descriptor count
+# TYPE process_files_open_files gauge
+process_files_open_files{application="ktb-chat-backend"} 56.0
+# HELP process_start_time_seconds Start time of the process since unix epoch.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds{application="ktb-chat-backend"} 1.764034851941E9
+# HELP process_uptime_seconds The uptime of the Java virtual machine
+# TYPE process_uptime_seconds gauge
+process_uptime_seconds{application="ktb-chat-backend"} 29060.378
+# HELP socketio_concurrent_users Current number of concurrent Socket.IO users
+# TYPE socketio_concurrent_users gauge
+socketio_concurrent_users{application="ktb-chat-backend"} 0.0
+# HELP socketio_events_total Total Socket.IO events received
+# TYPE socketio_events_total counter
+socketio_events_total{application="ktb-chat-backend",event_type="chatMessage"} 62201.0
+socketio_events_total{application="ktb-chat-backend",event_type="joinRoom"} 474.0
+socketio_events_total{application="ktb-chat-backend",event_type="markMessagesAsRead"} 200563.0
+# HELP socketio_messages_total Total Socket.IO messages processed
+# TYPE socketio_messages_total counter
+socketio_messages_total{application="ktb-chat-backend",message_type="text",status="success"} 61756.0
+# HELP socketio_messages_errors_total Socket.IO message processing errors
+# TYPE socketio_messages_errors_total counter
+socketio_messages_errors_total{application="ktb-chat-backend",error_type="banned_word"} 445.0
+# HELP socketio_messages_processing_time_seconds Socket.IO message processing time
+# TYPE socketio_messages_processing_time_seconds summary
+socketio_messages_processing_time_seconds_count{application="ktb-chat-backend",message_type="banned_word",status="error"} 445
+socketio_messages_processing_time_seconds_sum{application="ktb-chat-backend",message_type="banned_word",status="error"} 2.191454056
+socketio_messages_processing_time_seconds_count{application="ktb-chat-backend",message_type="text",status="success"} 61756
+socketio_messages_processing_time_seconds_sum{application="ktb-chat-backend",message_type="text",status="success"} 462.203767773
+# HELP socketio_messages_processing_time_seconds_max Socket.IO message processing time
+# TYPE socketio_messages_processing_time_seconds_max gauge
+socketio_messages_processing_time_seconds_max{application="ktb-chat-backend",message_type="banned_word",status="error"} 0.0
+socketio_messages_processing_time_seconds_max{application="ktb-chat-backend",message_type="text",status="success"} 0.0
+# HELP spring_data_repository_invocations_seconds Duration of repository invocations
+# TYPE spring_data_repository_invocations_seconds summary
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="addParticipant",repository="RoomRepository",state="SUCCESS"} 474
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="addParticipant",repository="RoomRepository",state="SUCCESS"} 0.563150394
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="countRecentMessagesByRoomId",repository="MessageRepository",state="SUCCESS"} 3821
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="countRecentMessagesByRoomId",repository="MessageRepository",state="SUCCESS"} 6.491931237
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="deleteByUserId",repository="SessionRepository",state="SUCCESS"} 1130
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="deleteByUserId",repository="SessionRepository",state="SUCCESS"} 1.645184127
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findAll",repository="RoomRepository",state="SUCCESS"} 336
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findAll",repository="RoomRepository",state="SUCCESS"} 0.903569185
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findAllById",repository="MessageRepository",state="SUCCESS"} 200993
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findAllById",repository="MessageRepository",state="SUCCESS"} 130.638639869
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findByClientId",repository="RateLimitRepository",state="SUCCESS"} 62537
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findByClientId",repository="RateLimitRepository",state="SUCCESS"} 41.707265481
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findByEmail",repository="UserRepository",state="SUCCESS"} 2582
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findByEmail",repository="UserRepository",state="SUCCESS"} 5.120779799
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findById",repository="MessageRepository",state="SUCCESS"} 200563
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findById",repository="MessageRepository",state="SUCCESS"} 130.797381216
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findById",repository="RoomRepository",state="SUCCESS"} 263712
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findById",repository="RoomRepository",state="SUCCESS"} 153.368053175
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findById",repository="UserRepository",state="SUCCESS"} 277158
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findById",repository="UserRepository",state="SUCCESS"} 165.755245755
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findByRoomIdAndIsDeletedAndTimestampBefore",repository="MessageRepository",state="SUCCESS"} 474
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findByRoomIdAndIsDeletedAndTimestampBefore",repository="MessageRepository",state="SUCCESS"} 0.699468181
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="findByUserId",repository="SessionRepository",state="SUCCESS"} 125120
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="findByUserId",repository="SessionRepository",state="SUCCESS"} 95.048619498
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="save",repository="MessageRepository",state="SUCCESS"} 264172
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="save",repository="MessageRepository",state="SUCCESS"} 207.677995416
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="save",repository="RateLimitRepository",state="SUCCESS"} 62537
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="save",repository="RateLimitRepository",state="SUCCESS"} 42.232797235
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="save",repository="RoomRepository",state="SUCCESS"} 323
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="save",repository="RoomRepository",state="SUCCESS"} 0.304778402
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="save",repository="SessionRepository",state="SUCCESS"} 126248
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="save",repository="SessionRepository",state="SUCCESS"} 94.130312968
+spring_data_repository_invocations_seconds_count{application="ktb-chat-backend",exception="None",method="save",repository="UserRepository",state="SUCCESS"} 1130
+spring_data_repository_invocations_seconds_sum{application="ktb-chat-backend",exception="None",method="save",repository="UserRepository",state="SUCCESS"} 2.268933274
+# HELP spring_data_repository_invocations_seconds_max Duration of repository invocations
+# TYPE spring_data_repository_invocations_seconds_max gauge
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="addParticipant",repository="RoomRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="countRecentMessagesByRoomId",repository="MessageRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="deleteByUserId",repository="SessionRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findAll",repository="RoomRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findAllById",repository="MessageRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findByClientId",repository="RateLimitRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findByEmail",repository="UserRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findById",repository="MessageRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findById",repository="RoomRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findById",repository="UserRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findByRoomIdAndIsDeletedAndTimestampBefore",repository="MessageRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="findByUserId",repository="SessionRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="save",repository="MessageRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="save",repository="RateLimitRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="save",repository="RoomRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="save",repository="SessionRepository",state="SUCCESS"} 0.0
+spring_data_repository_invocations_seconds_max{application="ktb-chat-backend",exception="None",method="save",repository="UserRepository",state="SUCCESS"} 0.0
+# HELP spring_security_authentications_active_seconds
+# TYPE spring_security_authentications_active_seconds summary
+spring_security_authentications_active_seconds_count{application="ktb-chat-backend",authentication_failure_type="n/a",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="n/a"} 0
+spring_security_authentications_active_seconds_sum{application="ktb-chat-backend",authentication_failure_type="n/a",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="n/a"} 0.0
+# HELP spring_security_authentications_active_seconds_max
+# TYPE spring_security_authentications_active_seconds_max gauge
+spring_security_authentications_active_seconds_max{application="ktb-chat-backend",authentication_failure_type="n/a",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="n/a"} 0.0
+# HELP spring_security_authentications_seconds
+# TYPE spring_security_authentications_seconds summary
+spring_security_authentications_seconds_count{application="ktb-chat-backend",authentication_failure_type="SessionExpiredException",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="n/a",error="SessionExpiredException"} 1
+spring_security_authentications_seconds_sum{application="ktb-chat-backend",authentication_failure_type="SessionExpiredException",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="n/a",error="SessionExpiredException"} 0.010063492
+spring_security_authentications_seconds_count{application="ktb-chat-backend",authentication_failure_type="n/a",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="JwtAuthenticationToken",error="none"} 674
+spring_security_authentications_seconds_sum{application="ktb-chat-backend",authentication_failure_type="n/a",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="JwtAuthenticationToken",error="none"} 1.662196324
+# HELP spring_security_authentications_seconds_max
+# TYPE spring_security_authentications_seconds_max gauge
+spring_security_authentications_seconds_max{application="ktb-chat-backend",authentication_failure_type="SessionExpiredException",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="n/a",error="SessionExpiredException"} 0.0
+spring_security_authentications_seconds_max{application="ktb-chat-backend",authentication_failure_type="n/a",authentication_method="ProviderManager",authentication_request_type="BearerTokenAuthenticationToken",authentication_result_type="JwtAuthenticationToken",error="none"} 0.0
+# HELP spring_security_authorizations_active_seconds
+# TYPE spring_security_authorizations_active_seconds summary
+spring_security_authorizations_active_seconds_count{application="ktb-chat-backend",spring_security_authentication_type="n/a",spring_security_authorization_decision="unknown",spring_security_object="request"} 0
+spring_security_authorizations_active_seconds_sum{application="ktb-chat-backend",spring_security_authentication_type="n/a",spring_security_authorization_decision="unknown",spring_security_object="request"} 0.0
+# HELP spring_security_authorizations_active_seconds_max
+# TYPE spring_security_authorizations_active_seconds_max gauge
+spring_security_authorizations_active_seconds_max{application="ktb-chat-backend",spring_security_authentication_type="n/a",spring_security_authorization_decision="unknown",spring_security_object="request"} 0.0
+# HELP spring_security_authorizations_seconds
+# TYPE spring_security_authorizations_seconds summary
+spring_security_authorizations_seconds_count{application="ktb-chat-backend",error="AccessDeniedException",spring_security_authentication_type="AnonymousAuthenticationToken",spring_security_authorization_decision="false",spring_security_object="request"} 4588
+spring_security_authorizations_seconds_sum{application="ktb-chat-backend",error="AccessDeniedException",spring_security_authentication_type="AnonymousAuthenticationToken",spring_security_authorization_decision="false",spring_security_object="request"} 0.43220395
+spring_security_authorizations_seconds_count{application="ktb-chat-backend",error="none",spring_security_authentication_type="JwtAuthenticationToken",spring_security_authorization_decision="true",spring_security_object="request"} 659
+spring_security_authorizations_seconds_sum{application="ktb-chat-backend",error="none",spring_security_authentication_type="JwtAuthenticationToken",spring_security_authorization_decision="true",spring_security_object="request"} 0.025745306
+spring_security_authorizations_seconds_count{application="ktb-chat-backend",error="none",spring_security_authentication_type="n/a",spring_security_authorization_decision="true",spring_security_object="request"} 9949
+spring_security_authorizations_seconds_sum{application="ktb-chat-backend",error="none",spring_security_authentication_type="n/a",spring_security_authorization_decision="true",spring_security_object="request"} 0.327897047
+# HELP spring_security_authorizations_seconds_max
+# TYPE spring_security_authorizations_seconds_max gauge
+spring_security_authorizations_seconds_max{application="ktb-chat-backend",error="AccessDeniedException",spring_security_authentication_type="AnonymousAuthenticationToken",spring_security_authorization_decision="false",spring_security_object="request"} 0.0
+spring_security_authorizations_seconds_max{application="ktb-chat-backend",error="none",spring_security_authentication_type="JwtAuthenticationToken",spring_security_authorization_decision="true",spring_security_object="request"} 0.0
+spring_security_authorizations_seconds_max{application="ktb-chat-backend",error="none",spring_security_authentication_type="n/a",spring_security_authorization_decision="true",spring_security_object="request"} 3.9994E-5
+# HELP spring_security_filterchains_AuthenticationFilter_after_total
+# TYPE spring_security_filterchains_AuthenticationFilter_after_total counter
+spring_security_filterchains_AuthenticationFilter_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15195.0
+# HELP spring_security_filterchains_AuthenticationFilter_before_total
+# TYPE spring_security_filterchains_AuthenticationFilter_before_total counter
+spring_security_filterchains_AuthenticationFilter_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15196.0
+# HELP spring_security_filterchains_access_exceptions_after_total
+# TYPE spring_security_filterchains_access_exceptions_after_total counter
+spring_security_filterchains_access_exceptions_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15195.0
+# HELP spring_security_filterchains_access_exceptions_before_total
+# TYPE spring_security_filterchains_access_exceptions_before_total counter
+spring_security_filterchains_access_exceptions_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15196.0
+# HELP spring_security_filterchains_active_seconds
+# TYPE spring_security_filterchains_active_seconds summary
+spring_security_filterchains_active_seconds_count{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 0
+spring_security_filterchains_active_seconds_sum{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 0.0
+spring_security_filterchains_active_seconds_count{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 0
+spring_security_filterchains_active_seconds_sum{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 0.0
+# HELP spring_security_filterchains_active_seconds_max
+# TYPE spring_security_filterchains_active_seconds_max gauge
+spring_security_filterchains_active_seconds_max{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 0.0
+spring_security_filterchains_active_seconds_max{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 0.0
+# HELP spring_security_filterchains_authentication_anonymous_after_total
+# TYPE spring_security_filterchains_authentication_anonymous_after_total counter
+spring_security_filterchains_authentication_anonymous_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15195.0
+# HELP spring_security_filterchains_authentication_anonymous_before_total
+# TYPE spring_security_filterchains_authentication_anonymous_before_total counter
+spring_security_filterchains_authentication_anonymous_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15196.0
+# HELP spring_security_filterchains_authentication_bearer_after_total
+# TYPE spring_security_filterchains_authentication_bearer_after_total counter
+spring_security_filterchains_authentication_bearer_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15196.0
+# HELP spring_security_filterchains_authentication_bearer_before_total
+# TYPE spring_security_filterchains_authentication_bearer_before_total counter
+spring_security_filterchains_authentication_bearer_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15197.0
+# HELP spring_security_filterchains_authorization_after_total
+# TYPE spring_security_filterchains_authorization_after_total counter
+spring_security_filterchains_authorization_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 10607.0
+# HELP spring_security_filterchains_authorization_before_total
+# TYPE spring_security_filterchains_authorization_before_total counter
+spring_security_filterchains_authorization_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15196.0
+# HELP spring_security_filterchains_context_async_after_total
+# TYPE spring_security_filterchains_context_async_after_total counter
+spring_security_filterchains_context_async_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15196.0
+# HELP spring_security_filterchains_context_async_before_total
+# TYPE spring_security_filterchains_context_async_before_total counter
+spring_security_filterchains_context_async_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15197.0
+# HELP spring_security_filterchains_context_holder_after_total
+# TYPE spring_security_filterchains_context_holder_after_total counter
+spring_security_filterchains_context_holder_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15196.0
+# HELP spring_security_filterchains_context_holder_before_total
+# TYPE spring_security_filterchains_context_holder_before_total counter
+spring_security_filterchains_context_holder_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15197.0
+# HELP spring_security_filterchains_context_servlet_after_total
+# TYPE spring_security_filterchains_context_servlet_after_total counter
+spring_security_filterchains_context_servlet_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15195.0
+# HELP spring_security_filterchains_context_servlet_before_total
+# TYPE spring_security_filterchains_context_servlet_before_total counter
+spring_security_filterchains_context_servlet_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15196.0
+# HELP spring_security_filterchains_cors_after_total
+# TYPE spring_security_filterchains_cors_after_total counter
+spring_security_filterchains_cors_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15196.0
+# HELP spring_security_filterchains_cors_before_total
+# TYPE spring_security_filterchains_cors_before_total counter
+spring_security_filterchains_cors_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15197.0
+# HELP spring_security_filterchains_header_after_total
+# TYPE spring_security_filterchains_header_after_total counter
+spring_security_filterchains_header_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15196.0
+# HELP spring_security_filterchains_header_before_total
+# TYPE spring_security_filterchains_header_before_total counter
+spring_security_filterchains_header_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15197.0
+# HELP spring_security_filterchains_logout_after_total
+# TYPE spring_security_filterchains_logout_after_total counter
+spring_security_filterchains_logout_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15196.0
+# HELP spring_security_filterchains_logout_before_total
+# TYPE spring_security_filterchains_logout_before_total counter
+spring_security_filterchains_logout_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15197.0
+# HELP spring_security_filterchains_requestcache_after_total
+# TYPE spring_security_filterchains_requestcache_after_total counter
+spring_security_filterchains_requestcache_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15195.0
+# HELP spring_security_filterchains_requestcache_before_total
+# TYPE spring_security_filterchains_requestcache_before_total counter
+spring_security_filterchains_requestcache_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15196.0
+# HELP spring_security_filterchains_seconds
+# TYPE spring_security_filterchains_seconds summary
+spring_security_filterchains_seconds_count{application="ktb-chat-backend",error="none",spring_security_filterchain_position="14",spring_security_filterchain_size="14",spring_security_reached_filter_name="AuthorizationFilter",spring_security_reached_filter_section="before"} 15196
+spring_security_filterchains_seconds_sum{application="ktb-chat-backend",error="none",spring_security_filterchain_position="14",spring_security_filterchain_size="14",spring_security_reached_filter_name="AuthorizationFilter",spring_security_reached_filter_section="before"} 4.996931876
+spring_security_filterchains_seconds_count{application="ktb-chat-backend",error="none",spring_security_filterchain_position="14",spring_security_filterchain_size="14",spring_security_reached_filter_name="DisableEncodeUrlFilter",spring_security_reached_filter_section="after"} 15196
+spring_security_filterchains_seconds_sum{application="ktb-chat-backend",error="none",spring_security_filterchain_position="14",spring_security_filterchain_size="14",spring_security_reached_filter_name="DisableEncodeUrlFilter",spring_security_reached_filter_section="after"} 0.710280366
+spring_security_filterchains_seconds_count{application="ktb-chat-backend",error="none",spring_security_filterchain_position="7",spring_security_filterchain_size="14",spring_security_reached_filter_name="BearerTokenAuthenticationFilter",spring_security_reached_filter_section="before"} 1
+spring_security_filterchains_seconds_sum{application="ktb-chat-backend",error="none",spring_security_filterchain_position="7",spring_security_filterchain_size="14",spring_security_reached_filter_name="BearerTokenAuthenticationFilter",spring_security_reached_filter_section="before"} 0.010404277
+# HELP spring_security_filterchains_seconds_max
+# TYPE spring_security_filterchains_seconds_max gauge
+spring_security_filterchains_seconds_max{application="ktb-chat-backend",error="none",spring_security_filterchain_position="14",spring_security_filterchain_size="14",spring_security_reached_filter_name="AuthorizationFilter",spring_security_reached_filter_section="before"} 1.98766E-4
+spring_security_filterchains_seconds_max{application="ktb-chat-backend",error="none",spring_security_filterchain_position="14",spring_security_filterchain_size="14",spring_security_reached_filter_name="DisableEncodeUrlFilter",spring_security_reached_filter_section="after"} 7.5393E-5
+spring_security_filterchains_seconds_max{application="ktb-chat-backend",error="none",spring_security_filterchain_position="7",spring_security_filterchain_size="14",spring_security_reached_filter_name="BearerTokenAuthenticationFilter",spring_security_reached_filter_section="before"} 0.0
+# HELP spring_security_filterchains_session_management_after_total
+# TYPE spring_security_filterchains_session_management_after_total counter
+spring_security_filterchains_session_management_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15195.0
+# HELP spring_security_filterchains_session_management_before_total
+# TYPE spring_security_filterchains_session_management_before_total counter
+spring_security_filterchains_session_management_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15196.0
+# HELP spring_security_filterchains_session_urlencoding_after_total
+# TYPE spring_security_filterchains_session_urlencoding_after_total counter
+spring_security_filterchains_session_urlencoding_after_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="after"} 15196.0
+# HELP spring_security_filterchains_session_urlencoding_before_total
+# TYPE spring_security_filterchains_session_urlencoding_before_total counter
+spring_security_filterchains_session_urlencoding_before_total{application="ktb-chat-backend",spring_security_filterchain_position="0",spring_security_filterchain_size="0",spring_security_reached_filter_name="none",spring_security_reached_filter_section="before"} 15197.0
+# HELP spring_security_http_secured_requests_active_seconds
+# TYPE spring_security_http_secured_requests_active_seconds summary
+spring_security_http_secured_requests_active_seconds_count{application="ktb-chat-backend"} 1
+spring_security_http_secured_requests_active_seconds_sum{application="ktb-chat-backend"} 0.001866483
+# HELP spring_security_http_secured_requests_active_seconds_max
+# TYPE spring_security_http_secured_requests_active_seconds_max gauge
+spring_security_http_secured_requests_active_seconds_max{application="ktb-chat-backend"} 0.001866647
+# HELP spring_security_http_secured_requests_seconds
+# TYPE spring_security_http_secured_requests_seconds summary
+spring_security_http_secured_requests_seconds_count{application="ktb-chat-backend",error="none"} 10607
+spring_security_http_secured_requests_seconds_sum{application="ktb-chat-backend",error="none"} 330.927666743
+# HELP spring_security_http_secured_requests_seconds_max
+# TYPE spring_security_http_secured_requests_seconds_max gauge
+spring_security_http_secured_requests_seconds_max{application="ktb-chat-backend",error="none"} 0.006387235
+# HELP system_cpu_count The number of processors available to the Java virtual machine
+# TYPE system_cpu_count gauge
+system_cpu_count{application="ktb-chat-backend"} 2.0
+# HELP system_cpu_usage The "recent cpu usage" of the system the application is running in
+# TYPE system_cpu_usage gauge
+system_cpu_usage{application="ktb-chat-backend"} 0.009762900976290097
+# HELP system_load_average_1m The sum of the number of runnable entities queued to available processors and the number of runnable entities running on the available processors averaged over a period of time
+# TYPE system_load_average_1m gauge
+system_load_average_1m{application="ktb-chat-backend"} 0.09375
+# HELP tomcat_sessions_active_current_sessions
+# TYPE tomcat_sessions_active_current_sessions gauge
+tomcat_sessions_active_current_sessions{application="ktb-chat-backend"} 0.0
+# HELP tomcat_sessions_active_max_sessions
+# TYPE tomcat_sessions_active_max_sessions gauge
+tomcat_sessions_active_max_sessions{application="ktb-chat-backend"} 0.0
+# HELP tomcat_sessions_alive_max_seconds
+# TYPE tomcat_sessions_alive_max_seconds gauge
+tomcat_sessions_alive_max_seconds{application="ktb-chat-backend"} 0.0
+# HELP tomcat_sessions_created_sessions_total
+# TYPE tomcat_sessions_created_sessions_total counter
+tomcat_sessions_created_sessions_total{application="ktb-chat-backend"} 0.0
+# HELP tomcat_sessions_expired_sessions_total
+# TYPE tomcat_sessions_expired_sessions_total counter
+tomcat_sessions_expired_sessions_total{application="ktb-chat-backend"} 0.0
+# HELP tomcat_sessions_rejected_sessions_total
+# TYPE tomcat_sessions_rejected_sessions_total counter
+tomcat_sessions_rejected_sessions_total{application="ktb-chat-backend"} 0.0

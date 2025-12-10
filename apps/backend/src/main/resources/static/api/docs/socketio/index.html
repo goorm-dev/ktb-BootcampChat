@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KTB Chat - Socket.IO API Documentation</title>
+    <link rel="stylesheet" href="https://unpkg.com/@asyncapi/react-component@2.6.5/styles/default.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        #asyncapi {
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>KTB Chat Application - Socket.IO API</h1>
+            <p>실시간 채팅 애플리케이션의 Socket.IO 이벤트 API 문서</p>
+        </div>
+    </div>
+    <div id="asyncapi"></div>
+
+    <script src="https://unpkg.com/@asyncapi/react-component@2.6.5/browser/standalone/index.js"></script>
+    <script>
+        // AsyncAPI 스펙 파일 로드
+        fetch('/api/docs/socketio/asyncapi.yaml')
+            .then(response => response.text())
+            .then(schema => {
+                AsyncApiStandalone.render({
+                    schema: schema,
+                    config: {
+                        show: {
+                            errors: true,
+                            info: true,
+                            servers: true,
+                            operations: true,
+                            messages: true,
+                            schemas: true,
+                        },
+                        expand: {
+                            messageExamples: true,
+                        },
+                        sidebar: {
+                            showOperations: 'byDefault',
+                        },
+                    },
+                }, document.getElementById('asyncapi'));
+            })
+            .catch(error => {
+                console.error('Error loading AsyncAPI spec:', error);
+                document.getElementById('asyncapi').innerHTML =
+                    '<div style="padding: 20px; color: red;">Error loading AsyncAPI specification: ' + error.message + '</div>';
+            });
+    </script>
+</body>
+</html>

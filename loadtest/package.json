@@ -1,0 +1,31 @@
+{
+  "name": "ktb-chat-loadtest",
+  "version": "1.0.0",
+  "description": "Load testing suite for KTB Chat Socket.IO application",
+  "main": "load-test.js",
+  "scripts": {
+    "test": "node load-test.js",
+    "test:light": "node load-test.js --users=50 --batch-size=10 --batch-delay=1000",
+    "test:medium": "node load-test.js --users=200 --batch-size=20 --batch-delay=700",
+    "test:heavy": "node load-test.js --users=1000 --batch-size=20 --batch-delay=700",
+    "test:rampup": "node ramp-up-test.js",
+    "test:rampup:small": "node ramp-up-test.js --max-users=200 --sustain-duration=120",
+    "test:rampup:large": "node ramp-up-test.js --max-users=1000 --min-users-per-second=10 --max-users-per-second=20 --sustain-duration=300",
+    "create-users": "node create-test-users.js"
+  },
+  "keywords": [
+    "load-test",
+    "socket.io",
+    "performance"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.3",
+    "socket.io-client": "^4.7.2",
+    "uuid": "^13.0.0",
+    "yargs": "^17.7.2"
+  }
+}

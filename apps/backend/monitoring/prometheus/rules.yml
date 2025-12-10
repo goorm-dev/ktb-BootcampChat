@@ -1,0 +1,159 @@
+groups:
+  - name: container_name_mapping
+    interval: 30s
+    rules:
+      # Map container IDs to friendly names using regex replacement
+      - record: container_cpu_usage_rate
+        expr: |
+          label_replace(
+            label_replace(
+              label_replace(
+                label_replace(
+                  label_replace(
+                    label_replace(
+                      label_replace(
+                        rate(container_cpu_usage_seconds_total{id=~"/docker/.*"}[5m]) * 100,
+                        "container_name", "mongo", "id", "/docker/d9a6c186f7fa.*"
+                      ),
+                      "container_name", "redis", "id", "/docker/9d6acaeed099.*"
+                    ),
+                    "container_name", "prometheus", "id", "/docker/20ba7b848e34.*"
+                  ),
+                  "container_name", "grafana", "id", "/docker/cc0b48014415.*"
+                ),
+                "container_name", "mongodb-exporter", "id", "/docker/69d367ecf426.*"
+              ),
+              "container_name", "redis-exporter", "id", "/docker/aa3a2657c7fd.*"
+            ),
+            "container_name", "cadvisor", "id", "/docker/d06607df3fed.*"
+          )
+
+      # Memory metrics with container names
+      - record: container_memory_usage_bytes
+        expr: |
+          label_replace(
+            label_replace(
+              label_replace(
+                label_replace(
+                  label_replace(
+                    label_replace(
+                      label_replace(
+                        container_memory_working_set_bytes{id=~"/docker/.*"},
+                        "container_name", "mongo", "id", "/docker/d9a6c186f7fa.*"
+                      ),
+                      "container_name", "redis", "id", "/docker/9d6acaeed099.*"
+                    ),
+                    "container_name", "prometheus", "id", "/docker/20ba7b848e34.*"
+                  ),
+                  "container_name", "grafana", "id", "/docker/cc0b48014415.*"
+                ),
+                "container_name", "mongodb-exporter", "id", "/docker/69d367ecf426.*"
+              ),
+              "container_name", "redis-exporter", "id", "/docker/aa3a2657c7fd.*"
+            ),
+            "container_name", "cadvisor", "id", "/docker/d06607df3fed.*"
+          )
+
+      # Network receive rate with container names
+      - record: container_network_receive_bytes_rate
+        expr: |
+          label_replace(
+            label_replace(
+              label_replace(
+                label_replace(
+                  label_replace(
+                    label_replace(
+                      label_replace(
+                        rate(container_network_receive_bytes_total{id=~"/docker/.*"}[5m]),
+                        "container_name", "mongo", "id", "/docker/d9a6c186f7fa.*"
+                      ),
+                      "container_name", "redis", "id", "/docker/9d6acaeed099.*"
+                    ),
+                    "container_name", "prometheus", "id", "/docker/20ba7b848e34.*"
+                  ),
+                  "container_name", "grafana", "id", "/docker/cc0b48014415.*"
+                ),
+                "container_name", "mongodb-exporter", "id", "/docker/69d367ecf426.*"
+              ),
+              "container_name", "redis-exporter", "id", "/docker/aa3a2657c7fd.*"
+            ),
+            "container_name", "cadvisor", "id", "/docker/d06607df3fed.*"
+          )
+
+      # Network transmit rate with container names
+      - record: container_network_transmit_bytes_rate
+        expr: |
+          label_replace(
+            label_replace(
+              label_replace(
+                label_replace(
+                  label_replace(
+                    label_replace(
+                      label_replace(
+                        rate(container_network_transmit_bytes_total{id=~"/docker/.*"}[5m]),
+                        "container_name", "mongo", "id", "/docker/d9a6c186f7fa.*"
+                      ),
+                      "container_name", "redis", "id", "/docker/9d6acaeed099.*"
+                    ),
+                    "container_name", "prometheus", "id", "/docker/20ba7b848e34.*"
+                  ),
+                  "container_name", "grafana", "id", "/docker/cc0b48014415.*"
+                ),
+                "container_name", "mongodb-exporter", "id", "/docker/69d367ecf426.*"
+              ),
+              "container_name", "redis-exporter", "id", "/docker/aa3a2657c7fd.*"
+            ),
+            "container_name", "cadvisor", "id", "/docker/d06607df3fed.*"
+          )
+
+      # Filesystem read rate with container names
+      - record: container_fs_reads_bytes_rate
+        expr: |
+          label_replace(
+            label_replace(
+              label_replace(
+                label_replace(
+                  label_replace(
+                    label_replace(
+                      label_replace(
+                        rate(container_fs_reads_bytes_total{id=~"/docker/.*"}[5m]),
+                        "container_name", "mongo", "id", "/docker/d9a6c186f7fa.*"
+                      ),
+                      "container_name", "redis", "id", "/docker/9d6acaeed099.*"
+                    ),
+                    "container_name", "prometheus", "id", "/docker/20ba7b848e34.*"
+                  ),
+                  "container_name", "grafana", "id", "/docker/cc0b48014415.*"
+                ),
+                "container_name", "mongodb-exporter", "id", "/docker/69d367ecf426.*"
+              ),
+              "container_name", "redis-exporter", "id", "/docker/aa3a2657c7fd.*"
+            ),
+            "container_name", "cadvisor", "id", "/docker/d06607df3fed.*"
+          )
+
+      # Filesystem write rate with container names
+      - record: container_fs_writes_bytes_rate
+        expr: |
+          label_replace(
+            label_replace(
+              label_replace(
+                label_replace(
+                  label_replace(
+                    label_replace(
+                      label_replace(
+                        rate(container_fs_writes_bytes_total{id=~"/docker/.*"}[5m]),
+                        "container_name", "mongo", "id", "/docker/d9a6c186f7fa.*"
+                      ),
+                      "container_name", "redis", "id", "/docker/9d6acaeed099.*"
+                    ),
+                    "container_name", "prometheus", "id", "/docker/20ba7b848e34.*"
+                  ),
+                  "container_name", "grafana", "id", "/docker/cc0b48014415.*"
+                ),
+                "container_name", "mongodb-exporter", "id", "/docker/69d367ecf426.*"
+              ),
+              "container_name", "redis-exporter", "id", "/docker/aa3a2657c7fd.*"
+            ),
+            "container_name", "cadvisor", "id", "/docker/d06607df3fed.*"
+          )

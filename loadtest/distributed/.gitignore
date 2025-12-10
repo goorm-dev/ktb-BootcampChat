@@ -1,0 +1,12 @@
+# 로그 파일
+*.log
+
+# hosts.txt는 자동 생성되므로 커밋하지 않음
+# 하지만 예시로 템플릿은 커밋
+# hosts.txt
+
+# 임시 파일
+*.tmp
+*.swp
+.DS_Store
+hosts.txt

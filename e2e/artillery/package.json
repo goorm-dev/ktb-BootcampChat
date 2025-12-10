@@ -1,0 +1,12 @@
+{
+    "name": "artillery-playwright-tests",
+    "version": "1.0.0",
+    "description": "Artillery load testing with Playwright",
+    "scripts": {},
+    "dependencies": {
+        "artillery": "^2.0.25"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.56.1"
+    }
+}

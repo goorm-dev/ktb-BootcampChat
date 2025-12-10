@@ -1,0 +1,13 @@
+{
+  "name": "ktb-chat",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:backend": "cd apps/backend && make dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

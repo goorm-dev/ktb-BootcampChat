@@ -1,0 +1,37 @@
+# Production Environment - Node Exporters
+# 프로덕션 환경의 Node Exporter 타겟 목록
+# 서버 추가 시 이 파일만 수정하면 자동으로 반영됩니다 (Prometheus 재시작 불필요)
+
+- targets:
+    - 'IP:PORT'
+  labels:
+    environment: 'production'
+    region: 'ap-northeast-2'
+    cluster: 'backend'
+    service: 'api'
+
+- targets:
+    - 'IP:PORT'
+  labels:
+    environment: 'production'
+    region: 'ap-northeast-2'
+    cluster: 'frontend'
+    service: 'next'
+
+- targets:
+    - 'IP:PORT'
+  labels:
+    environment: 'production'
+    region: 'ap-northeast-2'
+    cluster: 'database'
+    service: 'mongodb'
+
+
+# Monitoring Server
+- targets:
+    - 'IP:PORT'
+  labels:
+    environment: 'production'
+    region: 'ap-northeast-2'
+    cluster: 'monitoring'
+    service: 'observability'

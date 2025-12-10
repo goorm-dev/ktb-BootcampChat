@@ -1,0 +1,1174 @@
+asyncapi: 3.0.0
+info:
+  title: KTB Chat Application - Socket.IO API
+  version: 1.0.0
+  description: |
+    실시간 채팅 애플리케이션의 Socket.IO 이벤트 API 문서입니다.
+
+    이 문서는 클라이언트와 서버 간의 모든 Socket.IO 이벤트와 페이로드를 정의합니다.
+
+    ## 주요 기능
+    - 실시간 채팅 메시지 송수신
+    - 채팅방 입장/퇴장 관리
+    - 메시지 읽음 상태 처리
+    - 메시지 리액션 (이모지)
+    - AI 스트리밍 메시지
+    - 파일 전송
+
+  contact:
+    name: KTB Chat Team
+    email: support@ktbchat.com
+
+servers:
+  production:
+    host: '{host}:{port}'
+    protocol: wss
+    description: Socket.IO 서버
+    variables:
+      host:
+        default: localhost
+        description: 서버 호스트
+      port:
+        default: '5002'
+        description: Socket.IO 포트
+
+channels:
+  # ============================================
+  # Client → Server Events (클라이언트가 전송하는 이벤트)
+  # ============================================
+
+  chatMessage:
+    address: chatMessage
+    messages:
+      chatMessagePayload:
+        $ref: '#/components/messages/ChatMessagePayload'
+    description: |
+      채팅 메시지 전송 이벤트.
+
+      금칙어가 포함된 메시지는 서버에서 차단되며, 이 경우 `error` 이벤트로
+      `MESSAGE_REJECTED` 코드가 반환됩니다.
+
+  joinRoom:
+    address: joinRoom
+    messages:
+      joinRoomPayload:
+        $ref: '#/components/messages/JoinRoomPayload'
+    description: 채팅방 입장 이벤트
+
+  leaveRoom:
+    address: leaveRoom
+    messages:
+      leaveRoomPayload:
+        $ref: '#/components/messages/LeaveRoomPayload'
+    description: 채팅방 퇴장 이벤트
+
+  fetchPreviousMessages:
+    address: fetchPreviousMessages
+    messages:
+      fetchPreviousMessagesPayload:
+        $ref: '#/components/messages/FetchPreviousMessagesPayload'
+    description: 이전 메시지 로드 요청 이벤트
+
+  markMessagesAsRead:
+    address: markMessagesAsRead
+    messages:
+      markMessagesAsReadPayload:
+        $ref: '#/components/messages/MarkMessagesAsReadPayload'
+    description: 메시지 읽음 처리 이벤트
+
+  messageReaction:
+    address: messageReaction
+    messages:
+      messageReactionPayload:
+        $ref: '#/components/messages/MessageReactionPayload'
+    description: 메시지 리액션 추가/제거 이벤트
+
+  # ============================================
+  # Server → Client Events (서버가 전송하는 이벤트)
+  # ============================================
+
+  message:
+    address: message
+    messages:
+      messageResponse:
+        $ref: '#/components/messages/MessageResponse'
+    description: 새로운 메시지 브로드캐스트
+
+  error:
+    address: error
+    messages:
+      errorResponse:
+        $ref: '#/components/messages/ErrorResponse'
+    description: |
+      에러 알림. Socket.IO 이벤트 처리 중 발생하는 모든 에러를 전달합니다.
+
+      **에러 코드 목록:**
+
+      **인증/세션 관련:**
+      - `SESSION_EXPIRED`: 세션이 만료되었거나 인증 정보가 유효하지 않음
+      - `UNAUTHORIZED`: 인증이 필요한 작업을 시도함
+
+      **메시지 관련:**
+      - `MESSAGE_ERROR`: 메시지 처리 중 일반 오류 (데이터 없음, 사용자 없음, 권한 없음 등)
+      - `MESSAGE_REJECTED`: 금칙어가 포함되어 메시지가 차단됨
+      - `RATE_LIMIT_EXCEEDED`: 메시지 전송 횟수 제한을 초과했을 때
+      - `LOAD_ERROR`: 이전 메시지 로드 중 오류 발생
+
+      **참고:** 일부 핸들러에서는 `code` 없이 `message`만 반환할 수 있습니다.
+
+  joinRoomSuccess:
+    address: joinRoomSuccess
+    messages:
+      joinRoomSuccessResponse:
+        $ref: '#/components/messages/JoinRoomSuccessResponse'
+    description: 채팅방 입장 성공
+
+  joinRoomError:
+    address: joinRoomError
+    messages:
+      joinRoomErrorResponse:
+        $ref: '#/components/messages/JoinRoomErrorResponse'
+    description: |
+      채팅방 입장 실패.
+
+      **발생 가능한 에러:**
+      - `UNAUTHORIZED`: 인증되지 않은 사용자
+      - `USER_NOT_FOUND`: 사용자를 찾을 수 없음
+      - `ROOM_NOT_FOUND`: 채팅방을 찾을 수 없음
+      - `JOIN_ROOM_ERROR`: 기타 채팅방 입장 오류
+
+  previousMessagesLoaded:
+    address: previousMessagesLoaded
+    messages:
+      previousMessagesLoadedResponse:
+        $ref: '#/components/messages/PreviousMessagesLoadedResponse'
+    description: 이전 메시지 로드 완료
+
+  messageLoadStart:
+    address: messageLoadStart
+    messages:
+      messageLoadStartResponse:
+        $ref: '#/components/messages/MessageLoadStartResponse'
+    description: 메시지 로드 시작
+
+  participantsUpdate:
+    address: participantsUpdate
+    messages:
+      participantsUpdateResponse:
+        $ref: '#/components/messages/ParticipantsUpdateResponse'
+    description: 참가자 업데이트
+
+  roomCreated:
+    address: roomCreated
+    messages:
+      roomCreatedResponse:
+        $ref: '#/components/messages/RoomResponse'
+    description: 채팅방 생성 알림
+
+  roomUpdated:
+    address: roomUpdated
+    messages:
+      roomUpdatedResponse:
+        $ref: '#/components/messages/RoomResponse'
+    description: 채팅방 정보 업데이트
+
+  roomDeleted:
+    address: roomDeleted
+    messages:
+      roomDeletedResponse:
+        $ref: '#/components/messages/RoomDeletedResponse'
+    description: 채팅방 삭제 알림
+
+  userLeft:
+    address: userLeft
+    messages:
+      userLeftResponse:
+        $ref: '#/components/messages/UserLeftResponse'
+    description: 사용자 퇴장 알림
+
+  messagesRead:
+    address: messagesRead
+    messages:
+      messagesReadResponse:
+        $ref: '#/components/messages/MessagesReadResponse'
+    description: 메시지 읽음 상태 업데이트
+
+  messageReactionUpdate:
+    address: messageReactionUpdate
+    messages:
+      messageReactionUpdateResponse:
+        $ref: '#/components/messages/MessageReactionUpdateResponse'
+    description: 메시지 리액션 업데이트
+
+  duplicateLogin:
+    address: duplicate_login
+    messages:
+      duplicateLoginResponse:
+        $ref: '#/components/messages/DuplicateLoginResponse'
+    description: 중복 로그인 감지
+
+  sessionEnded:
+    address: session_ended
+    messages:
+      sessionEndedResponse:
+        $ref: '#/components/messages/SessionEndedResponse'
+    description: 세션 종료 알림
+
+  # ============================================
+  # AI Streaming Events
+  # ============================================
+
+  aiMessageStart:
+    address: aiMessageStart
+    messages:
+      aiMessageStartResponse:
+        $ref: '#/components/messages/AiMessageStartResponse'
+    description: AI 스트리밍 시작
+
+  aiMessageChunk:
+    address: aiMessageChunk
+    messages:
+      aiMessageChunkResponse:
+        $ref: '#/components/messages/AiMessageChunkResponse'
+    description: AI 스트리밍 청크
+
+  aiMessageComplete:
+    address: aiMessageComplete
+    messages:
+      aiMessageCompleteResponse:
+        $ref: '#/components/messages/AiMessageCompleteResponse'
+    description: AI 스트리밍 완료
+
+  aiMessageError:
+    address: aiMessageError
+    messages:
+      aiMessageErrorResponse:
+        $ref: '#/components/messages/AiMessageErrorResponse'
+    description: AI 스트리밍 에러
+
+operations:
+  # Client → Server Operations
+  sendChatMessage:
+    action: send
+    channel:
+      $ref: '#/channels/chatMessage'
+    summary: 채팅 메시지 전송
+    description: |
+      클라이언트가 채팅 메시지를 서버로 전송합니다.
+
+      **예외 응답 (error 이벤트):**
+      - `MESSAGE_ERROR`: 메시지 데이터 없음, 사용자 없음, 채팅방 권한 없음, 파일 오류
+      - `SESSION_EXPIRED`: 세션 만료
+      - `MESSAGE_REJECTED`: 금칙어 포함
+
+  sendJoinRoom:
+    action: send
+    channel:
+      $ref: '#/channels/joinRoom'
+    summary: 채팅방 입장
+    description: |
+      클라이언트가 특정 채팅방에 입장합니다.
+
+      **예외 응답 (joinRoomError 이벤트):**
+      - `UNAUTHORIZED`: 인증되지 않은 사용자
+      - `USER_NOT_FOUND`: 사용자를 찾을 수 없음
+      - `ROOM_NOT_FOUND`: 채팅방을 찾을 수 없음
+      - `JOIN_ROOM_ERROR`: 기타 입장 오류
+
+  sendLeaveRoom:
+    action: send
+    channel:
+      $ref: '#/channels/leaveRoom'
+    summary: 채팅방 퇴장
+    description: |
+      클라이언트가 특정 채팅방에서 퇴장합니다.
+
+      **예외 응답 (error 이벤트):**
+      - message만 반환: "Unauthorized", "채팅방 퇴장 중 오류가 발생했습니다."
+
+  sendFetchPreviousMessages:
+    action: send
+    channel:
+      $ref: '#/channels/fetchPreviousMessages'
+    summary: 이전 메시지 로드 요청
+    description: |
+      클라이언트가 이전 메시지를 요청합니다.
+
+      **예외 응답 (error 이벤트):**
+      - `UNAUTHORIZED`: 인증이 필요합니다
+      - `LOAD_ERROR`: 채팅방 권한 없음, 메시지 로드 중 오류
+
+  sendMarkMessagesAsRead:
+    action: send
+    channel:
+      $ref: '#/channels/markMessagesAsRead'
+    summary: 메시지 읽음 처리
+    description: |
+      클라이언트가 메시지를 읽음으로 표시합니다.
+
+      **예외 응답 (error 이벤트):**
+      - message만 반환: "Unauthorized", "Invalid room", "User not found", "Room access denied", "읽음 상태 업데이트 중 오류가 발생했습니다."
+
+  sendMessageReaction:
+    action: send
+    channel:
+      $ref: '#/channels/messageReaction'
+    summary: 메시지 리액션 추가/제거
+    description: |
+      클라이언트가 메시지에 리액션을 추가하거나 제거합니다.
+
+      **예외 응답 (error 이벤트):**
+      - message만 반환: "Unauthorized", "메시지를 찾을 수 없습니다.", "지원하지 않는 리액션 타입입니다.", "리액션 처리 중 오류가 발생했습니다."
+
+  # Server → Client Operations
+  receiveMessage:
+    action: receive
+    channel:
+      $ref: '#/channels/message'
+    summary: 새로운 메시지 수신
+    description: 서버가 새로운 메시지를 브로드캐스트합니다.
+
+  receiveError:
+    action: receive
+    channel:
+      $ref: '#/channels/error'
+    summary: 에러 수신
+    description: 서버가 에러를 클라이언트에게 전송합니다.
+
+  receiveJoinRoomSuccess:
+    action: receive
+    channel:
+      $ref: '#/channels/joinRoomSuccess'
+    summary: 채팅방 입장 성공 수신
+    description: 서버가 채팅방 입장 성공을 알립니다.
+
+  receiveJoinRoomError:
+    action: receive
+    channel:
+      $ref: '#/channels/joinRoomError'
+    summary: 채팅방 입장 실패 수신
+    description: 서버가 채팅방 입장 실패를 알립니다.
+
+  receivePreviousMessagesLoaded:
+    action: receive
+    channel:
+      $ref: '#/channels/previousMessagesLoaded'
+    summary: 이전 메시지 로드 완료 수신
+    description: 서버가 이전 메시지 로드 완료를 알립니다.
+
+  receiveMessageLoadStart:
+    action: receive
+    channel:
+      $ref: '#/channels/messageLoadStart'
+    summary: 메시지 로드 시작 수신
+    description: 서버가 메시지 로드 시작을 알립니다.
+
+  receiveParticipantsUpdate:
+    action: receive
+    channel:
+      $ref: '#/channels/participantsUpdate'
+    summary: 참가자 업데이트 수신
+    description: 서버가 참가자 목록 업데이트를 알립니다.
+
+  receiveRoomCreated:
+    action: receive
+    channel:
+      $ref: '#/channels/roomCreated'
+    summary: 채팅방 생성 알림 수신
+    description: 서버가 새로운 채팅방 생성을 알립니다.
+
+  receiveRoomUpdated:
+    action: receive
+    channel:
+      $ref: '#/channels/roomUpdated'
+    summary: 채팅방 업데이트 수신
+    description: 서버가 채팅방 정보 업데이트를 알립니다.
+
+  receiveRoomDeleted:
+    action: receive
+    channel:
+      $ref: '#/channels/roomDeleted'
+    summary: 채팅방 삭제 알림 수신
+    description: 서버가 채팅방 삭제를 알립니다.
+
+  receiveUserLeft:
+    action: receive
+    channel:
+      $ref: '#/channels/userLeft'
+    summary: 사용자 퇴장 알림 수신
+    description: 서버가 사용자 퇴장을 알립니다.
+
+  receiveMessagesRead:
+    action: receive
+    channel:
+      $ref: '#/channels/messagesRead'
+    summary: 메시지 읽음 상태 업데이트 수신
+    description: 서버가 메시지 읽음 상태를 알립니다.
+
+  receiveMessageReactionUpdate:
+    action: receive
+    channel:
+      $ref: '#/channels/messageReactionUpdate'
+    summary: 메시지 리액션 업데이트 수신
+    description: 서버가 메시지 리액션 업데이트를 알립니다.
+
+  receiveDuplicateLogin:
+    action: receive
+    channel:
+      $ref: '#/channels/duplicateLogin'
+    summary: 중복 로그인 감지 수신
+    description: 서버가 중복 로그인을 감지했음을 알립니다.
+
+  receiveSessionEnded:
+    action: receive
+    channel:
+      $ref: '#/channels/sessionEnded'
+    summary: 세션 종료 알림 수신
+    description: 서버가 세션 종료를 알립니다.
+
+  receiveAiMessageStart:
+    action: receive
+    channel:
+      $ref: '#/channels/aiMessageStart'
+    summary: AI 메시지 스트리밍 시작 수신
+    description: 서버가 AI 메시지 스트리밍 시작을 알립니다.
+
+  receiveAiMessageChunk:
+    action: receive
+    channel:
+      $ref: '#/channels/aiMessageChunk'
+    summary: AI 메시지 청크 수신
+    description: 서버가 AI 메시지 청크를 전송합니다.
+
+  receiveAiMessageComplete:
+    action: receive
+    channel:
+      $ref: '#/channels/aiMessageComplete'
+    summary: AI 메시지 완료 수신
+    description: 서버가 AI 메시지 스트리밍 완료를 알립니다.
+
+  receiveAiMessageError:
+    action: receive
+    channel:
+      $ref: '#/channels/aiMessageError'
+    summary: AI 메시지 에러 수신
+    description: 서버가 AI 메시지 에러를 알립니다.
+
+components:
+  messages:
+    # ============================================
+    # Client → Server Payloads
+    # ============================================
+
+    ChatMessagePayload:
+      name: ChatMessage
+      title: 채팅 메시지
+      summary: 채팅 메시지 전송 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ChatMessageRequest'
+
+    JoinRoomPayload:
+      name: JoinRoom
+      title: 채팅방 입장
+      summary: 채팅방 입장 페이로드
+      contentType: application/json
+      payload:
+        type: string
+        description: 입장할 채팅방 ID
+        example: '507f1f77bcf86cd799439011'
+
+    LeaveRoomPayload:
+      name: LeaveRoom
+      title: 채팅방 퇴장
+      summary: 채팅방 퇴장 페이로드
+      contentType: application/json
+      payload:
+        type: string
+        description: 퇴장할 채팅방 ID
+        example: '507f1f77bcf86cd799439011'
+
+    FetchPreviousMessagesPayload:
+      name: FetchPreviousMessages
+      title: 이전 메시지 로드 요청
+      summary: 이전 메시지 로드 요청 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/FetchMessagesRequest'
+
+    MarkMessagesAsReadPayload:
+      name: MarkMessagesAsRead
+      title: 메시지 읽음 처리
+      summary: 메시지 읽음 처리 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/MarkAsReadRequest'
+
+    MessageReactionPayload:
+      name: MessageReaction
+      title: 메시지 리액션
+      summary: 메시지 리액션 추가/제거 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/MessageReactionRequest'
+
+    # ============================================
+    # Server → Client Payloads
+    # ============================================
+
+    MessageResponse:
+      name: Message
+      title: 메시지 응답
+      summary: 새로운 메시지 브로드캐스트 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/MessageResponse'
+
+    ErrorResponse:
+      name: Error
+      title: 에러 응답
+      summary: 에러 알림 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ErrorPayload'
+
+    JoinRoomSuccessResponse:
+      name: JoinRoomSuccess
+      title: 채팅방 입장 성공
+      summary: 채팅방 입장 성공 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/JoinRoomSuccessResponse'
+
+    JoinRoomErrorResponse:
+      name: JoinRoomError
+      title: 채팅방 입장 실패
+      summary: 채팅방 입장 실패 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          code:
+            type: string
+            description: |
+              에러 코드 (optional - 일부 응답에서는 제공되지 않을 수 있음)
+              - `UNAUTHORIZED`: 인증되지 않은 사용자
+              - `USER_NOT_FOUND`: 사용자를 찾을 수 없음
+              - `ROOM_NOT_FOUND`: 채팅방을 찾을 수 없음
+              - `JOIN_ROOM_ERROR`: 기타 채팅방 입장 오류
+            example: ROOM_NOT_FOUND
+          message:
+            type: string
+            description: 에러 메시지
+            example: 채팅방을 찾을 수 없습니다.
+        required:
+          - message
+
+    PreviousMessagesLoadedResponse:
+      name: PreviousMessagesLoaded
+      title: 이전 메시지 로드 완료
+      summary: 이전 메시지 로드 완료 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/FetchMessagesResponse'
+
+    MessageLoadStartResponse:
+      name: MessageLoadStart
+      title: 메시지 로드 시작
+      summary: 메시지 로드 시작 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        description: 빈 페이로드
+
+    ParticipantsUpdateResponse:
+      name: ParticipantsUpdate
+      title: 참가자 업데이트
+      summary: 참가자 목록 업데이트 페이로드
+      contentType: application/json
+      payload:
+        type: array
+        items:
+          $ref: '#/components/schemas/UserResponse'
+
+    RoomResponse:
+      name: RoomResponse
+      title: 채팅방 응답
+      summary: 채팅방 정보 페이로드
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/RoomResponse'
+
+    RoomDeletedResponse:
+      name: RoomDeleted
+      title: 채팅방 삭제
+      summary: 채팅방 삭제 페이로드
+      contentType: application/json
+      payload:
+        type: string
+        description: 삭제된 채팅방 ID
+        example: '507f1f77bcf86cd799439011'
+
+    UserLeftResponse:
+      name: UserLeft
+      title: 사용자 퇴장
+      summary: 사용자 퇴장 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          userId:
+            type: string
+            description: 퇴장한 사용자 ID
+          name:
+            type: string
+            description: 퇴장한 사용자 이름
+        required:
+          - userId
+          - name
+
+    MessagesReadResponse:
+      name: MessagesRead
+      title: 메시지 읽음 상태 업데이트
+      summary: 메시지 읽음 상태 업데이트 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          userId:
+            type: string
+            description: 읽은 사용자 ID
+          messageIds:
+            type: array
+            items:
+              type: string
+            description: 읽은 메시지 ID 목록
+        required:
+          - userId
+          - messageIds
+
+    MessageReactionUpdateResponse:
+      name: MessageReactionUpdate
+      title: 메시지 리액션 업데이트
+      summary: 메시지 리액션 업데이트 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          messageId:
+            type: string
+            description: 메시지 ID
+          reactions:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
+            description: 리액션 맵 (이모지 -> 사용자 ID 배열)
+        required:
+          - messageId
+          - reactions
+
+    DuplicateLoginResponse:
+      name: DuplicateLogin
+      title: 중복 로그인
+      summary: 중복 로그인 감지 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            description: 중복 로그인 유형
+          deviceInfo:
+            type: string
+            description: 디바이스 정보
+          ipAddress:
+            type: string
+            description: IP 주소
+          timestamp:
+            type: integer
+            format: int64
+            description: 타임스탬프 (milliseconds)
+        required:
+          - type
+
+    SessionEndedResponse:
+      name: SessionEnded
+      title: 세션 종료
+      summary: 세션 종료 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          reason:
+            type: string
+            description: 종료 사유
+          message:
+            type: string
+            description: 종료 메시지
+        required:
+          - reason
+          - message
+
+    # ============================================
+    # AI Streaming Payloads
+    # ============================================
+
+    AiMessageStartResponse:
+      name: AiMessageStart
+      title: AI 메시지 시작
+      summary: AI 스트리밍 시작 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          messageId:
+            type: string
+            description: 메시지 ID
+          aiType:
+            type: string
+            enum: [CLAUDE, GEMINI, OPENAI]
+            description: AI 타입
+          timestamp:
+            type: integer
+            format: int64
+            description: 시작 시간 (milliseconds)
+        required:
+          - messageId
+          - aiType
+          - timestamp
+
+    AiMessageChunkResponse:
+      name: AiMessageChunk
+      title: AI 메시지 청크
+      summary: AI 스트리밍 청크 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          messageId:
+            type: string
+            description: 메시지 ID
+          currentChunk:
+            type: string
+            description: 현재 청크
+          fullContent:
+            type: string
+            description: 전체 내용 (누적)
+          isCodeBlock:
+            type: boolean
+            description: 코드 블록 여부
+          timestamp:
+            type: integer
+            format: int64
+            description: 타임스탬프
+          aiType:
+            type: string
+            enum: [CLAUDE, GEMINI, OPENAI]
+            description: AI 타입
+          isComplete:
+            type: boolean
+            description: 완료 여부
+        required:
+          - messageId
+          - fullContent
+          - isCodeBlock
+          - isComplete
+
+    AiMessageCompleteResponse:
+      name: AiMessageComplete
+      title: AI 메시지 완료
+      summary: AI 스트리밍 완료 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          messageId:
+            type: string
+            description: 임시 메시지 ID
+          _id:
+            type: string
+            description: 저장된 메시지 ID
+          content:
+            type: string
+            description: 완료된 메시지 내용
+          aiType:
+            type: string
+            enum: [CLAUDE, GEMINI, OPENAI]
+            description: AI 타입
+          timestamp:
+            type: integer
+            format: int64
+            description: 완료 시간
+          isComplete:
+            type: boolean
+            description: 완료 여부
+          query:
+            type: string
+            description: 원본 쿼리
+          reactions:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
+            description: 리액션 맵
+        required:
+          - _id
+          - content
+          - aiType
+          - timestamp
+
+    AiMessageErrorResponse:
+      name: AiMessageError
+      title: AI 메시지 에러
+      summary: AI 스트리밍 에러 페이로드
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          messageId:
+            type: string
+            description: 메시지 ID
+          error:
+            type: string
+            description: 에러 메시지
+          aiType:
+            type: string
+            enum: [CLAUDE, GEMINI, OPENAI]
+            description: AI 타입
+        required:
+          - messageId
+          - error
+          - aiType
+
+  schemas:
+    # ============================================
+    # Request DTOs
+    # ============================================
+
+    ChatMessageRequest:
+      type: object
+      properties:
+        room:
+          type: string
+          description: 채팅방 ID
+          example: '507f1f77bcf86cd799439011'
+        type:
+          type: string
+          enum: [text, file]
+          description: 메시지 타입
+          default: text
+        content:
+          type: string
+          description: 메시지 내용
+          example: '안녕하세요!'
+        msg:
+          type: string
+          description: 메시지 내용 (호환성)
+        fileData:
+          type: object
+          description: 파일 데이터 (type이 file인 경우)
+          properties:
+            _id:
+              type: string
+              description: 파일 ID
+          additionalProperties: true
+      required:
+        - room
+
+    FetchMessagesRequest:
+      type: object
+      properties:
+        roomId:
+          type: string
+          description: 채팅방 ID
+          example: '507f1f77bcf86cd799439011'
+        limit:
+          type: integer
+          description: 가져올 메시지 개수
+          default: 30
+          example: 30
+        before:
+          type: integer
+          format: int64
+          description: 이전 메시지 타임스탬프 (milliseconds)
+          example: 1699999999999
+      required:
+        - roomId
+
+    MarkAsReadRequest:
+      type: object
+      properties:
+        roomId:
+          type: string
+          description: 채팅방 ID
+        messageIds:
+          type: array
+          items:
+            type: string
+          description: 읽은 메시지 ID 목록
+      required:
+        - messageIds
+
+    MessageReactionRequest:
+      type: object
+      properties:
+        messageId:
+          type: string
+          description: 메시지 ID
+        reaction:
+          type: string
+          description: 리액션 이모지
+          example: '👍'
+        type:
+          type: string
+          enum: [add, remove]
+          description: 리액션 타입 (추가/제거)
+          example: add
+        emoji:
+          type: string
+          description: 이모지 (호환성)
+      required:
+        - messageId
+        - type
+
+    # ============================================
+    # Response DTOs
+    # ============================================
+
+    MessageResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: 메시지 ID
+          example: '507f1f77bcf86cd799439011'
+        room:
+          type: string
+          description: 채팅방 ID
+        content:
+          type: string
+          description: 메시지 내용
+        sender:
+          $ref: '#/components/schemas/UserResponse'
+        type:
+          type: string
+          enum: [text, file, system, ai]
+          description: 메시지 타입
+        file:
+          $ref: '#/components/schemas/FileResponse'
+        aiType:
+          type: string
+          enum: [CLAUDE, GEMINI, OPENAI]
+          description: AI 타입 (AI 메시지인 경우)
+        timestamp:
+          type: integer
+          format: int64
+          description: 타임스탬프 (milliseconds)
+        reactions:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: 리액션 맵 (이모지 -> 사용자 ID 배열)
+        readers:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+              readAt:
+                type: integer
+                format: int64
+          description: 읽음 정보
+        metadata:
+          type: object
+          additionalProperties: true
+          description: 메타데이터 (자유 형식)
+      required:
+        - _id
+        - room
+        - content
+        - type
+        - timestamp
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 사용자 ID
+          example: '507f1f77bcf86cd799439011'
+        name:
+          type: string
+          description: 사용자 이름
+          example: '홍길동'
+        email:
+          type: string
+          format: email
+          description: 이메일
+          example: 'user@example.com'
+        profileImage:
+          type: string
+          description: 프로필 이미지 URL
+          example: 'https://example.com/profile.jpg'
+      required:
+        - id
+        - name
+        - email
+
+    FileResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: 파일 ID
+        filename:
+          type: string
+          description: 저장된 파일명
+        originalname:
+          type: string
+          description: 원본 파일명
+        mimetype:
+          type: string
+          description: MIME 타입
+          example: 'image/png'
+        size:
+          type: integer
+          format: int64
+          description: 파일 크기 (bytes)
+        user:
+          type: string
+          description: 업로드한 사용자 ID
+        uploadDate:
+          type: string
+          format: date-time
+          description: 업로드 날짜
+      required:
+        - _id
+        - filename
+        - originalname
+        - mimetype
+        - size
+
+    JoinRoomSuccessResponse:
+      type: object
+      properties:
+        roomId:
+          type: string
+          description: 채팅방 ID
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+          description: 참가자 목록
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageResponse'
+          description: 초기 메시지 목록
+        hasMore:
+          type: boolean
+          description: 더 많은 메시지 존재 여부
+        activeStreams:
+          type: array
+          items:
+            type: object
+          description: 활성 스트림 목록
+      required:
+        - roomId
+        - participants
+        - messages
+        - hasMore
+
+    FetchMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageResponse'
+          description: 메시지 목록
+        hasMore:
+          type: boolean
+          description: 더 많은 메시지 존재 여부
+      required:
+        - messages
+        - hasMore
+
+    RoomResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: 채팅방 ID
+        name:
+          type: string
+          description: 채팅방 이름
+        hasPassword:
+          type: boolean
+          description: 비밀번호 설정 여부
+        creator:
+          $ref: '#/components/schemas/UserResponse'
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+          description: 참가자 목록
+        participantsCount:
+          type: integer
+          description: 참가자 수
+        createdAt:
+          type: string
+          format: date-time
+          description: 생성 날짜
+        isCreator:
+          type: boolean
+          description: 현재 사용자가 생성자인지 여부
+      required:
+        - _id
+        - name
+        - hasPassword
+
+    ErrorPayload:
+      type: object
+      properties:
+        code:
+          type: string
+          description: |
+            에러 코드 (optional - 일부 응답에서는 제공되지 않을 수 있음).
+
+            **인증/세션 관련:**
+            - `SESSION_EXPIRED`: 세션이 만료되었거나 인증 정보가 유효하지 않음
+            - `UNAUTHORIZED`: 인증이 필요한 작업을 시도함
+
+            **메시지 관련:**
+            - `MESSAGE_ERROR`: 메시지 저장/전송 관련 일반 오류 (데이터 없음, 사용자 없음, 권한 없음, 파일 오류 등)
+            - `MESSAGE_REJECTED`: 금칙어가 포함되어 메시지가 거부됨
+            - `RATE_LIMIT_EXCEEDED`: 메시지 전송 횟수 제한 초과 (1분에 10000개)
+            - `LOAD_ERROR`: 이전 메시지 로드 중 오류 발생
+
+            **메시지 읽음 처리 관련:**
+            - 에러 코드 없이 message만 반환: Unauthorized, Invalid room, User not found, Room access denied 등
+
+            **메시지 리액션 관련:**
+            - 에러 코드 없이 message만 반환: Unauthorized, 메시지를 찾을 수 없습니다, 지원하지 않는 리액션 타입입니다 등
+
+            **채팅방 퇴장 관련:**
+            - 에러 코드 없이 message만 반환: Unauthorized, 채팅방 퇴장 중 오류가 발생했습니다 등
+          example: MESSAGE_REJECTED
+        message:
+          type: string
+          description: 에러 메시지. 에러 코드가 없는 경우 이 필드만 제공됩니다.
+          example: 메시지 전송 중 오류가 발생했습니다.
+        retryAfter:
+          type: integer
+          format: int64
+          description: Rate limit 초과 시, 재시도 가능한 시간 (초). RATE_LIMIT_EXCEEDED 에러에만 포함됨.
+          example: 30
+      required:
+        - message
