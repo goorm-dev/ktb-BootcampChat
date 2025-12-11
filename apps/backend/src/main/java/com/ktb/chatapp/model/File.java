@@ -24,14 +24,18 @@ public class File {
     private String id;
 
     @Indexed
-    private String filename;
+    private String filename;     // 우리 서비스에서 사용하는 "파일명" (safeFileName)
 
-    private String originalname;
+    private String originalname; // 사용자가 올린 원래 파일명
 
     private String mimetype;
 
     private long size;
 
+    /**
+     * 예전: 로컬 디스크 절대 경로
+     * 지금: S3 Object Key (예: uploads/2025/12/11/xxxxxx.png)
+     */
     private String path;
 
     @Field("user")

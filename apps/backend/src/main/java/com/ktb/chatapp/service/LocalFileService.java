@@ -9,55 +9,74 @@ import com.ktb.chatapp.repository.RoomRepository;
 import com.ktb.chatapp.util.FileUtil;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.net.URL;
 import java.time.LocalDateTime;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.S3Utilities;
 
 @Slf4j
 @Service
 public class LocalFileService implements FileService {
 
-    private final Path fileStorageLocation;
     private final FileRepository fileRepository;
     private final MessageRepository messageRepository;
     private final RoomRepository roomRepository;
+    private final S3Client s3Client;
 
-    public LocalFileService(@Value("${file.upload-dir:uploads}") String uploadDir,
-                      FileRepository fileRepository,
-                      MessageRepository messageRepository,
-                      RoomRepository roomRepository) {
+    private final String bucketName;
+    private final String baseDir;
+
+    public LocalFileService(
+            // 예전에는 로컬 디렉토리 경로였지만, 지금은 사용하지 않음 (호환용으로만 남겨둠)
+            @Value("${file.upload-dir:uploads}") String uploadDir,
+            @Value("${cloud.aws.s3.bucket}") String bucketName,
+            @Value("${cloud.aws.s3.base-dir:uploads}") String baseDir,
+            FileRepository fileRepository,
+            MessageRepository messageRepository,
+            RoomRepository roomRepository,
+            S3Client s3Client
+    ) {
         this.fileRepository = fileRepository;
         this.messageRepository = messageRepository;
         this.roomRepository = roomRepository;
-        this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
+        this.s3Client = s3Client;
+        this.bucketName = bucketName;
+        this.baseDir = baseDir;
     }
-    
+
     @PostConstruct
     public void init() {
-        try {
-            Files.createDirectories(this.fileStorageLocation);
-        } catch (Exception ex) {
-            throw new RuntimeException("Could not create the directory where the uploaded files will be stored.", ex);
+        // 예전에는 로컬 디렉토리 생성하던 곳
+        log.info("S3 FileService 초기화 - bucket: {}, baseDir: {}", bucketName, baseDir);
+    }
+
+    private String buildKey(String safeFileName) {
+        // 간단히 baseDir/safeFileName 형식으로 저장
+        if (baseDir == null || baseDir.isBlank()) {
+            return safeFileName;
         }
+        return baseDir.replaceFirst("/+$", "") + "/" + safeFileName;
     }
 
     @Override
     public FileUploadResult uploadFile(MultipartFile file, String uploaderId) {
         try {
-            // 파일 보안 검증
+            // 1. 파일 보안 검증
             FileUtil.validateFile(file);
 
-            // 안전한 파일명 생성
+            // 2. 파일명 정리 및 safeFileName 생성
             String originalFilename = file.getOriginalFilename();
             if (originalFilename == null) {
                 originalFilename = "file";
@@ -65,25 +84,31 @@ public class LocalFileService implements FileService {
             originalFilename = StringUtils.cleanPath(originalFilename);
             String safeFileName = FileUtil.generateSafeFileName(originalFilename);
 
-            // 파일 경로 보안 검증
-            Path filePath = fileStorageLocation.resolve(safeFileName);
-            FileUtil.validatePath(filePath, fileStorageLocation);
+            // 3. S3 Object Key 생성
+            String key = buildKey(safeFileName);
 
-            // 파일 저장
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            // 4. S3 업로드
+            PutObjectRequest putRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(file.getContentType())
+                    .contentLength(file.getSize())
+                    .build();
 
-            log.info("파일 저장 완료: {}", safeFileName);
+            s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
-            // 원본 파일명 정규화
+            log.info("S3 업로드 완료: bucket={}, key={}", bucketName, key);
+
+            // 5. 원본 파일명 정규화
             String normalizedOriginalname = FileUtil.normalizeOriginalFilename(originalFilename);
 
-            // 메타데이터 생성 및 저장
+            // 6. 메타데이터 MongoDB 저장
             File fileEntity = File.builder()
                     .filename(safeFileName)
                     .originalname(normalizedOriginalname)
                     .mimetype(file.getContentType())
                     .size(file.getSize())
-                    .path(filePath.toString())
+                    .path(key)               // 여기에는 S3 Object Key 저장
                     .user(uploaderId)
                     .uploadDate(LocalDateTime.now())
                     .build();
@@ -96,7 +121,7 @@ public class LocalFileService implements FileService {
                     .build();
 
         } catch (Exception e) {
-            log.error("파일 업로드 처리 실패: {}", e.getMessage(), e);
+            log.error("S3 파일 업로드 처리 실패: {}", e.getMessage(), e);
             throw new RuntimeException("파일 업로드에 실패했습니다: " + e.getMessage(), e);
         }
     }
@@ -104,17 +129,10 @@ public class LocalFileService implements FileService {
     @Override
     public String storeFile(MultipartFile file, String subDirectory) {
         try {
-            // 파일 보안 검증
+            // 1. 파일 보안 검증
             FileUtil.validateFile(file);
 
-            // 서브디렉토리 생성 (예: profiles)
-            Path targetLocation = fileStorageLocation;
-            if (subDirectory != null && !subDirectory.trim().isEmpty()) {
-                targetLocation = fileStorageLocation.resolve(subDirectory);
-                Files.createDirectories(targetLocation);
-            }
-
-            // 안전한 파일명 생성
+            // 2. 파일명 및 key 생성
             String originalFilename = file.getOriginalFilename();
             if (originalFilename == null) {
                 originalFilename = "file";
@@ -122,24 +140,40 @@ public class LocalFileService implements FileService {
             originalFilename = StringUtils.cleanPath(originalFilename);
             String safeFileName = FileUtil.generateSafeFileName(originalFilename);
 
-            // 파일 경로 보안 검증
-            Path filePath = targetLocation.resolve(safeFileName);
-            FileUtil.validatePath(filePath, targetLocation);
-
-            // 파일 저장
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            log.info("파일 저장 완료: {}", safeFileName);
-
-            // URL 반환 (서브디렉토리 포함)
+            String keyBase = baseDir;
             if (subDirectory != null && !subDirectory.trim().isEmpty()) {
-                return "/api/uploads/" + subDirectory + "/" + safeFileName;
-            } else {
-                return "/api/uploads/" + safeFileName;
+                keyBase = baseDir.replaceFirst("/+$", "") + "/" + subDirectory.replaceFirst("^/+", "");
             }
+            String key = (keyBase == null || keyBase.isBlank())
+                    ? safeFileName
+                    : keyBase.replaceFirst("/+$", "") + "/" + safeFileName;
+
+            // 3. S3 업로드
+            PutObjectRequest putRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(file.getContentType())
+                    .contentLength(file.getSize())
+                    .build();
+
+            s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+            log.info("S3 storeFile 업로드 완료: bucket={}, key={}", bucketName, key);
+
+            // 4. 접근용 URL 반환 (public 버킷 or CloudFront 전제)
+            S3Utilities utilities = s3Client.utilities();
+            URL url = utilities.getUrl(builder -> builder.bucket(bucketName).key(key));
+            return url.toExternalForm();
+
+            /*
+             * 만약 “/api/files/view/{filename}” 같은 백엔드 경로로만 접근시키고 싶다면
+             * 여기 대신:
+             *   return "/api/files/view/" + safeFileName;
+             * 로 바꾸고, 별도로 File 엔티티도 저장하는 형태로 확장하면 됨.
+             */
 
         } catch (IOException ex) {
-            log.error("파일 저장 실패: {}", ex.getMessage(), ex);
+            log.error("S3 storeFile 실패: {}", ex.getMessage(), ex);
             throw new RuntimeException("파일 저장에 실패했습니다: " + ex.getMessage(), ex);
         }
     }
@@ -147,11 +181,11 @@ public class LocalFileService implements FileService {
     @Override
     public Resource loadFileAsResource(String fileName, String requesterId) {
         try {
-            // 1. 파일 조회
+            // 1. 파일 메타데이터 조회
             File fileEntity = fileRepository.findByFilename(fileName)
                     .orElseThrow(() -> new RuntimeException("파일을 찾을 수 없습니다: " + fileName));
 
-            // 2. 메시지 조회 (파일과 메시지 연결 확인) - 효율적인 쿼리 메서드 사용
+            // 2. 메시지 조회 (파일과 메시지 연결 확인)
             Message message = messageRepository.findByFileId(fileEntity.getId())
                     .orElseThrow(() -> new RuntimeException("파일과 연결된 메시지를 찾을 수 없습니다"));
 
@@ -165,19 +199,30 @@ public class LocalFileService implements FileService {
                 throw new RuntimeException("파일에 접근할 권한이 없습니다");
             }
 
-            // 5. 파일 경로 검증 및 로드
-            Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
-            FileUtil.validatePath(filePath, this.fileStorageLocation);
+            // 5. S3에서 파일 로드
+            String key = (fileEntity.getPath() != null && !fileEntity.getPath().isBlank())
+                    ? fileEntity.getPath()
+                    : buildKey(fileEntity.getFilename());
 
-            Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists()) {
-                log.info("파일 로드 성공: {} (사용자: {})", fileName, requesterId);
-                return resource;
-            } else {
-                throw new RuntimeException("파일을 찾을 수 없습니다: " + fileName);
-            }
-        } catch (MalformedURLException ex) {
-            log.error("파일 로드 실패: {}", ex.getMessage(), ex);
+            GetObjectRequest getRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            ResponseInputStream<?> s3Object = s3Client.getObject(getRequest);
+
+            Resource resource = new InputStreamResource(s3Object) {
+                @Override
+                public String getFilename() {
+                    return fileEntity.getFilename();
+                }
+            };
+
+            log.info("S3 파일 로드 성공: key={} (사용자: {})", key, requesterId);
+            return resource;
+
+        } catch (Exception ex) {
+            log.error("S3 파일 로드 실패: {}", ex.getMessage(), ex);
             throw new RuntimeException("파일을 찾을 수 없습니다: " + fileName, ex);
         }
     }
@@ -193,18 +238,26 @@ public class LocalFileService implements FileService {
                 throw new RuntimeException("파일을 삭제할 권한이 없습니다.");
             }
 
-            // 물리적 파일 삭제
-            Path filePath = this.fileStorageLocation.resolve(fileEntity.getFilename());
-            Files.deleteIfExists(filePath);
+            // 1. S3에서 객체 삭제
+            String key = (fileEntity.getPath() != null && !fileEntity.getPath().isBlank())
+                    ? fileEntity.getPath()
+                    : buildKey(fileEntity.getFilename());
 
-            // 데이터베이스에서 제거
+            DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            s3Client.deleteObject(deleteRequest);
+
+            // 2. MongoDB 메타데이터 삭제
             fileRepository.delete(fileEntity);
 
-            log.info("파일 삭제 완료: {} (사용자: {})", fileId, requesterId);
+            log.info("S3 파일 삭제 완료: fileId={}, key={}, user={}", fileId, key, requesterId);
             return true;
 
         } catch (Exception e) {
-            log.error("파일 삭제 실패: {}", e.getMessage(), e);
+            log.error("S3 파일 삭제 실패: {}", e.getMessage(), e);
             throw new RuntimeException("파일 삭제 중 오류가 발생했습니다.", e);
         }
     }
