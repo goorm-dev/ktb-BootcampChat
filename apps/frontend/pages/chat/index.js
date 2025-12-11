@@ -5,7 +5,6 @@ import { LockIcon, ErrorCircleIcon, NetworkIcon, RefreshOutlineIcon, GroupIcon }
 import { Button, Text, Badge, Callout, Box, VStack, HStack } from '@vapor-ui/core';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import * as Table from '@/components/Table';
-import socketService from '@/services/socket';
 import axiosInstance from '@/services/axios';
 import { withAuth, useAuth } from '@/contexts/AuthContext';
 
@@ -150,9 +149,6 @@ function ChatRoomsComponent() {
     { id: 'createdAt', desc: true }
   ]);
   const [joiningRoom, setJoiningRoom] = useState(false);
-
-  // Refs
-  const socketRef = useRef(null);
 
   const getRetryDelay = useCallback((retryCount) => {
     const delay = RETRY_CONFIG.baseDelay *
@@ -361,143 +357,6 @@ function ChatRoomsComponent() {
       };
     }
   }, [queryClient, roomsQueryKey, refetch]);
-
-  const prependRoomToCache = useCallback((newRoom) => {
-    queryClient.setQueryData(roomsQueryKey, (existing) => {
-      if (!existing?.pages?.length) return existing;
-      const [firstPage, ...restPages] = existing.pages;
-      const deduped = [newRoom, ...(firstPage.rooms || []).filter(room => room._id !== newRoom._id)];
-
-      return {
-        ...existing,
-        pages: [
-          {
-            ...firstPage,
-            rooms: deduped
-          },
-          ...restPages
-        ]
-      };
-    });
-  }, [queryClient, roomsQueryKey]);
-
-  const removeRoomFromCache = useCallback((roomId) => {
-    queryClient.setQueryData(roomsQueryKey, (existing) => {
-      if (!existing?.pages) return existing;
-      const pages = existing.pages.map((page) => ({
-        ...page,
-        rooms: (page.rooms || []).filter((room) => room._id !== roomId)
-      }));
-      return { ...existing, pages };
-    });
-  }, [queryClient, roomsQueryKey]);
-
-  const updateRoomInCache = useCallback((updatedRoom) => {
-    queryClient.setQueryData(roomsQueryKey, (existing) => {
-      if (!existing?.pages) return existing;
-
-      let found = false;
-      const pages = existing.pages.map((page) => {
-        if (!page.rooms?.length) return page;
-
-        const idx = page.rooms.findIndex((room) => room._id === updatedRoom._id);
-        if (idx === -1) return page;
-
-        const current = page.rooms[idx];
-        const merged = { ...current, ...updatedRoom };
-
-        // 변경사항 없으면 동일 참조 반환하여 불필요한 re-render 방지
-        const unchanged = Object.keys(merged).every((key) => merged[key] === current[key]);
-        if (unchanged) {
-          return page;
-        }
-
-        found = true;
-        const nextRooms = [...page.rooms];
-        nextRooms[idx] = merged;
-        return { ...page, rooms: nextRooms };
-      });
-
-      if (!found) return existing;
-      return { ...existing, pages };
-    });
-  }, [queryClient, roomsQueryKey]);
-
-  useEffect(() => {
-    if (!currentUser?.token) return;
-
-    let isSubscribed = true;
-
-    const connectSocket = async () => {
-      try {
-          //소켓 서비스 연결 코드
-        const socket = await socketService.connect({
-          auth: {
-            token: currentUser.token,
-            sessionId: currentUser.sessionId
-          }
-        }).catch(err => {
-          console.log('Socket connection error:', err);
-          router.push('/_error');
-        });
-
-        if (!isSubscribed || !socket) return;
-
-        socketRef.current = socket;
-
-
-        //핸들러
-          //chatRooms 페이지는 socket.io 이벤트 구독하고 있음.
-          //서버가 다음 이벤트를 보내면 UI가 자동으로 갱신됨.
-        const handlers = {
-          connect: () => {
-            setConnectionStatus(CONNECTION_STATUS.CONNECTED);
-            socket.emit('joinRoomList');
-          },
-          disconnect: (reason) => {
-            setConnectionStatus(CONNECTION_STATUS.DISCONNECTED);
-          },
-          error: (error) => {
-            setConnectionStatus(CONNECTION_STATUS.ERROR);
-          },
-          roomCreated: (newRoom) => {
-            prependRoomToCache(newRoom);
-          },
-          roomDeleted: (roomId) => {
-            removeRoomFromCache(roomId);
-          },
-          roomUpdated: (updatedRoom) => {
-            updateRoomInCache(updatedRoom);
-          }
-        };
-
-        Object.entries(handlers).forEach(([event, handler]) => {
-          socket.on(event, handler);
-        });
-
-      } catch (error) {
-        if (!isSubscribed) return;
-
-        if (error.message?.includes('Authentication required') ||
-            error.message?.includes('Invalid session')) {
-          // Auth error will be handled by the useAuth context
-        }
-
-        setConnectionStatus(CONNECTION_STATUS.ERROR);
-      }
-    };
-
-    //socket에 연결됨.
-    connectSocket();
-
-    return () => {
-      isSubscribed = false;
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-    };
-  }, [currentUser, prependRoomToCache, removeRoomFromCache, updateRoomInCache, router]);
 
   const handleJoinRoom = async (roomId) => {
     if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
