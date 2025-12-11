@@ -18,7 +18,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * Redis configuration for session and rate limit storage.
- * Provides high-performance in-memory storage with automatic TTL expiration.
+ * 👉 여기서는 "세션/JWT + 레이트리밋용 Redis A"만 사용한다.
  */
 @Slf4j
 @Configuration
@@ -34,7 +34,7 @@ public class RedisConfig {
     private String redisPassword;
 
     /**
-     * Configure Redis connection factory
+     * Configure Redis connection factory (Session / RateLimit Redis A)
      */
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
@@ -47,7 +47,7 @@ public class RedisConfig {
         }
 
         log.info("╔═══════════════════════════════════════════════════════════════════════════════╗");
-        log.info("║                           Redis Configuration                                  ║");
+        log.info("║                       Redis(A) Session Configuration                          ║");
         log.info("╠═══════════════════════════════════════════════════════════════════════════════╣");
         log.info("║  Host: {}:{}", redisHost, redisPort);
         log.info("║  Password: {}", redisPassword != null && !redisPassword.isEmpty() ? "***" : "none");
@@ -58,7 +58,7 @@ public class RedisConfig {
     }
 
     /**
-     * Configure StringRedisTemplate for operations
+     * Configure StringRedisTemplate for operations (Session Redis A)
      */
     @Bean
     public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {
@@ -66,7 +66,7 @@ public class RedisConfig {
     }
 
     /**
-     * Configure RedisTemplate for general purpose (String -> Object)
+     * Configure RedisTemplate for general purpose (String -> Object) on Redis A
      */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
