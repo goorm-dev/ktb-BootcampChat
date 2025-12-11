@@ -46,15 +46,27 @@ public class RedisConfig {
             config.setPassword(redisPassword);
         }
 
+        // Lettuce 연결 풀 설정 (대규모 동시 접속 대비)
+        io.lettuce.core.resource.ClientResources clientResources = io.lettuce.core.resource.DefaultClientResources.builder()
+                .ioThreadPoolSize(16)      // I/O 스레드 증가
+                .computationThreadPoolSize(16)  // 계산 스레드 증가
+                .build();
+
+        org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration clientConfig =
+                org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.builder()
+                .clientResources(clientResources)
+                .build();
+
         log.info("╔═══════════════════════════════════════════════════════════════════════════════╗");
         log.info("║                       Redis(A) Session Configuration                          ║");
         log.info("╠═══════════════════════════════════════════════════════════════════════════════╣");
         log.info("║  Host: {}:{}", redisHost, redisPort);
         log.info("║  Password: {}", redisPassword != null && !redisPassword.isEmpty() ? "***" : "none");
         log.info("║  Use Case: Session Storage + Rate Limiting                                    ║");
+        log.info("║  Lettuce Pool: IO Threads=16, Computation Threads=16                          ║");
         log.info("╚═══════════════════════════════════════════════════════════════════════════════╝");
 
-        return new LettuceConnectionFactory(config);
+        return new LettuceConnectionFactory(config, clientConfig);
     }
 
     /**

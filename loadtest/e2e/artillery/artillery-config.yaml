@@ -1,0 +1,18 @@
+config:
+  target: "{{ $env.BASE_URL }}"
+  phases:
+    - name: "phase 1"
+      duration: "{{ $env.PHASE1_DURATION }}"
+      arrivalCount: "{{ $env.PHASE1_ARRIVAL_COUNT }}"
+  processor: "./all-scenarios.js"
+  engines:
+    playwright:
+      launchOptions:
+        headless: true
+        slowMo: 100
+      contextOptions:
+        viewport: null
+
+scenarios:
+  - engine: playwright
+    flowFunction: allScenarios

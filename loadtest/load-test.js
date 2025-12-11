@@ -198,8 +198,11 @@ class LoadTester {
         auth: { token, sessionId },
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 3,
-        reconnectionDelay: 1000
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 30000,  // 30초 연결 타임아웃 (heavy 테스트용)
+        forceNew: true,  // 항상 새 연결 생성
+        upgrade: false   // polling->websocket 업그레이드 비활성화 (안정성 우선)
       });
 
       this.sockets.push(socket);

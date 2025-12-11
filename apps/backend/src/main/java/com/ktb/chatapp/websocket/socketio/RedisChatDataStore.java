@@ -7,8 +7,8 @@ import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
 
 /**
- * Redis B 기반 ChatDataStore 구현.
- * SocketIOConfig에서 주입해주는 RedissonClient(=Redis B)에
+ * Redis 기반 ChatDataStore 구현.
+ * SocketIOConfig에서 주입해주는 RedissonClient(Session과 동일한 Redis A)에
  * ConnectedUsers / UserRooms 같은 소켓 상태를 저장한다.
  */
 public class RedisChatDataStore implements ChatDataStore {
