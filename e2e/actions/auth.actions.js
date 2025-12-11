@@ -10,6 +10,7 @@ async function loginAction(page, credentials) {
   await page.getByTestId('login-email-input').fill(credentials.email);
   await page.getByTestId('login-password-input').fill(credentials.password);
   await page.getByTestId('login-submit-button').click();
+  await page.waitForURL(`${BASE_URL}/chat`);
 }
 
 /**
