@@ -2,6 +2,14 @@ import React, { useState, useEffect, useCallback, forwardRef } from 'react';
 import { Avatar } from '@vapor-ui/core';
 import { generateColorFromEmail, getContrastTextColor } from '@/utils/colorUtils';
 
+const SIZE_MAP = {
+  xs: 24,
+  sm: 32,
+  md: 40,
+  lg: 48,
+  xl: 64
+};
+
 /**
  * CustomAvatar 컴포넌트
  * 
@@ -31,6 +39,7 @@ const CustomAvatar = forwardRef(({
   // persistent 모드일 때만 상태 관리
   const [currentImage, setCurrentImage] = useState('');
   const [imageError, setImageError] = useState(false);
+  const avatarSizePx = SIZE_MAP[size] || SIZE_MAP.md;
 
   // 이메일 기반 배경색/텍스트 색상 생성
   const backgroundColor = generateColorFromEmail(user?.email);
@@ -132,6 +141,8 @@ const CustomAvatar = forwardRef(({
         backgroundColor,
         color,
         cursor: onClick ? 'pointer' : 'default',
+        width: avatarSizePx,
+        height: avatarSizePx,
         ...style
       }}
       {...props}
@@ -139,10 +150,19 @@ const CustomAvatar = forwardRef(({
       {finalImageUrl && (
         <Avatar.ImagePrimitive 
           onError={persistent ? handleImageError : undefined}
+          loading="lazy"
           alt={`${user?.name}'s profile`}
         />
       )}
-      <Avatar.FallbackPrimitive style={{ backgroundColor, color, fontWeight: '500' }}>
+      <Avatar.FallbackPrimitive
+        style={{
+          backgroundColor,
+          color,
+          fontWeight: '500',
+          width: '100%',
+          height: '100%'
+        }}
+      >
         {initial}
       </Avatar.FallbackPrimitive>
     </Avatar.Root>

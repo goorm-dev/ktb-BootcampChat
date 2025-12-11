@@ -27,8 +27,6 @@ const ChatRoomInfo = ({ room, connectionStatus }) => {
   const participants = room?.participants || [];
   const maxVisibleAvatars = 3;
   const remainingCount = Math.max(0, participants.length - maxVisibleAvatars);
-    console.log("participants:", participants);
-
 
   return (
     <Collapsible.Root>
@@ -39,6 +37,7 @@ const ChatRoomInfo = ({ room, connectionStatus }) => {
         paddingX="$400"
         paddingY="$100"
         className="bg-surface-200 relative"
+        style={{ minHeight: '64px' }}
       >
         {/* 왼쪽: 참여자 아바타 + 인원수 */}
         <Collapsible.Trigger

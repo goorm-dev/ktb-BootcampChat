@@ -4,9 +4,21 @@ import { Box, VStack, HStack, Button, Text, Callout, Card } from '@vapor-ui/core
 import { ErrorCircleOutlineIcon, NetworkIcon } from '@vapor-ui/icons';
 import { withAuth } from '../../contexts/AuthContext';
 import { useChatRoom } from '../../hooks/useChatRoom';
-import ChatMessages from '@/components/ChatMessages';
 import ChatInput from '@/components/ChatInput';
 import ChatRoomInfo from '@/components/ChatRoomInfo';
+
+// 메시지 영역은 무겁기 때문에 분리 로딩하여 초기 번들 크기 감소
+const ChatMessages = dynamic(() => import('@/components/ChatMessages'), {
+  ssr: false,
+  loading: () => (
+    <div className="d-flex align-items-center justify-content-center p-4">
+      <div className="spinner-border spinner-border-sm me-2" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+      <span>메시지 컴포넌트를 불러오는 중...</span>
+    </div>
+  )
+});
 
 const ChatPage = () => {
   const {
@@ -169,7 +181,8 @@ const ChatPage = () => {
       gap="$0"
       // width="100%"
       // maxWidth="1200px"
-      height="calc(100vh - 80px"
+      height="calc(100vh - 80px)"
+      minHeight="560px"
       margin="0 auto"
       style={{
         backgroundColor: 'var(--vapor-color-surface-normal)'

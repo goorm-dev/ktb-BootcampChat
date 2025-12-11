@@ -46,6 +46,8 @@ export const useChatRoom = () => {
   const initialLoadCompletedRef = useRef(false);
   const processedMessageIds = useRef(new Set());
   const loadMoreTimeoutRef = useRef(null);
+  const incomingMessageBufferRef = useRef([]);
+  const flushTimerRef = useRef(null);
 
   // Socket handling setup
   const {
@@ -115,6 +117,11 @@ export const useChatRoom = () => {
         clearTimeout(loadMoreTimeoutRef.current);
         loadMoreTimeoutRef.current = null;
       }
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+      incomingMessageBufferRef.current = [];
 
       // Reset refs
       processedMessageIds.current.clear();
@@ -255,14 +262,23 @@ export const useChatRoom = () => {
 
       processedMessageIds.current.add(message._id);
 
-      setMessages(prev => {
-        const isDuplicate = prev.some(msg => msg._id === message._id);
+      incomingMessageBufferRef.current.push(message);
 
-        if (isDuplicate) {
-          return prev;
-        }
-        return [...prev, message];
-      });
+      if (!flushTimerRef.current) {
+        flushTimerRef.current = setTimeout(() => {
+          flushTimerRef.current = null;
+          if (!incomingMessageBufferRef.current.length) return;
+
+          const batch = incomingMessageBufferRef.current;
+          incomingMessageBufferRef.current = [];
+
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(msg => msg._id));
+            const dedupedBatch = batch.filter(msg => !existingIds.has(msg._id));
+            return dedupedBatch.length ? [...prev, ...dedupedBatch] : prev;
+          });
+        }, 16); // 마이크로 배치로 리렌더 수 감소
+      }
     });
 
     // 이전 메시지 이벤트 (previousMessages와 previousMessagesLoaded 둘 다 처리)

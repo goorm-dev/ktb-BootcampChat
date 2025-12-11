@@ -26,6 +26,7 @@ const ChatHeader = () => {
       >
         <img
           src="/images/logo.png"
+          loading="lazy"
           alt="Chat App Logo"
           height={15}
           className="logo"
