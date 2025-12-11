@@ -24,7 +24,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
-@Service
+//@Service
 public class LocalFileService implements FileService {
 
     private final Path fileStorageLocation;
