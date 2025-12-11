@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Toast } from '../components/Toast';
 import fileService from '../services/fileService';
 
@@ -12,6 +12,7 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
  const [uploading, setUploading] = useState(false);
  const [uploadProgress, setUploadProgress] = useState(0);
  const [uploadError, setUploadError] = useState(null);
+ const sendLockRef = useRef(false);
 
  const handleMessageChange = useCallback((e) => {
    const newValue = e.target.value;
@@ -62,9 +63,17 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
       before: beforeTimestamp,
       limit: 30
     });
-  }, [socketRef, router?.query?.room, loadingMessages, messages, setLoadingMessages]);
+ }, [socketRef, router?.query?.room, loadingMessages, messages, setLoadingMessages]);
 
  const handleMessageSubmit = useCallback(async (messageData) => {
+   if (sendLockRef.current) {
+     return;
+   }
+   sendLockRef.current = true;
+   setTimeout(() => {
+     sendLockRef.current = false;
+   }, 200);
+
    if (!socketRef.current?.connected || !currentUser) {
      Toast.error('채팅 서버와 연결이 끊어졌습니다.');
      return;
@@ -77,6 +86,13 @@ export const useMessageHandling = (socketRef, currentUser, router, handleSession
    }
 
    try {
+      console.debug('[emit chatMessage]', {
+        room: roomId,
+        type: messageData.type,
+        content: messageData.content,
+        hasFile: messageData.type === 'file'
+      });
+
       if (messageData.type === 'file') {
         setUploading(true);
         setUploadError(null);
