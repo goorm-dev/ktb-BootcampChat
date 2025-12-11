@@ -34,36 +34,46 @@ public class SocketIOConfig {
 
     @Bean(initMethod = "start", destroyMethod = "stop")
     public SocketIOServer socketIOServer(AuthTokenListener authTokenListener) {
-        com.corundumstudio.socketio.Configuration config = new com.corundumstudio.socketio.Configuration();
+        var config = new com.corundumstudio.socketio.Configuration();
         config.setHostname(host);
         config.setPort(port);
-        
+
+        // --- Netty Thread 설정 (가장 중요) ---
+        config.setBossThreads(2);     // Accept 전담 스레드 2개
+        config.setWorkerThreads(8);   // 이벤트 처리 스레드 8개 (CPU 따라 16까지 증가 가능)
+
+        // --- 소켓 설정 튜닝 ---
         var socketConfig = new SocketConfig();
         socketConfig.setReuseAddress(true);
-        socketConfig.setTcpNoDelay(false);
-        socketConfig.setAcceptBackLog(10);
-        socketConfig.setTcpSendBufferSize(4096);
-        socketConfig.setTcpReceiveBufferSize(4096);
+        socketConfig.setTcpNoDelay(true); // 소규모 메시지 처리량↑
+        socketConfig.setAcceptBackLog(1024); // 동시 접속 대기열 증가
+        socketConfig.setTcpSendBufferSize(1024 * 64);
+        socketConfig.setTcpReceiveBufferSize(1024 * 64);
         config.setSocketConfig(socketConfig);
 
-        config.setOrigin("*");
-
-        // Socket.IO settings
+        // --- Ping/Pong ---
         config.setPingTimeout(60000);
         config.setPingInterval(25000);
         config.setUpgradeTimeout(10000);
 
-        config.setJsonSupport(new JacksonJsonSupport(new JavaTimeModule()));
-        config.setStoreFactory(new MemoryStoreFactory()); // 단일노드 전용
+        // --- Redis 기반 StoreFactory로 교체(권장) ---
+        // config.setStoreFactory(new RedissonStoreFactory(redissonClient));
 
-        log.info("Socket.IO server configured on {}:{} with {} boss threads and {} worker threads",
-                 host, port, config.getBossThreads(), config.getWorkerThreads());
-        var socketIOServer = new SocketIOServer(config);
-        socketIOServer.getNamespace(Namespace.DEFAULT_NAME).addAuthTokenListener(authTokenListener);
-        
-        return socketIOServer;
+        // 단일 노드는 그대로 MemoryStore 쓸 수 있으나 성능↓
+        config.setStoreFactory(new MemoryStoreFactory());
+
+        config.setJsonSupport(new JacksonJsonSupport(new JavaTimeModule()));
+
+        var server = new SocketIOServer(config);
+        server.getNamespace(Namespace.DEFAULT_NAME).addAuthTokenListener(authTokenListener);
+
+        log.info("Socket.IO server configured on {}:{} (boss={}, workers={})",
+                host, port, config.getBossThreads(), config.getWorkerThreads());
+
+        return server;
     }
-    
+
+
     /**
      * SpringAnnotationScanner는 BeanPostProcessor로서
      * ApplicationContext 초기화 초기에 등록되고,
