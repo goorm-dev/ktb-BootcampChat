@@ -4,13 +4,15 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
  * 로그인 액션
  * @param {import('@playwright/test').Page} page
  * @param {Object} credentials - { email: string, password: string }
+ * @param waitForRedirect
  */
-async function loginAction(page, credentials) {
+async function loginAction(page, credentials, waitForRedirect = true) {
   await page.goto(`${BASE_URL}/login`);
   await page.getByTestId('login-email-input').fill(credentials.email);
   await page.getByTestId('login-password-input').fill(credentials.password);
   await page.getByTestId('login-submit-button').click();
   await page.waitForURL(`${BASE_URL}/chat`);
+
 }
 
 /**
