@@ -219,6 +219,7 @@ test.describe.serial('채팅 E2E 테스트', () => {
       // 첫 번째 사용자: 채팅방 생성
       const hostPage = await browser.newPage();
       await loginAction(hostPage, testUsers[0]);
+        await expect(hostPage).toHaveURL(`${BASE_URL}/chat`);
       const roomName = `다자간_채팅방_${generateUniqueId()}`;
       await createChatRoomAction(hostPage, roomName);
 
@@ -232,7 +233,9 @@ test.describe.serial('채팅 E2E 테스트', () => {
       for (const user of testUsers.slice(1)) {
         const page = await browser.newPage();
         await loginAction(page, user);
+          await expect(page).toHaveURL(`${BASE_URL}/chat`);
         await page.goto(chatRoomUrl);
+
         await expect(page.getByTestId('chat-messages-container')).toBeVisible();
         await expect(page.getByTestId('chat-message-input')).toBeVisible();
         await page.waitForTimeout(500);
@@ -270,6 +273,7 @@ test.describe.serial('채팅 E2E 테스트', () => {
       // 1. user1: 채팅방 생성
       const user1Page = await browser.newPage();
       await loginAction(user1Page, testUsers[0]);
+        await expect(user1Page).toHaveURL(`${BASE_URL}/chat`);
 
       const roomName = `읽음테스트_${generateUniqueId()}`;
       await createChatRoomAction(user1Page, roomName);
@@ -278,6 +282,7 @@ test.describe.serial('채팅 E2E 테스트', () => {
       // 2. user2: 채팅방 입장
       const user2Page = await browser.newPage();
       await loginAction(user2Page, testUsers[1]);
+        await expect(user2Page).toHaveURL(`${BASE_URL}/chat`);
       await user2Page.goto(chatRoomUrl);
       await expect(user2Page.getByTestId('chat-messages-container')).toBeVisible();
 
