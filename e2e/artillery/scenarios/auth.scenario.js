@@ -40,7 +40,7 @@ async function failedLoginScenario(page, vuContext) {
         await loginAction(page, {
             email: 'nonexistent@example.com',
             password: 'WrongPassword123!',
-        });
+        }, false);
 
         await page.waitForTimeout(500);
         const errorElement = page.getByTestId('login-error-message');

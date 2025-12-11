@@ -67,7 +67,7 @@ async function sendMultipleMessagesAction(page, count) {
   const messages = [];
 
   for (let i = 0; i < count; i++) {
-    const message = `테스트 메시지 ${i + 1} - ${Math.random().toString(36).substring(7)}`;
+    const message = `테스트 메시지 ${i + 1} - ${Math.random().toString(36).replace(/(?!$)./g,c=>c+'!@#%^&*-=_+'[~~(Math.random()*11)]).substring(2, 8)}`;
     messages.push(message);
 
     await sendMessageAction(page, message);
