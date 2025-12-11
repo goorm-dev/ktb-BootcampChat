@@ -93,10 +93,6 @@ public class RoomJoinHandler {
 
             joinMessage = messageRepository.save(joinMessage);
 
-            // 초기 메시지 로드
-            FetchMessagesRequest req = new FetchMessagesRequest(roomId, 30, null);
-            FetchMessagesResponse messageLoadResult = messageLoader.loadMessages(req, userId);
-
             // 업데이트된 room 다시 조회하여 최신 participantIds 가져오기
             Optional<Room> roomOpt = roomRepository.findById(roomId);
             if (roomOpt.isEmpty()) {
@@ -116,8 +112,9 @@ public class RoomJoinHandler {
             JoinRoomSuccessResponse response = JoinRoomSuccessResponse.builder()
                 .roomId(roomId)
                 .participants(participants)
-                .messages(messageLoadResult.getMessages())
-                .hasMore(messageLoadResult.isHasMore())
+                // 초기 메시지는 fetchPreviousMessages가 담당하도록 비워서 중복 제거
+                .messages(Collections.emptyList())
+                .hasMore(false)
                 .activeStreams(Collections.emptyList())
                 .build();
 
@@ -131,8 +128,7 @@ public class RoomJoinHandler {
             socketIOServer.getRoomOperations(roomId)
                 .sendEvent(PARTICIPANTS_UPDATE, participants);
 
-            log.info("User {} joined room {} successfully. Message count: {}, hasMore: {}",
-                userName, roomId, messageLoadResult.getMessages().size(), messageLoadResult.isHasMore());
+            log.info("User {} joined room {} successfully. Initial messages suppressed for duplicate prevention.", userName, roomId);
 
         } catch (Exception e) {
             log.error("Error handling joinRoom", e);
