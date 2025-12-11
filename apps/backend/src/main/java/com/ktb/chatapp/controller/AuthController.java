@@ -181,11 +181,12 @@ public class AuthController {
             SessionCreationResult sessionInfo =
                     sessionService.createSession(user.getId(), metadata);
 
-            // Generate JWT token
+            // Generate JWT token (userName 포함으로 WebSocket 연결 시 MongoDB 조회 제거)
             String token = jwtService.generateToken(
                 sessionInfo.getSessionId(),
                 user.getEmail(),
-                user.getId()
+                user.getId(),
+                user.getName()
             );
 
             LoginResponse response = LoginResponse.builder()
@@ -375,11 +376,12 @@ public class AuthController {
 
             SessionCreationResult newSessionInfo = sessionService.createSession(user.getId(), metadata);
 
-            // 새로운 토큰과 세션 ID 생성
+            // 새로운 토큰과 세션 ID 생성 (userName 포함)
             String newToken = jwtService.generateToken(
                 newSessionInfo.getSessionId(),
                 user.getEmail(),
-                user.getId()
+                user.getId(),
+                user.getName()
             );
             return ResponseEntity.ok(new TokenRefreshResponse(true, "토큰이 갱신되었습니다.", newToken, newSessionInfo.getSessionId()));
 
