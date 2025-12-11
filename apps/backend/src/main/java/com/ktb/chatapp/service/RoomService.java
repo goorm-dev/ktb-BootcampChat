@@ -9,10 +9,13 @@ import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.RoomRepository;
 import com.ktb.chatapp.repository.UserRepository;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,9 +76,58 @@ public class RoomService {
                 roomPage = roomRepository.findAll(springPageRequest);
             }
 
+            final Map<String, Long> recentCounts;
+            if (roomPage.getContent().isEmpty()) {
+                recentCounts = Collections.emptyMap();
+            } else {
+                var roomIds = roomPage.getContent().stream()
+                    .map(Room::getId)
+                    .filter(id -> id != null && !id.isBlank())
+                    .toList();
+
+                var counts = roomIds.isEmpty() ? List.<MessageRepository.RoomMessageCount>of()
+                    : messageRepository.countRecentMessagesByRoomIds(
+                        roomIds,
+                        LocalDateTime.now().minusMinutes(10));
+
+                if (counts == null || counts.isEmpty()) {
+                    recentCounts = Collections.emptyMap();
+                } else {
+                    recentCounts = counts.stream()
+                        .filter(c -> c.getRoomId() != null && !c.getRoomId().isBlank())
+                        .collect(Collectors.toMap(
+                            MessageRepository.RoomMessageCount::getRoomId,
+                            MessageRepository.RoomMessageCount::getCount,
+                            (a, b) -> a
+                        ));
+                }
+            }
+
+            final Map<String, User> userMap;
+            if (roomPage.getContent().isEmpty()) {
+                userMap = Collections.emptyMap();
+            } else {
+                Set<String> userIds = new HashSet<>();
+                roomPage.getContent().forEach(room -> {
+                    if (room.getCreator() != null) {
+                        userIds.add(room.getCreator());
+                    }
+                    if (room.getParticipantIds() != null) {
+                        userIds.addAll(room.getParticipantIds());
+                    }
+                });
+
+                if (userIds.isEmpty()) {
+                    userMap = Collections.emptyMap();
+                } else {
+                    userMap = userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+                }
+            }
+
             // Room을 RoomResponse로 변환
             List<RoomResponse> roomResponses = roomPage.getContent().stream()
-                .map(room -> mapToRoomResponse(room, name))
+                .map(room -> mapToRoomResponse(room, name, recentCounts, userMap))
                 .collect(Collectors.toList());
 
             // 메타데이터 생성
@@ -220,22 +272,39 @@ public class RoomService {
     }
 
     private RoomResponse mapToRoomResponse(Room room, String name) {
+        return mapToRoomResponse(room, name, Collections.emptyMap(), Collections.emptyMap());
+    }
+
+    private RoomResponse mapToRoomResponse(
+            Room room,
+            String name,
+            Map<String, Long> recentCounts,
+            Map<String, User> userMap
+    ) {
         if (room == null) return null;
 
         User creator = null;
         if (room.getCreator() != null) {
-            creator = userRepository.findById(room.getCreator()).orElse(null);
+            creator = userMap.getOrDefault(room.getCreator(),
+                userRepository.findById(room.getCreator()).orElse(null));
         }
 
-        List<User> participants = room.getParticipantIds().stream()
-            .map(userRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+        List<User> participants = (room.getParticipantIds() == null ? List.<String>of() : room.getParticipantIds()).stream()
+            .map(id -> {
+                User cached = userMap.get(id);
+                if (cached != null) return cached;
+                return userRepository.findById(id).orElse(null);
+            })
+            .filter(u -> u != null)
             .toList();
 
-        // 최근 10분간 메시지 수 조회
-        LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
-        long recentMessageCount = messageRepository.countRecentMessagesByRoomId(room.getId(), tenMinutesAgo);
+        long recentMessageCount;
+        if (recentCounts != null && !recentCounts.isEmpty()) {
+            recentMessageCount = recentCounts.getOrDefault(room.getId(), 0L);
+        } else {
+            LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
+            recentMessageCount = messageRepository.countRecentMessagesByRoomId(room.getId(), tenMinutesAgo);
+        }
 
         return RoomResponse.builder()
             .id(room.getId())

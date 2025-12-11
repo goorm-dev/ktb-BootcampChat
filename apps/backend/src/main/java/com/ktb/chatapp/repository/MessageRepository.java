@@ -23,4 +23,19 @@ public interface MessageRepository extends MongoRepository<Message, String> {
      * fileId로 메시지 조회 (파일 권한 검증용)
      */
     Optional<Message> findByFileId(String fileId);
+
+    /**
+     * 여러 방에 대해 최근 메시지 수를 한 번에 집계
+     */
+    @org.springframework.data.mongodb.repository.Aggregation(pipeline = {
+        "{ $match: { 'room': { $in: ?0 }, 'isDeleted': false, 'timestamp': { $gte: ?1 } } }",
+        "{ $group: { _id: '$room', count: { $sum: 1 } } }",
+        "{ $project: { roomId: '$_id', count: 1, _id: 0 } }"
+    })
+    java.util.List<RoomMessageCount> countRecentMessagesByRoomIds(java.util.List<String> roomIds, LocalDateTime since);
+
+    interface RoomMessageCount {
+        String getRoomId();
+        long getCount();
+    }
 }

@@ -1,0 +1,69 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - name: "api burst"
+      duration: "{{ $env.PHASE1_DURATION }}"
+      arrivalCount: "{{ $env.PHASE1_ARRIVAL_COUNT }}"
+  processor: "./processors/api-load.js"
+  plugins:
+    expect: {}
+
+scenarios:
+  - name: "Rooms API flow"
+    flow:
+      - function: setUser
+      - post:
+          url: "/api/auth/register"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+            passwordConfirm: "{{ password }}"
+            name: "{{ name }}"
+          expect:
+            - statusCode: 201
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.token"
+              as: "token"
+            - json: "$.sessionId"
+              as: "sessionId"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/rooms?page=0&pageSize=5&sortField=createdAt&sortOrder=desc"
+          headers:
+            Authorization: "Bearer {{ token }}"
+            x-session-id: "{{ sessionId }}"
+          expect:
+            - statusCode: 200
+      - post:
+          url: "/api/rooms"
+          headers:
+            Authorization: "Bearer {{ token }}"
+            x-session-id: "{{ sessionId }}"
+          json:
+            name: "loadtest_room_{{ roomSuffix }}"
+          capture:
+            - json: "$.data.id"
+              as: "roomId"
+          expect:
+            - statusCode: 201
+      - post:
+          url: "/api/rooms/{{ roomId }}/join"
+          headers:
+            Authorization: "Bearer {{ token }}"
+            x-session-id: "{{ sessionId }}"
+          json: {}
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/rooms/{{ roomId }}"
+          headers:
+            Authorization: "Bearer {{ token }}"
+            x-session-id: "{{ sessionId }}"
+          expect:
+            - statusCode: 200
