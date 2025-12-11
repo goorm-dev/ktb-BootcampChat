@@ -34,13 +34,14 @@ public class JwtService {
     }
 
     /**
-     * JWT 토큰 생성
+     * JWT 토큰 생성 (userName 포함 - WebSocket 연결 시 MongoDB 조회 제거용)
      * @param sessionId 세션 ID
      * @param email 사용자 이메일 (subject)
      * @param userId 사용자 ID
+     * @param userName 사용자 이름
      * @return 생성된 JWT 토큰
      */
-    public String generateToken(String sessionId, String email, String userId) {
+    public String generateToken(String sessionId, String email, String userId, String userName) {
         Instant now = Instant.now();
         Instant expiry = now.plusMillis(jwtExpirationMs);
 
@@ -50,9 +51,19 @@ public class JwtService {
                 .expiresAt(expiry)
                 .claim("sessionId", sessionId)
                 .claim("userId", userId)
+                .claim("userName", userName)
                 .build();
         var defaultJwsHeader = JwsHeader.with(MacAlgorithm.HS256).build();
         return jwtEncoder.encode(JwtEncoderParameters.from(defaultJwsHeader, claims)).getTokenValue();
+    }
+
+    /**
+     * JWT 토큰 생성 (하위 호환성 - userName 없는 버전)
+     * @deprecated userName 포함 버전 사용 권장
+     */
+    @Deprecated
+    public String generateToken(String sessionId, String email, String userId) {
+        return generateToken(sessionId, email, userId, "Unknown");
     }
 
     /**
@@ -103,6 +114,18 @@ public class JwtService {
             return jwtDecoder.decode(token).getClaim("userId");
         } catch (JwtException e) {
             log.error("Failed to extract userId from token: {}", e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * 토큰에서 사용자 이름 추출 (WebSocket 연결 시 MongoDB 조회 제거용)
+     */
+    public String extractUserName(String token) {
+        try {
+            return jwtDecoder.decode(token).getClaim("userName");
+        } catch (JwtException e) {
+            log.error("Failed to extract userName from token: {}", e.getMessage());
             throw e;
         }
     }

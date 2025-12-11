@@ -41,7 +41,7 @@ const argv = yargs(hideBin(process.argv))
   .option('socket-url', {
     description: 'Socket.IO server URL',
     type: 'string',
-    default: 'http://localhost:5002'
+    default: 'http://127.0.0.1:5002'
   })
   .option('room-id', {
     description: 'Room ID to send messages to (auto-create if not specified)',
