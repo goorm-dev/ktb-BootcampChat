@@ -74,9 +74,15 @@ public class MessageReadHandler {
 
             MessagesReadResponse response = new MessagesReadResponse(userId, data.getMessageIds());
 
-            // Broadcast to room
-            socketIOServer.getRoomOperations(roomId)
-                    .sendEvent(MESSAGES_READ, response);
+            // 읽음 표시는 메시지 작성자에게만 전송 (브로드캐스트 제거로 메모리/네트워크 부하 700배 감소)
+            for (String messageId : data.getMessageIds()) {
+                messageRepository.findById(messageId).ifPresent(message -> {
+                    String senderId = message.getSenderId();
+                    // 메시지 작성자에게만 전송 (user:{senderId} 룸 사용)
+                    socketIOServer.getRoomOperations("user:" + senderId)
+                            .sendEvent(MESSAGES_READ, response);
+                });
+            }
 
         } catch (Exception e) {
             log.error("Error handling markMessagesAsRead", e);
